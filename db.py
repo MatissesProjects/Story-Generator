@@ -33,6 +33,10 @@ def get_all_entities():
     lore_topics = query_db("SELECT topic FROM lore")
     return [c['name'] for c in chars] + [l['topic'] for l in lore_topics]
 
+def get_character_voice(name):
+    result = query_db("SELECT voice_id FROM characters WHERE name = ?", (name,), one=True)
+    return result['voice_id'] if result and result['voice_id'] else "en_US-lessac-medium.onnx" # Default voice
+
 if __name__ == "__main__":
     if not os.path.exists(DB_PATH):
         print("Initializing database...")

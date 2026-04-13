@@ -2,6 +2,8 @@ import db
 import llm
 import spark
 import curator
+import parser
+import tts
 import os
 
 def main():
@@ -25,8 +27,10 @@ def main():
             name = input("Name: ")
             desc = input("Description: ")
             traits = input("Traits: ")
-            db.execute_db("INSERT INTO characters (name, description, traits) VALUES (?, ?, ?)", (name, desc, traits))
-            print(f"Character {name} added.")
+            voice = input("Voice Model (default: en_US-lessac-medium.onnx): ") or "en_US-lessac-medium.onnx"
+            db.execute_db("INSERT INTO characters (name, description, traits, voice_id) VALUES (?, ?, ?, ?)", 
+                           (name, desc, traits, voice))
+            print(f"Character {name} added with voice {voice}.")
             continue
 
         if user_input.lower() == "add lore":
@@ -48,10 +52,24 @@ def main():
             print(f"[DEBUG: Using context: {', '.join(facts[:2])}...]")
 
         print("\nStory: ", end="", flush=True)
+        full_response = ""
         try:
             for chunk in llm.generate_story_segment(user_input, context_facts=facts):
                 print(chunk, end="", flush=True)
+                full_response += chunk
             print()
+            
+            # --- Audio Processing (Track 4) ---
+            print("\n[Audio Generation...]")
+            dialogue_lines = parser.parse_dialogue(full_response)
+            for speaker, text in dialogue_lines:
+                voice_model = db.get_character_voice(speaker)
+                print(f"Generating audio for {speaker}...")
+                audio_path = tts.generate_audio(text, speaker, voice_model)
+                if audio_path:
+                    tts.play_audio(audio_path)
+            # ---------------------------------
+            
         except Exception as e:
             print(f"\nError: {e}")
 
