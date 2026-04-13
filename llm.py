@@ -1,9 +1,10 @@
 import requests
 import json
+import config
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_URL = config.OLLAMA_URL
 
-def generate_story_segment(prompt, model="gemma4:e4b", context_facts=None):
+def generate_story_segment(prompt, model=config.OLLAMA_MODEL, context_facts=None):
     full_prompt = prompt
     if context_facts:
         facts_block = "\n".join([f"- {f}" for f in context_facts])

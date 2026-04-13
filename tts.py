@@ -1,11 +1,12 @@
 import subprocess
 import os
 import winsound # Using built-in winsound for WAV playback on Windows
+import config
 
-# Path to the Piper executable and models (User should configure these)
-PIPER_EXE = "piper" # Assumes it's in the PATH
-MODELS_DIR = "models"
-OUTPUT_DIR = "audio_output"
+# Path to the Piper executable and models
+PIPER_EXE = config.PIPER_EXE
+MODELS_DIR = config.MODELS_DIR
+OUTPUT_DIR = config.AUDIO_OUTPUT_DIR
 
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
