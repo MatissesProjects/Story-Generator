@@ -28,15 +28,14 @@ def main():
             desc = input("Description: ")
             traits = input("Traits: ")
             voice = input("Voice Model (default: en_US-lessac-medium.onnx): ") or "en_US-lessac-medium.onnx"
-            db.execute_db("INSERT INTO characters (name, description, traits, voice_id) VALUES (?, ?, ?, ?)", 
-                           (name, desc, traits, voice))
+            db.add_character(name, desc, traits, voice)
             print(f"Character {name} added with voice {voice}.")
             continue
 
         if user_input.lower() == "add lore":
             topic = input("Topic: ")
             desc = input("Description: ")
-            db.execute_db("INSERT INTO lore (topic, description) VALUES (?, ?)", (topic, desc))
+            db.add_lore(topic, desc)
             print(f"Lore topic '{topic}' added.")
             continue
 

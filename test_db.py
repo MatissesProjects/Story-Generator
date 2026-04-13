@@ -1,8 +1,7 @@
 import db
 
 # Test Character
-db.execute_db("INSERT INTO characters (name, description, traits) VALUES (?, ?, ?)", 
-               ("Elara", "A brave warrior", "Determined, Loyal"))
+db.add_character("Elara", "A brave warrior", "Determined, Loyal")
 
 # Test Retrieval
 chars = db.query_db("SELECT * FROM characters")

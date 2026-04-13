@@ -54,13 +54,17 @@ async def websocket_endpoint(websocket: WebSocket):
                             
             elif message["type"] == "add_character":
                 char_data = message["content"]
-                db.execute_db("INSERT INTO characters (name, description, traits, voice_id) VALUES (?, ?, ?, ?)", 
-                               (char_data["name"], char_data["description"], char_data["traits"], char_data.get("voice_id", "en_US-lessac-medium.onnx")))
+                db.add_character(
+                    char_data["name"], 
+                    char_data["description"], 
+                    char_data["traits"], 
+                    char_data.get("voice_id", "en_US-lessac-medium.onnx")
+                )
                 await websocket.send_text(json.dumps({"type": "info", "content": f"Character {char_data['name']} added."}))
                 
             elif message["type"] == "add_lore":
                 lore_data = message["content"]
-                db.execute_db("INSERT INTO lore (topic, description) VALUES (?, ?)", (lore_data["topic"], lore_data["description"]))
+                db.add_lore(lore_data["topic"], lore_data["description"])
                 await websocket.send_text(json.dumps({"type": "info", "content": f"Lore topic '{lore_data['topic']}' added."}))
                 
     except WebSocketDisconnect:

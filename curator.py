@@ -32,15 +32,13 @@ if __name__ == "__main__":
     # Test curator
     print("Testing Context Curator...")
     # Add a dummy character and lore point
-    db.execute_db("INSERT INTO characters (name, description, traits) VALUES (?, ?, ?)", 
-                   ("Malakar", "A shadowy assassin", "Swift, Ruthless"))
-    db.execute_db("INSERT INTO lore (topic, description) VALUES (?, ?)", 
-                   ("The Void", "A realm of darkness between stars"))
-    
+    db.add_character("Malakar", "A shadowy assassin", "Swift, Ruthless")
+    db.add_lore("The Void", "A realm of darkness between stars")
+
     print(f"Context for 'Malakar entered the Void':")
     for fact in get_relevant_context("Malakar entered the Void"):
         print(f"- {fact}")
-    
+
     # Clean up
     db.execute_db("DELETE FROM characters WHERE name = 'Malakar'")
     db.execute_db("DELETE FROM lore WHERE topic = 'The Void'")

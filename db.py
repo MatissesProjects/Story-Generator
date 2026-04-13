@@ -37,6 +37,13 @@ def get_character_voice(name):
     result = query_db("SELECT voice_id FROM characters WHERE name = ?", (name,), one=True)
     return result['voice_id'] if result and result['voice_id'] else "en_US-lessac-medium.onnx" # Default voice
 
+def add_character(name, description, traits, voice_id="en_US-lessac-medium.onnx"):
+    execute_db("INSERT INTO characters (name, description, traits, voice_id) VALUES (?, ?, ?, ?)", 
+               (name, description, traits, voice_id))
+
+def add_lore(topic, description):
+    execute_db("INSERT INTO lore (topic, description) VALUES (?, ?)", (topic, description))
+
 if __name__ == "__main__":
     if not os.path.exists(DB_PATH):
         print("Initializing database...")
