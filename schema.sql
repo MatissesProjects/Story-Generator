@@ -1,0 +1,25 @@
+CREATE TABLE IF NOT EXISTS characters (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    traits TEXT,
+    voice_id TEXT
+);
+
+CREATE TABLE IF NOT EXISTS lore (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    topic TEXT NOT NULL,
+    description TEXT
+);
+
+CREATE TABLE IF NOT EXISTS plot_threads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    description TEXT NOT NULL,
+    status TEXT DEFAULT 'active'
+);
+
+CREATE TABLE IF NOT EXISTS timeline (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_description TEXT NOT NULL,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);

@@ -2,7 +2,7 @@
 
 | Track ID | Description | Status | Link |
 | :--- | :--- | :--- | :--- |
-| `core-engine` | Set up Ollama integration and SQLite memory schema. | 📝 Planning | [Link](./tracks/core-engine/index.md) |
+| `core-engine` | Set up Ollama integration and SQLite memory schema. | ✅ Completed | [Link](./tracks/core-engine/index.md) |
 | `spark-generator` | Implement a tool to jump-start narratives without a starting idea. | 📝 Planning | [Link](./tracks/spark-generator/index.md) |
 | `context-management` | Build the RAG-style context curator for prompt injection. | 📝 Planning | [Link](./tracks/context-management/index.md) |
 | `audio-polish` | Integrate Piper TTS for local character voices. | 📝 Planning | [Link](./tracks/audio-polish/index.md) |
