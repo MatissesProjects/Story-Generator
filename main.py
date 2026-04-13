@@ -1,5 +1,6 @@
 import db
 import llm
+import spark
 import os
 
 def main():
@@ -7,8 +8,11 @@ def main():
     if not os.path.exists(db.DB_PATH):
         db.init_db()
 
-    print("--- Story Generator (Core Engine) ---")
-    print("Type 'exit' to quit, 'add character' to add a character, or just type to start the story.")
+    print("--- Story Generator ---")
+    print("Type 'exit' to quit.")
+    print("Type 'add character' to add a character.")
+    print("Type 'spark' to generate a story idea.")
+    print("Or just type to continue the story.")
 
     while True:
         user_input = input("\nYou: ")
@@ -22,6 +26,12 @@ def main():
             traits = input("Traits: ")
             db.execute_db("INSERT INTO characters (name, description, traits) VALUES (?, ?, ?)", (name, desc, traits))
             print(f"Character {name} added.")
+            continue
+
+        if user_input.lower() == "spark":
+            genre = input("Genre (optional, press Enter for random): ")
+            idea = spark.generate_spark(genre if genre else None)
+            print(f"\nSpark:\n{idea}")
             continue
 
         # For now, we don't have the Context Curator (Track 3), 
