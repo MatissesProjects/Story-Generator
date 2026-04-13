@@ -1,8 +1,13 @@
 # Narrative Orchestration Index
 
 ## Status
-- **Current Phase**: Phase 1: Continuation Logic
-- **Next Step**: Update `parser.py` to detect "continue" intents.
+- **Current Phase**: Completed
+- **Next Step**: Consider expanding logic validation or semantic memory.
+
+## Completed
+- [x] Phase 1: Continuation Logic
+- [x] Phase 2: The Director Agent
+- [x] Phase 3: Persona Conditioning
 
 ## Documents
 - [Specification](./spec.md)
