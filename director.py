@@ -21,6 +21,24 @@ def evaluate_state(user_input, recent_history=None):
     
     return instruction
 
+def get_persona_blocks(user_input):
+    """
+    Identifies characters mentioned in the input and retrieves their persona constraints.
+    """
+    entities = db.get_all_entities()
+    persona_blocks = []
+    
+    for entity in entities:
+        if entity.lower() in user_input.lower():
+            char_results = db.search_characters(entity)
+            for char in char_results:
+                # Format: [SPEAKER: {Name}; TRAITS: {Traits}; CURRENT_MOOD: {Mood}; HIDDEN_GOAL: {Goal}]
+                # Note: Mood and Hidden Goal could be dynamic in future iterations
+                block = f"[SPEAKER: {char['name']}; TRAITS: {char['traits']}; DESCRIPTION: {char['description']}]"
+                persona_blocks.append(block)
+                
+    return persona_blocks
+
 if __name__ == "__main__":
     # Test
     print("Testing Director Agent...")

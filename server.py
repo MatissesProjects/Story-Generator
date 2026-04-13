@@ -46,11 +46,14 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Director Agent: Evaluate story state
                     director_instructions = director.evaluate_state(user_input)
                     
-                    await websocket.send_text(json.dumps({"type": "debug", "content": f"Intent: {intent}, Using context: {facts}, Director: {director_instructions}"}))
+                    # Persona Conditioning: Get persona blocks for mentioned characters
+                    persona_blocks = director.get_persona_blocks(user_input)
+                    
+                    await websocket.send_text(json.dumps({"type": "debug", "content": f"Intent: {intent}, Using context: {len(facts)} facts, Director: {director_instructions is not None}, Personas: {len(persona_blocks)}"}))
                     
                     full_response = ""
                     # Stream LLM output back to client
-                    for chunk in llm.generate_story_segment(prompt, context_facts=facts, director_instructions=director_instructions):
+                    for chunk in llm.generate_story_segment(prompt, context_facts=facts, director_instructions=director_instructions, persona_blocks=persona_blocks):
                         await websocket.send_text(json.dumps({"type": "story_chunk", "content": chunk}))
                         full_response += chunk
                     

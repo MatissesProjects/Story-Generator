@@ -4,12 +4,16 @@ import config
 
 OLLAMA_URL = config.OLLAMA_URL
 
-def generate_story_segment(prompt, model=config.OLLAMA_MODEL, context_facts=None, director_instructions=None):
+def generate_story_segment(prompt, model=config.OLLAMA_MODEL, context_facts=None, director_instructions=None, persona_blocks=None):
     full_prompt = prompt
     
     # Build up system/context block
     context_blocks = []
     
+    if persona_blocks:
+        persona_text = "CHARACTER PERSONAS:\n" + "\n".join(persona_blocks)
+        context_blocks.append(persona_text)
+        
     if context_facts:
         facts_block = "LORE/FACTS:\n" + "\n".join([f"- {f}" for f in context_facts])
         context_blocks.append(facts_block)
