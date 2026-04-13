@@ -66,7 +66,12 @@ async def websocket_endpoint(websocket: WebSocket):
                 lore_data = message["content"]
                 db.add_lore(lore_data["topic"], lore_data["description"])
                 await websocket.send_text(json.dumps({"type": "info", "content": f"Lore topic '{lore_data['topic']}' added."}))
-                
+
+            elif message["type"] == "add_meta":
+                meta_data = message["content"]
+                db.add_meta_lore(meta_data["topic"], meta_data["description"], meta_data["keywords"])
+                await websocket.send_text(json.dumps({"type": "info", "content": f"Meta-narrative '{meta_data['topic']}' added."}))
+
     except WebSocketDisconnect:
         print("Client disconnected")
 

@@ -23,3 +23,10 @@ CREATE TABLE IF NOT EXISTS timeline (
     event_description TEXT NOT NULL,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS meta_lore (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    topic TEXT NOT NULL,
+    description TEXT NOT NULL,
+    keywords TEXT NOT NULL
+);

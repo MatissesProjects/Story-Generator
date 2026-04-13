@@ -39,6 +39,14 @@ def main():
             print(f"Lore topic '{topic}' added.")
             continue
 
+        if user_input.lower() == "add meta":
+            topic = input("Meta-Narrative Topic: ")
+            desc = input("Subtle Description: ")
+            kws = input("Trigger Keywords (comma separated): ")
+            db.add_meta_lore(topic, desc, kws)
+            print(f"Meta-narrative '{topic}' added.")
+            continue
+
         if user_input.lower() == "spark":
             genre = input("Genre (optional, press Enter for random): ")
             idea = spark.generate_spark(genre if genre else None)

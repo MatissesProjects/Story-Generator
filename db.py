@@ -44,6 +44,13 @@ def add_character(name, description, traits, voice_id="en_US-lessac-medium.onnx"
 def add_lore(topic, description):
     execute_db("INSERT INTO lore (topic, description) VALUES (?, ?)", (topic, description))
 
+def add_meta_lore(topic, description, keywords):
+    execute_db("INSERT INTO meta_lore (topic, description, keywords) VALUES (?, ?, ?)", 
+               (topic, description, keywords))
+
+def get_all_meta_lore():
+    return query_db("SELECT * FROM meta_lore")
+
 if __name__ == "__main__":
     if not os.path.exists(DB_PATH):
         print("Initializing database...")
