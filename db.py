@@ -22,6 +22,17 @@ def execute_db(query, args=()):
         conn.execute(query, args)
         conn.commit()
 
+def search_characters(name_fragment):
+    return query_db("SELECT * FROM characters WHERE name LIKE ?", (f"%{name_fragment}%",))
+
+def search_lore(topic_fragment):
+    return query_db("SELECT * FROM lore WHERE topic LIKE ?", (f"%{topic_fragment}%",))
+
+def get_all_entities():
+    chars = query_db("SELECT name FROM characters")
+    lore_topics = query_db("SELECT topic FROM lore")
+    return [c['name'] for c in chars] + [l['topic'] for l in lore_topics]
+
 if __name__ == "__main__":
     if not os.path.exists(DB_PATH):
         print("Initializing database...")
