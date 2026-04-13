@@ -6,6 +6,7 @@ import spark
 import curator
 import parser
 import tts
+import director
 import config
 import os
 import json
@@ -41,11 +42,15 @@ async def websocket_endpoint(websocket: WebSocket):
                         
                     # Get context
                     facts = curator.get_relevant_context(user_input)
-                    await websocket.send_text(json.dumps({"type": "debug", "content": f"Intent: {intent}, Using context: {facts}"}))
+                    
+                    # Director Agent: Evaluate story state
+                    director_instructions = director.evaluate_state(user_input)
+                    
+                    await websocket.send_text(json.dumps({"type": "debug", "content": f"Intent: {intent}, Using context: {facts}, Director: {director_instructions}"}))
                     
                     full_response = ""
                     # Stream LLM output back to client
-                    for chunk in llm.generate_story_segment(prompt, context_facts=facts):
+                    for chunk in llm.generate_story_segment(prompt, context_facts=facts, director_instructions=director_instructions):
                         await websocket.send_text(json.dumps({"type": "story_chunk", "content": chunk}))
                         full_response += chunk
                     
@@ -78,6 +83,11 @@ async def websocket_endpoint(websocket: WebSocket):
                 meta_data = message["content"]
                 db.add_meta_lore(meta_data["topic"], meta_data["description"], meta_data["keywords"])
                 await websocket.send_text(json.dumps({"type": "info", "content": f"Meta-narrative '{meta_data['topic']}' added."}))
+
+            elif message["type"] == "add_plot_thread":
+                thread_data = message["content"]
+                db.add_plot_thread(thread_data["description"])
+                await websocket.send_text(json.dumps({"type": "info", "content": f"Plot thread '{thread_data['description']}' added."}))
 
     except WebSocketDisconnect:
         print("Client disconnected")

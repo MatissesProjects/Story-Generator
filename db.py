@@ -51,9 +51,18 @@ def add_meta_lore(topic, description, keywords):
 def get_all_meta_lore():
     return query_db("SELECT * FROM meta_lore")
 
+def get_active_plot_threads():
+    return query_db("SELECT description FROM plot_threads WHERE status = 'active'")
+
+def add_plot_thread(description):
+    execute_db("INSERT INTO plot_threads (description) VALUES (?)", (description,))
+
+def log_event(description):
+    execute_db("INSERT INTO timeline (event_description) VALUES (?)", (description,))
+
+def get_recent_timeline(limit=5):
+    return query_db("SELECT event_description FROM timeline ORDER BY id DESC LIMIT ?", (limit,))
+
 if __name__ == "__main__":
-    if not os.path.exists(DB_PATH):
-        print("Initializing database...")
-        init_db()
-    else:
-        print("Database already exists.")
+    print("Initializing database...")
+    init_db()
