@@ -1,5 +1,33 @@
 import re
 
+def detect_intent(text):
+    """
+    Categorizes the user's input intent.
+    Returns one of: 'CONTINUE', 'ACTION', 'DIALOGUE', 'SPARK', 'EMPTY'
+    """
+    text = text.strip().lower()
+    
+    if not text:
+        return 'EMPTY'
+        
+    if text == "spark":
+        return 'SPARK'
+        
+    # Keywords for continuation
+    continue_keywords = [
+        "continue", "more", "tell me more", "go on", "what happens next",
+        "...", "next", "and then?"
+    ]
+    
+    if text in continue_keywords:
+        return 'CONTINUE'
+        
+    # Check if it looks like dialogue (starts with " or ')
+    if text.startswith('"') or text.startswith("'"):
+        return 'DIALOGUE'
+        
+    return 'ACTION'
+
 def parse_dialogue(text):
     """
     Parses text for dialogue tags like [Character]: Dialogue or Character: "Dialogue".

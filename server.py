@@ -27,18 +27,25 @@ async def websocket_endpoint(websocket: WebSocket):
             
             if message["type"] == "user_input":
                 user_input = message["content"]
+                intent = parser.detect_intent(user_input)
                 
-                if user_input.lower() == "spark":
+                if intent == 'SPARK':
                     idea = spark.generate_spark()
                     await websocket.send_text(json.dumps({"type": "spark", "content": idea}))
                 else:
+                    # Modify prompt for continuation
+                    if intent in ['CONTINUE', 'EMPTY']:
+                        prompt = "The player is waiting for the story to continue. Describe the next sequence of events, focusing on atmospheric detail and character reaction. Do not wait for player input yet. Only write the next segment of dialogue/action."
+                    else:
+                        prompt = user_input
+                        
                     # Get context
                     facts = curator.get_relevant_context(user_input)
-                    await websocket.send_text(json.dumps({"type": "debug", "content": f"Using context: {facts}"}))
+                    await websocket.send_text(json.dumps({"type": "debug", "content": f"Intent: {intent}, Using context: {facts}"}))
                     
                     full_response = ""
                     # Stream LLM output back to client
-                    for chunk in llm.generate_story_segment(user_input, context_facts=facts):
+                    for chunk in llm.generate_story_segment(prompt, context_facts=facts):
                         await websocket.send_text(json.dumps({"type": "story_chunk", "content": chunk}))
                         full_response += chunk
                     
