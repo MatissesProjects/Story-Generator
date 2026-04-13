@@ -1,14 +1,15 @@
 import db
+import memory_engine
 
 def get_relevant_context(user_input):
     """
-    Scans the user input for character names or lore topics 
-    and returns a list of matching details.
+    Scans the user input for character names or lore topics (Keyword)
+    AND performs a semantic search for related themes/facts.
     """
     entities = db.get_all_entities()
     matches = []
     
-    # Simple keyword matching for now
+    # 1. Keyword Matching (Exact/Partial)
     for entity in entities:
         if entity.lower() in user_input.lower():
             # Check characters
@@ -21,7 +22,11 @@ def get_relevant_context(user_input):
             for lore in lore_results:
                 matches.append(f"LORE: {lore['topic']} - {lore['description']}")
                 
-    # Also include active plot threads
+    # 2. Semantic Search (Thematic/Conceptual)
+    semantic_facts = memory_engine.search_semantic(user_input, n_results=3, threshold=0.4)
+    matches.extend(semantic_facts)
+
+    # 3. Active Plot Threads
     active_plots = db.query_db("SELECT * FROM plot_threads WHERE status = 'active'")
     for plot in active_plots:
         matches.append(f"ACTIVE PLOT: {plot['description']}")

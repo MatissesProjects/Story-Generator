@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     MODELS_DIR: str = Field(default="models", validation_alias="MODELS_DIR")
     AUDIO_OUTPUT_DIR: str = Field(default="audio_output", validation_alias="AUDIO_OUTPUT_DIR")
 
+    # Vector DB settings
+    VECTOR_DB_PATH: str = Field(default="vector_db", validation_alias="VECTOR_DB_PATH")
+    EMBEDDING_MODEL: str = Field(default="all-MiniLM-L6-v2", validation_alias="EMBEDDING_MODEL")
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     def get_websocket_url(self, host: str = "localhost") -> str:
@@ -39,6 +43,8 @@ OLLAMA_MODEL = _settings.OLLAMA_MODEL
 PIPER_EXE = _settings.PIPER_EXE
 MODELS_DIR = _settings.MODELS_DIR
 AUDIO_OUTPUT_DIR = _settings.AUDIO_OUTPUT_DIR
+VECTOR_DB_PATH = _settings.VECTOR_DB_PATH
+EMBEDDING_MODEL = _settings.EMBEDDING_MODEL
 
 def get_websocket_url(host="localhost"):
     return _settings.get_websocket_url(host)

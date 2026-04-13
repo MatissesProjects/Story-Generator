@@ -1,5 +1,6 @@
 import sqlite3
 import os
+import memory_engine
 
 DB_PATH = "story_memory.db"
 
@@ -38,11 +39,19 @@ def get_character_voice(name):
     return result['voice_id'] if result and result['voice_id'] else "en_US-lessac-medium.onnx" # Default voice
 
 def add_character(name, description, traits, voice_id="en_US-lessac-medium.onnx"):
-    execute_db("INSERT INTO characters (name, description, traits, voice_id) VALUES (?, ?, ?, ?)", 
-               (name, description, traits, voice_id))
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.execute("INSERT INTO characters (name, description, traits, voice_id) VALUES (?, ?, ?, ?)", 
+                        (name, description, traits, voice_id))
+        conn.commit()
+        char_id = cur.lastrowid
+        memory_engine.add_character_vector(name, description, traits, char_id)
 
 def add_lore(topic, description):
-    execute_db("INSERT INTO lore (topic, description) VALUES (?, ?)", (topic, description))
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.execute("INSERT INTO lore (topic, description) VALUES (?, ?)", (topic, description))
+        conn.commit()
+        lore_id = cur.lastrowid
+        memory_engine.add_lore_vector(topic, description, lore_id)
 
 def add_meta_lore(topic, description, keywords):
     execute_db("INSERT INTO meta_lore (topic, description, keywords) VALUES (?, ?, ?)", 
