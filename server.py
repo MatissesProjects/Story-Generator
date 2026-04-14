@@ -11,6 +11,7 @@ import director
 import summarizer
 import researcher
 import validator
+import vision
 import config
 import os
 import json
@@ -20,6 +21,11 @@ app = FastAPI()
 
 # Mount the static directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Mount the portraits directory
+if not os.path.exists(config.PORTRAITS_DIR):
+    os.makedirs(config.PORTRAITS_DIR)
+app.mount("/portraits", StaticFiles(directory=config.PORTRAITS_DIR), name="portraits")
 
 # Mount the audio output directory so it can be accessed via HTTP
 if not os.path.exists(config.AUDIO_OUTPUT_DIR):
@@ -122,7 +128,10 @@ async def websocket_endpoint(websocket: WebSocket):
                     char_data["traits"], 
                     char_data.get("voice_id", "en_US-lessac-medium.onnx")
                 )
-                await websocket.send_text(json.dumps({"type": "info", "content": f"Character {char_data['name']} added."}))
+                # Generate portrait asynchronously
+                portrait_url = vision.generate_portrait(char_data["name"], char_data["description"], char_data["traits"])
+                await websocket.send_text(json.dumps({"type": "info", "content": f"Character {char_data['name']} added with portrait."}))
+                await websocket.send_text(json.dumps({"type": "portrait_update", "name": char_data["name"], "url": portrait_url}))
                 
             elif message["type"] == "add_lore":
                 lore_data = message["content"]
@@ -142,10 +151,26 @@ async def websocket_endpoint(websocket: WebSocket):
             elif message["type"] == "get_state":
                 seed = db.get_story_state("narrative_seed")
                 threads = db.get_active_plot_threads()
+                
+                # Get characters with portraits
+                chars = db.query_db("SELECT name, description, traits FROM characters")
+                char_list = []
+                for c in chars:
+                    safe_name = "".join([char for char in c['name'] if char.isalnum()]).lower()
+                    portrait_path = os.path.join(config.PORTRAITS_DIR, f"{safe_name}.png")
+                    url = f"/static/portraits/{safe_name}.png" if os.path.exists(portrait_path) else None
+                    char_list.append({
+                        "name": c['name'],
+                        "description": c['description'],
+                        "traits": c['traits'],
+                        "portrait": url
+                    })
+                
                 await websocket.send_text(json.dumps({
                     "type": "state_update", 
                     "seed": seed, 
-                    "threads": [t['description'] for t in threads]
+                    "threads": [t['description'] for t in threads],
+                    "characters": char_list
                 }))
 
     except WebSocketDisconnect:

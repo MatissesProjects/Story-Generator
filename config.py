@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     VECTOR_DB_PATH: str = Field(default="vector_db", validation_alias="VECTOR_DB_PATH")
     EMBEDDING_MODEL: str = Field(default="all-MiniLM-L6-v2", validation_alias="EMBEDDING_MODEL")
 
+    # Vision settings
+    VISION_MODEL: str = Field(default="stabilityai/sdxl-turbo", validation_alias="VISION_MODEL")
+    PORTRAITS_DIR: str = Field(default="static/portraits", validation_alias="PORTRAITS_DIR")
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     def get_websocket_url(self, host: str = "localhost") -> str:
@@ -45,6 +49,8 @@ MODELS_DIR = _settings.MODELS_DIR
 AUDIO_OUTPUT_DIR = _settings.AUDIO_OUTPUT_DIR
 VECTOR_DB_PATH = _settings.VECTOR_DB_PATH
 EMBEDDING_MODEL = _settings.EMBEDDING_MODEL
+VISION_MODEL = _settings.VISION_MODEL
+PORTRAITS_DIR = _settings.PORTRAITS_DIR
 
 def get_websocket_url(host="localhost"):
     return _settings.get_websocket_url(host)

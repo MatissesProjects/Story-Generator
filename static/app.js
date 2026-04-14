@@ -13,9 +13,12 @@ const userInput = document.getElementById('user-input');
 const debugOutput = document.getElementById('debug-output');
 const narrativeSeedEl = document.getElementById('narrative-seed');
 const plotThreadsEl = document.getElementById('plot-threads');
+const characterListEl = document.getElementById('character-list');
 const sparkBtn = document.getElementById('spark-btn');
 const addCharForm = document.getElementById('add-char-form');
 const addPlotThreadForm = document.getElementById('add-plot-thread-form');
+
+let characters = [];
 
 function connect() {
     socket = new WebSocket(wsUrl);
@@ -100,8 +103,43 @@ function handleMessage(message) {
                     plotThreadsEl.appendChild(li);
                 });
             }
+            if (message.characters) {
+                characters = message.characters;
+                renderCharacters();
+            }
             break;
-    }
+
+        case 'portrait_update':
+            const char = characters.find(c => c.name === message.name);
+            if (char) {
+                char.portrait = message.url;
+            } else {
+                characters.push({ name: message.name, portrait: message.url });
+            }
+            renderCharacters();
+            break;
+        }
+        }
+
+        function renderCharacters() {
+        characterListEl.innerHTML = "";
+        characters.forEach(char => {
+        const card = document.createElement('div');
+        card.className = 'char-card';
+
+        const img = document.createElement('img');
+        img.className = 'char-portrait';
+        img.src = char.portrait || '/static/placeholder-portrait.png'; // Fallback
+
+        const info = document.createElement('div');
+        info.className = 'char-info';
+        info.innerHTML = `<h4>${char.name}</h4><p>${char.traits}</p>`;
+
+        card.appendChild(img);
+        card.appendChild(info);
+        characterListEl.appendChild(card);
+        });
+        }
 
     // End of stream detection (this is heuristic based on the current server logic)
     // In a real app, the server would send a 'stream_end' message.
