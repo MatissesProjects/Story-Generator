@@ -30,6 +30,12 @@ def get_relevant_context(user_input):
     active_plots = db.query_db("SELECT * FROM plot_threads WHERE status = 'active'")
     for plot in active_plots:
         matches.append(f"ACTIVE PLOT: {plot['description']}")
+
+    # 4. Active Leads (Quests)
+    quests = db.get_active_quests()
+    for q in quests:
+        obj_text = ", ".join([obj['description'] for obj in q['objectives']])
+        matches.append(f"ACTIVE LEAD: {q['title']} - {q['description']} (Objectives: {obj_text})")
         
     # --- Meta-Narrative Thematic Resonance (Track 6) ---
     meta_lore = db.get_all_meta_lore()
