@@ -3,6 +3,7 @@ import llm
 import researcher
 import config
 import random
+import json
 
 def evaluate_state(user_input, recent_history=None):
     """
@@ -40,6 +41,47 @@ def get_persona_blocks(user_input):
                 persona_blocks.append(block)
                 
     return persona_blocks
+
+def check_narrative_gaps(recent_history, active_threads):
+    """
+    Uses the LLM to analyze if the story has stalled or become repetitive.
+    Returns (needs_research, suggested_theme)
+    """
+    history_text = "\n".join([f"P: {h['user_input']}\nS: {h['assistant_response']}" for h in recent_history])
+    threads_text = "\n".join([f"- {t['description']}" for t in active_threads])
+    
+    prompt = f"""
+[SYSTEM: You are the Narrative Architect. Analyze the recent story history and active plot threads. 
+Your goal is to decide if the story is becoming "stale," "repetitive," or "predictable." 
+
+STORY HISTORY:
+{history_text}
+
+ACTIVE PLOT THREADS:
+{threads_text}
+
+If the story is moving well, reply with: {{"needs_research": false, "suggested_theme": ""}}
+If the story needs a "crazy new idea" or fresh lore to stay interesting, reply with: {{"needs_research": true, "suggested_theme": "A broad theme for research, e.g., 'underground ecosystems', 'forgotten alchemy', 'weird parasites'"}}
+
+REPLY ONLY IN JSON.]
+"""
+    response = ""
+    for chunk in llm.generate_story_segment(prompt):
+        response += chunk
+        
+    try:
+        # Basic JSON extraction
+        clean_json = response.strip()
+        if "```json" in clean_json:
+            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
+        elif "```" in clean_json:
+            clean_json = clean_json.split("```")[1].split("```")[0].strip()
+            
+        result = json.loads(clean_json)
+        return result.get("needs_research", False), result.get("suggested_theme", "")
+    except Exception as e:
+        print(f"Director Error (parsing JSON): {e}. Raw: {response}")
+        return False, ""
 
 if __name__ == "__main__":
     # Test

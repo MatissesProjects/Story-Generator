@@ -4,6 +4,27 @@ import db
 import config
 import random
 
+def optimize_query(theme, context=""):
+    """
+    Uses the LLM to transform a broad theme into a high-signal search query.
+    """
+    prompt = f"""
+[SYSTEM: You are the Research Optimizer. Your goal is to turn a simple story theme or concept into a high-signal search query that will find "weird facts," "niche lore," or "obscure science" to inspire a unique narrative turn.
+
+THEME: {theme}
+STORY CONTEXT: {context}
+
+Example Query: "weirdest bioluminescent survival strategies in extreme environments"
+Example Query: "obscure medieval laws regarding inheritance and ghosts"
+
+Provide ONLY the search query string. No quotes or extra text.]
+"""
+    optimized = ""
+    for chunk in llm.generate_story_segment(prompt):
+        optimized += chunk
+        
+    return optimized.strip().strip('"').strip("'")
+
 def search_inspiration(theme_query):
     """
     Performs a web search to find weird facts, niche lore, or science for inspiration.
@@ -43,12 +64,15 @@ FORMAT EACH HOOK AS:
         
     return hooks.strip()
 
-def perform_research_injection(theme):
+def perform_research_injection(theme, context=""):
     """
     The full pipeline: Search -> Extract -> Save to Lore/Plots.
     """
-    results = search_inspiration(theme)
-    hooks = extract_narrative_hooks(results)
+    optimized_query = optimize_query(theme, context)
+    print(f"Researcher: Optimized query: {optimized_query}")
+    
+    results = search_inspiration(optimized_query)
+    hooks = extract_narrative_hooks(results, context)
     
     # Simple parsing of the hooks (look for [HOOK])
     hook_list = [h.strip() for h in hooks.split("[HOOK]:") if h.strip()]

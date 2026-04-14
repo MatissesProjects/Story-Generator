@@ -85,12 +85,15 @@ async def websocket_endpoint(websocket: WebSocket):
                         summarizer.update_narrative_seed()
                         await websocket.send_text(json.dumps({"type": "info", "content": "Narrative summary updated."}))
 
-                    # Trigger autonomous research for inspiration (every 15 turns)
-                    if db.get_history_count() % 15 == 0:
-                        all_entities = db.get_all_entities()
-                        research_theme = random.choice(all_entities) if all_entities else "weird mythology"
-                        researcher.perform_research_injection(research_theme)
-                        await websocket.send_text(json.dumps({"type": "info", "content": f"Researcher found new inspiration for '{research_theme}'."}))
+                        # ALSO check for narrative gaps and trigger research if needed
+                        recent_history = db.get_recent_history(limit=5)
+                        active_threads = db.get_active_plot_threads()
+                        needs_research, theme = director.check_narrative_gaps(recent_history, active_threads)
+                        
+                        if needs_research:
+                            await websocket.send_text(json.dumps({"type": "info", "content": f"Director suggests research mission: '{theme}'"}))
+                            researcher.perform_research_injection(theme, context=full_response)
+                            await websocket.send_text(json.dumps({"type": "info", "content": f"Researcher injected new inspiration for '{theme}'."}))
 
                     # Parse and generate audio
                     dialogue_lines = parser.parse_dialogue(full_response)
