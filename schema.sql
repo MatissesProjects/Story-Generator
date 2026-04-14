@@ -103,3 +103,19 @@ CREATE TABLE IF NOT EXISTS story_heads (
     active_branch TEXT DEFAULT 'main',
     FOREIGN KEY (current_snapshot_id) REFERENCES snapshots(id)
 );
+
+CREATE TABLE IF NOT EXISTS quests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT,
+    priority INTEGER DEFAULT 1, -- 1: Low, 5: Critical
+    status TEXT DEFAULT 'active' -- active, completed, failed, abandoned
+);
+
+CREATE TABLE IF NOT EXISTS quest_objectives (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    quest_id INTEGER,
+    description TEXT NOT NULL,
+    status TEXT DEFAULT 'active',
+    FOREIGN KEY (quest_id) REFERENCES quests(id)
+);
