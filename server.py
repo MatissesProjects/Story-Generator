@@ -13,6 +13,9 @@ import researcher
 import validator
 import vision
 import music_orchestrator
+import world_engine
+import dicemaster
+import social_engine
 import config
 import os
 import json
@@ -91,6 +94,15 @@ async def websocket_endpoint(websocket: WebSocket):
                             # Skip generation for invalid actions
                             continue
 
+                    # DiceMaster: Perform hidden check for actions
+                    mechanical_result = ""
+                    if intent == 'ACTION':
+                        success, roll, dc, sides, reason = dicemaster.perform_hidden_check(user_input, facts)
+                        res_str = "SUCCESS" if success else "FAILURE"
+                        mechanical_result = f"MECHANICAL RESULT: {res_str} (Rolled {roll} vs DC {dc} on a D{sides}). Narrate the outcome accordingly."
+                        # Log to debug
+                        await websocket.send_text(json.dumps({"type": "debug", "content": f"DiceMaster: {mechanical_result} - {reason}"}))
+
                     # Director Agent: Evaluate story state
                     director_instructions = director.evaluate_state(user_input)
                     
@@ -109,7 +121,8 @@ async def websocket_endpoint(websocket: WebSocket):
                         context_facts=facts, 
                         director_instructions=director_instructions, 
                         persona_blocks=persona_blocks,
-                        narrative_seed=narrative_seed
+                        narrative_seed=narrative_seed,
+                        mechanical_result=mechanical_result # Pass the roll result
                     ):
                         await websocket.send_text(json.dumps({"type": "story_chunk", "content": chunk}))
                         full_response += chunk
@@ -134,6 +147,9 @@ async def websocket_endpoint(websocket: WebSocket):
                     session_id = "default_session" # Future: dynamic sessions
                     db.commit_snapshot(session_id, user_input, full_response, narrative_seed, loc_id)
                     
+                    # Social Layer: Update relationships based on interaction
+                    social_engine.update_social_state(user_input, full_response)
+
                     # Environment Detection & Generation (Every turn)
                     recent_history = db.get_recent_history(limit=5)
                     loc_name, loc_desc, rel_to, direction = director.identify_location(user_input, recent_history)

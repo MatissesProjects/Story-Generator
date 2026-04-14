@@ -81,7 +81,8 @@ REPLY ONLY IN JSON.]
 
 def get_persona_blocks(user_input):
     """
-    Identifies characters mentioned in the input and retrieves their persona constraints.
+    Identifies characters mentioned in the input and retrieves their persona constraints
+    and relationship with the player.
     """
     entities = db.get_all_entities()
     persona_blocks = []
@@ -90,9 +91,12 @@ def get_persona_blocks(user_input):
         if entity.lower() in user_input.lower():
             char_results = db.search_characters(entity)
             for char in char_results:
+                # Get relationship with player (id 0)
+                rel = db.get_relationship(0, char['id'])
+                rel_str = f"RELATIONSHIP WITH PLAYER: Trust {rel['trust']}, Fear {rel['fear']}, Affection {rel['affection']}"
+                
                 # Format: [SPEAKER: {Name}; TRAITS: {Traits}; CURRENT_MOOD: {Mood}; HIDDEN_GOAL: {Goal}]
-                # Note: Mood and Hidden Goal could be dynamic in future iterations
-                block = f"[SPEAKER: {char['name']}; TRAITS: {char['traits']}; DESCRIPTION: {char['description']}]"
+                block = f"[SPEAKER: {char['name']}; TRAITS: {char['traits']}; DESCRIPTION: {char['description']}; {rel_str}]"
                 persona_blocks.append(block)
                 
     return persona_blocks
