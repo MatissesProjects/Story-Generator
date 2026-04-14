@@ -12,18 +12,72 @@ def evaluate_state(user_input, recent_history=None):
     Generates hidden 'Director Instructions' to nudge the story.
     """
     plot_threads = db.get_active_plot_threads()
-    if not plot_threads:
+    active_quests = db.get_active_quests()
+    
+    context_notes = []
+    
+    if plot_threads:
+        threads_text = "\n".join([f"- {t['description']}" for t in plot_threads])
+        context_notes.append(f"PLOT POINTS: {threads_text}")
+        
+    if active_quests:
+        quests_text = "\n".join([f"- {q['title']}: {q['description']}" for q in active_quests])
+        context_notes.append(f"ACTIVE LEADS: {quests_text}")
+
+    if not context_notes:
         return None
         
-    threads_text = "\n".join([f"- {t['description']}" for t in plot_threads])
-    
-    # Simple logic: If we have active threads, remind the LLM of one or two
-    # In a more advanced version, we could use an LLM call here to decide *which* one to nudge
-    
-    # For now, let's just provide the active threads as context for the 'Director'
-    instruction = f"DIRECTOR'S NOTE: Keep the following unresolved plot points in mind and look for opportunities to develop them: {threads_text}"
+    notes_str = "\n".join(context_notes)
+    instruction = f"DIRECTOR'S NOTE: Keep the following narrative goals in mind as 'gentle suggestions'. Do not force them if the story naturally wanders, but look for subtle ways to integrate them: \n{notes_str}"
     
     return instruction
+
+def evaluate_quest_progress(history_text):
+    """
+    Uses the LLM to check if any quest objectives were met in the recent history.
+    Returns a list of (quest_id, objective_id, status) updates.
+    """
+    active_quests = db.get_active_quests()
+    if not active_quests:
+        return []
+        
+    quests_json = json.dumps([{
+        "id": q['id'], 
+        "title": q['title'], 
+        "objectives": [{"id": o['id'], "desc": o['description']} for o in q['objectives']]
+    } for q in active_quests])
+    
+    prompt = f"""
+[SYSTEM: You are the Quest Arbiter. Analyze the following story segment and decide if any active quest objectives have been COMPLETED or FAILED.
+
+STORY SEGMENT:
+"{history_text}"
+
+ACTIVE QUESTS:
+{quests_json}
+
+If an objective is completed, reply with JSON: {{"updates": [{{"objective_id": 123, "status": "completed"}}]}}
+If no progress was made, reply with JSON: {{"updates": []}}
+
+BE CONSERVATIVE. Only mark as completed if it clearly happened in the text.
+REPLY ONLY IN JSON.]
+"""
+    response = ""
+    for chunk in llm.generate_story_segment(prompt):
+        response += chunk
+        
+    try:
+        clean_json = response.strip()
+        if "```json" in clean_json:
+            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
+        elif "```" in clean_json:
+            clean_json = clean_json.split("```")[1].split("```")[0].strip()
+            
+        result = json.loads(clean_json)
+        return result.get("updates", [])
+    except Exception as e:
+        print(f"Director Error (evaluate_quest_progress): {e}. Raw: {response}")
+        return []
 
 def get_persona_blocks(user_input):
     """
