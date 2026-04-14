@@ -15,14 +15,14 @@ The Local Story Generator is designed for immersive, private, and customizable s
 - **Spark Generator**: Need a starting point? The Spark module generates creative story seeds and world prompts.
 
 ## 🛠️ Tech Stack
-- **LLM**: Ollama (default model: `gemma:2b` or similar)
+- **LLM**: Ollama (default model: `gemma4:e4b` or similar)
 - **TTS**: Piper TTS
 - **Database**: SQLite
 - **Backend**: Python, FastAPI, Uvicorn
 - **Communication**: WebSockets
 
 ## 📋 Prerequisites
-1. **Ollama**: Install and run Ollama. Pull your preferred model (e.g., `ollama pull gemma:2b`).
+1. **Ollama**: Install and run Ollama. Pull your preferred model (e.g., `ollama pull gemma4:e4b`).
 2. **Piper TTS**: Download the Piper executable and relevant `.onnx` voice models.
 3. **Python 3.10+**: Ensure Python is installed.
 
