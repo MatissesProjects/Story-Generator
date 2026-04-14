@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     VISION_MODEL: str = Field(default="stabilityai/sdxl-turbo", validation_alias="VISION_MODEL")
     PORTRAITS_DIR: str = Field(default="static/portraits", validation_alias="PORTRAITS_DIR")
     ENVIRONMENTS_DIR: str = Field(default="static/environments", validation_alias="ENVIRONMENTS_DIR")
+    MAP_TILES_DIR: str = Field(default="static/map_tiles", validation_alias="MAP_TILES_DIR")
 
     # Music settings
     AUDIO_SEQUENCER_PATH: str = Field(default="C:/Users/matis/GitHub/AudioSequencer", validation_alias="AUDIO_SEQUENCER_PATH")
@@ -57,6 +58,7 @@ EMBEDDING_MODEL = _settings.EMBEDDING_MODEL
 VISION_MODEL = _settings.VISION_MODEL
 PORTRAITS_DIR = _settings.PORTRAITS_DIR
 ENVIRONMENTS_DIR = _settings.ENVIRONMENTS_DIR
+MAP_TILES_DIR = _settings.MAP_TILES_DIR
 AUDIO_SEQUENCER_PATH = _settings.AUDIO_SEQUENCER_PATH
 MUSIC_DB_PATH = _settings.MUSIC_DB_PATH
 

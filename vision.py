@@ -24,6 +24,9 @@ if not os.path.exists(config.PORTRAITS_DIR):
 if not os.path.exists(config.ENVIRONMENTS_DIR):
     os.makedirs(config.ENVIRONMENTS_DIR)
 
+if not os.path.exists(config.MAP_TILES_DIR):
+    os.makedirs(config.MAP_TILES_DIR)
+
 def stylize_prompt(character_name, description, traits):
     """
     Uses the LLM to turn raw character details into a high-quality SD prompt.
@@ -124,6 +127,53 @@ def generate_environment(location_name, description):
     print(f"Vision Engine: Saved environment to {output_path}")
     
     return f"/static/environments/{safe_name}.png"
+
+def stylize_map_tile_prompt(biome_type):
+    """
+    Uses the LLM to turn a biome type into a high-quality SD map tile prompt.
+    """
+    prompt = f"""
+[SYSTEM: You are an expert AI Art Prompt Engineer. Your goal is to create a prompt for a top-down, square "Map Tile" visual.
+
+BIOME: {biome_type}
+
+FORMAT: Provide a single comma-separated list of descriptive keywords. Focus on: top-down perspective, cartography style, vibrant colors, clear natural features (e.g., specific trees for forest, rocky peaks for mountains), and a clean square composition.
+Avoid: "and", "the", "a", complete sentences.
+
+Example: "Top-down cartography map tile, lush temperate forest, dense green canopy, winding dirt path, vibrant textures, hand-painted digital art style, clean edges, high detail"
+
+Provide ONLY the prompt string.]
+"""
+    sd_prompt = ""
+    for chunk in llm.generate_story_segment(prompt):
+        sd_prompt += chunk
+        
+    return sd_prompt.strip().strip('"').strip("'")
+
+def generate_map_tile(biome_type):
+    """
+    Generates a map tile image and saves it to the static directory.
+    Returns the URL path.
+    """
+    safe_name = "".join([c for c in biome_type if c.isalnum()]).lower()
+    output_path = os.path.join(config.MAP_TILES_DIR, f"{safe_name}_tile.png")
+    
+    # Check if we already have it
+    if os.path.exists(output_path):
+        return f"/static/map_tiles/{safe_name}_tile.png"
+
+    print(f"Vision Engine: Generating map tile for {biome_type}...")
+    
+    final_prompt = stylize_map_tile_prompt(biome_type)
+    print(f"Vision Engine: Final Tile Prompt: {final_prompt}")
+    
+    # Generate
+    image = pipe(prompt=final_prompt, num_inference_steps=4, guidance_scale=0.0).images[0]
+    
+    image.save(output_path)
+    print(f"Vision Engine: Saved map tile to {output_path}")
+    
+    return f"/static/map_tiles/{safe_name}_tile.png"
 
 if __name__ == "__main__":
     # Test

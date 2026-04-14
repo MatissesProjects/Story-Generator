@@ -49,6 +49,11 @@ if not os.path.exists(config.ENVIRONMENTS_DIR):
     os.makedirs(config.ENVIRONMENTS_DIR)
 app.mount("/environments", StaticFiles(directory=config.ENVIRONMENTS_DIR), name="environments")
 
+# Mount the map tiles directory
+if not os.path.exists(config.MAP_TILES_DIR):
+    os.makedirs(config.MAP_TILES_DIR)
+app.mount("/map_tiles", StaticFiles(directory=config.MAP_TILES_DIR), name="map_tiles")
+
 @app.get("/")
 async def get():
     return FileResponse('static/index.html')
@@ -250,8 +255,15 @@ async def websocket_endpoint(websocket: WebSocket):
             elif message["type"] == "get_map":
                 locations = db.get_all_locations()
                 paths = db.get_all_paths()
-                # Convert to plain lists/dicts
-                loc_list = [dict(l) for l in locations]
+                # Convert to plain lists/dicts and ensure tiles exist
+                loc_list = []
+                for l in locations:
+                    ldict = dict(l)
+                    # Generate tile if missing
+                    if ldict['biome_type']:
+                        ldict['tile_url'] = vision.generate_map_tile(ldict['biome_type'])
+                    loc_list.append(ldict)
+                    
                 path_list = [dict(p) for p in paths]
                 await websocket.send_text(json.dumps({
                     "type": "map_data",
