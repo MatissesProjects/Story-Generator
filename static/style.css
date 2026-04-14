@@ -280,7 +280,7 @@ h3 {
     padding-left: 0.5rem;
 }
 
-form input, form textarea {
+form input, form textarea, select {
     width: 100%;
     margin-bottom: 0.5rem;
     background-color: var(--input-bg);

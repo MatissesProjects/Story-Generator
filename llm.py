@@ -4,7 +4,7 @@ import config
 
 OLLAMA_URL = config.OLLAMA_URL
 
-def generate_story_segment(prompt, model=config.OLLAMA_MODEL, context_facts=None, director_instructions=None, persona_blocks=None, narrative_seed=None, mechanical_result=None, foreshadowing_payoff=None):
+def generate_story_segment(prompt, model=config.OLLAMA_MODEL, context_facts=None, director_instructions=None, persona_blocks=None, narrative_seed=None, mechanical_result=None, foreshadowing_payoff=None, pacing_directive=None):
     full_prompt = prompt
     
     # Build up system/context block
@@ -29,6 +29,16 @@ def generate_story_segment(prompt, model=config.OLLAMA_MODEL, context_facts=None
 
     if foreshadowing_payoff:
         context_blocks.append(f"FORESHADOWING: {foreshadowing_payoff}")
+
+    if pacing_directive:
+        pacing_instructions = {
+            "Introspective": "Focus on the protagonist's internal thoughts, memories, and emotional reactions. Use evocative, sensory language.",
+            "Action-Packed": "Use high-tempo verbs and short, punchy sentences. Focus on immediate physical threats, movement, and intensity.",
+            "Mystery-Focused": "Focus on atmospheric detail, subtle clues, and lingering questions. Maintain a sense of uncertainty and intrigue.",
+            "Dialogue-Heavy": "Focus on character subtext, verbal sparring, and the nuances of the conversation. Minimize physical description."
+        }
+        instr = pacing_instructions.get(pacing_directive, "")
+        context_blocks.append(f"PACING: {pacing_directive}. {instr}")
         
     if context_blocks:
         full_context = "\n\n".join(context_blocks)

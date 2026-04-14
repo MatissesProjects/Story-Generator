@@ -18,6 +18,7 @@ const plotThreadsEl = document.getElementById('plot-threads');
 const characterListEl = document.getElementById('character-list');
 const questListEl = document.getElementById('quest-list');
 const socialListEl = document.getElementById('social-list');
+const pacingSelector = document.getElementById('pacing-selector');
 const locationNameEl = document.getElementById('current-location-name');
 const backgroundVisualEl = document.getElementById('background-visual');
 const sparkBtn = document.getElementById('spark-btn');
@@ -219,6 +220,10 @@ function renderTimeline(data) {
     });
 }
 
+pacingSelector.onchange = () => {
+    socket.send(jsonMsg("set_pacing", { pacing: pacingSelector.value }));
+};
+
 function handleMessage(message) {
     switch (message.type) {
         case 'story_chunk':
@@ -294,11 +299,17 @@ function handleMessage(message) {
             if (message.quests) {
                 renderQuests(message.quests);
             }
+            if (message.relationships) {
+                renderSocialStanding(message.relationships);
+            }
             if (message.location) {
                 locationNameEl.innerText = currentLocationName = message.location;
             }
             if (message.location_image) {
                 backgroundVisualEl.style.backgroundImage = `url('${message.location_image}')`;
+            }
+            if (message.pacing) {
+                pacingSelector.value = message.pacing;
             }
             break;
 

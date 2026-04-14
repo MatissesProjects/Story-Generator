@@ -114,6 +114,9 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Hierarchical Memory: Get the 'Story So Far'
                     narrative_seed = db.get_story_state("narrative_seed")
                     
+                    # Pacing Director: Get current pacing
+                    current_pacing = db.get_story_state("current_pacing") or "Exploration"
+
                     # Foreshadowing: Check for pending payoffs
                     foreshadow_note = ""
                     recent_history = db.get_recent_history(limit=5)
@@ -277,10 +280,16 @@ async def websocket_endpoint(websocket: WebSocket):
                 db.add_quest_objective(obj_data["quest_id"], obj_data["description"])
                 await websocket.send_text(json.dumps({"type": "info", "content": "Objective added."}))
 
+            elif message["type"] == "set_pacing":
+                pacing = message["pacing"]
+                db.set_story_state("current_pacing", pacing)
+                await websocket.send_text(json.dumps({"type": "info", "content": f"Pacing set to {pacing}."}))
+
             elif message["type"] == "get_state":
                 seed = db.get_story_state("narrative_seed")
                 threads = db.get_active_plot_threads()
                 curr_loc = db.get_story_state("current_location")
+                curr_pacing = db.get_story_state("current_pacing") or "Exploration"
                 
                 loc_url = None
                 if curr_loc:
@@ -324,7 +333,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     "quests": [dict(q) for q in quests],
                     "relationships": relationships,
                     "location": curr_loc,
-                    "location_image": loc_url
+                    "location_image": loc_url,
+                    "pacing": curr_pacing
                 }))
 
             elif message["type"] == "get_map":
