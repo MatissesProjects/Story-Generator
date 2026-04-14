@@ -181,6 +181,37 @@ def get_snapshot_history(session_id, head_id=None):
         
     return history[::-1] # Reverse to get chronological order
 
+# Quest System Functions
+def add_quest(title, description, priority=1):
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.execute(
+            "INSERT INTO quests (title, description, priority) VALUES (?, ?, ?)",
+            (title, description, priority)
+        )
+        conn.commit()
+        return cur.lastrowid
+
+def add_quest_objective(quest_id, description):
+    execute_db(
+        "INSERT INTO quest_objectives (quest_id, description) VALUES (?, ?)",
+        (quest_id, description)
+    )
+
+def get_active_quests():
+    quests = query_db("SELECT * FROM quests WHERE status = 'active' ORDER BY priority DESC")
+    full_quests = []
+    for q in quests:
+        q_dict = dict(q)
+        q_dict['objectives'] = query_db("SELECT * FROM quest_objectives WHERE quest_id = ? AND status = 'active'", (q['id'],))
+        full_quests.append(q_dict)
+    return full_quests
+
+def update_quest_status(quest_id, status):
+    execute_db("UPDATE quests SET status = ? WHERE id = ?", (status, quest_id))
+
+def update_objective_status(objective_id, status):
+    execute_db("UPDATE quest_objectives SET status = ? WHERE id = ?", (status, objective_id))
+
 if __name__ == "__main__":
     print("Initializing database...")
     init_db()
