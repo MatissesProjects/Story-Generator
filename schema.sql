@@ -140,4 +140,12 @@ CREATE TABLE IF NOT EXISTS interaction_log (
     delta_fear INTEGER DEFAULT 0,
     delta_affection INTEGER DEFAULT 0,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+    );
+
+    CREATE TABLE IF NOT EXISTS foreshadowed_elements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    element_name TEXT NOT NULL,
+    discovery_location TEXT,
+    potential_impact TEXT,
+    payoff_status TEXT DEFAULT 'pending' -- pending, resolved
+    );

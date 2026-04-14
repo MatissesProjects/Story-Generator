@@ -253,6 +253,19 @@ def get_character_relationships(char_id):
         WHERE (r.char_a_id = ? AND r.char_b_id = 0) OR (r.char_a_id = 0 AND r.char_b_id = ?)
     """, (char_id, char_id, char_id, char_id, char_id))
 
+# Foreshadowing Functions
+def add_foreshadowed_element(name, location, impact):
+    execute_db(
+        "INSERT INTO foreshadowed_elements (element_name, discovery_location, potential_impact) VALUES (?, ?, ?)",
+        (name, location, impact)
+    )
+
+def get_pending_foreshadowing():
+    return query_db("SELECT * FROM foreshadowed_elements WHERE payoff_status = 'pending'")
+
+def resolve_foreshadowing(element_id):
+    execute_db("UPDATE foreshadowed_elements SET payoff_status = 'resolved' WHERE id = ?", (element_id,))
+
 if __name__ == "__main__":
     print("Initializing database...")
     init_db()
