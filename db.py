@@ -212,6 +212,47 @@ def update_quest_status(quest_id, status):
 def update_objective_status(objective_id, status):
     execute_db("UPDATE quest_objectives SET status = ? WHERE id = ?", (status, objective_id))
 
+# Social Layer Functions
+def get_relationship(char_a_id, char_b_id):
+    # Ensure consistent ordering for lookup
+    a, b = min(char_a_id, char_b_id), max(char_a_id, char_b_id)
+    result = query_db("SELECT * FROM relationships WHERE char_a_id = ? AND char_b_id = ?", (a, b), one=True)
+    if not result:
+        return {"trust": 0, "fear": 0, "affection": 0}
+    return dict(result)
+
+def update_relationship(char_a_id, char_b_id, delta_trust, delta_fear, delta_affection, event_desc):
+    a, b = min(char_a_id, char_b_id), max(char_a_id, char_b_id)
+    
+    with sqlite3.connect(DB_PATH) as conn:
+        # 1. Update or Insert Relationship
+        conn.execute("""
+            INSERT INTO relationships (char_a_id, char_b_id, trust, fear, affection)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(char_a_id, char_b_id) DO UPDATE SET
+                trust = trust + excluded.trust,
+                fear = fear + excluded.fear,
+                affection = affection + excluded.affection
+        """, (a, b, delta_trust, delta_fear, delta_affection))
+        
+        # 2. Log Interaction
+        conn.execute("""
+            INSERT INTO interaction_log (char_a_id, char_b_id, event_description, delta_trust, delta_fear, delta_affection)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (char_a_id, char_b_id, event_desc, delta_trust, delta_fear, delta_affection))
+        conn.commit()
+
+def get_character_relationships(char_id):
+    """Returns all relationships for a specific character, including with the player (id 0)."""
+    return query_db("""
+        SELECT r.*, c.name as other_name FROM relationships r
+        JOIN characters c ON (r.char_a_id = c.id OR r.char_b_id = c.id)
+        WHERE (r.char_a_id = ? OR r.char_b_id = ?) AND c.id != ?
+        UNION
+        SELECT r.*, 'Player' as other_name FROM relationships r
+        WHERE (r.char_a_id = ? AND r.char_b_id = 0) OR (r.char_a_id = 0 AND r.char_b_id = ?)
+    """, (char_id, char_id, char_id, char_id, char_id))
+
 if __name__ == "__main__":
     print("Initializing database...")
     init_db()
