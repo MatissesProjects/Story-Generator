@@ -1,6 +1,8 @@
 import db
 import llm
+import researcher
 import config
+import random
 
 def evaluate_state(user_input, recent_history=None):
     """
