@@ -143,9 +143,26 @@ CREATE TABLE IF NOT EXISTS interaction_log (
     );
 
     CREATE TABLE IF NOT EXISTS foreshadowed_elements (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    element_name TEXT NOT NULL,
-    discovery_location TEXT,
-    potential_impact TEXT,
-    payoff_status TEXT DEFAULT 'pending' -- pending, resolved
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        element_name TEXT NOT NULL,
+        discovery_location TEXT,
+        potential_impact TEXT,
+        payoff_status TEXT DEFAULT 'pending' -- pending, resolved
+    );
+
+    CREATE TABLE IF NOT EXISTS inventory (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        entity_type TEXT NOT NULL, -- 'player' or 'character'
+        entity_id INTEGER NOT NULL,
+        item_name TEXT NOT NULL,
+        description TEXT,
+        quantity INTEGER DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS entity_stats (
+        entity_type TEXT NOT NULL, -- 'player' or 'character'
+        entity_id INTEGER NOT NULL,
+        stat_name TEXT NOT NULL,
+        stat_value TEXT NOT NULL,
+        PRIMARY KEY (entity_type, entity_id, stat_name)
     );

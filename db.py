@@ -282,6 +282,38 @@ def get_current_milestone_index():
 def set_current_milestone_index(index):
     set_story_state("current_milestone_index", str(index))
 
+# Inventory & Stats Functions
+def add_inventory_item(entity_type, entity_id, item_name, description="", quantity=1):
+    with sqlite3.connect(DB_PATH) as conn:
+        # Check if item exists
+        existing = query_db("SELECT id, quantity FROM inventory WHERE entity_type = ? AND entity_id = ? AND item_name = ?", 
+                           (entity_type, entity_id, item_name), one=True)
+        if existing:
+            conn.execute("UPDATE inventory SET quantity = quantity + ? WHERE id = ?", (quantity, existing['id']))
+        else:
+            conn.execute("INSERT INTO inventory (entity_type, entity_id, item_name, description, quantity) VALUES (?, ?, ?, ?, ?)",
+                        (entity_type, entity_id, item_name, description, quantity))
+        conn.commit()
+
+def remove_inventory_item(entity_type, entity_id, item_name, quantity=1):
+    existing = query_db("SELECT id, quantity FROM inventory WHERE entity_type = ? AND entity_id = ? AND item_name = ?", 
+                       (entity_type, entity_id, item_name), one=True)
+    if existing:
+        if existing['quantity'] <= quantity:
+            execute_db("DELETE FROM inventory WHERE id = ?", (existing['id'],))
+        else:
+            execute_db("UPDATE inventory SET quantity = quantity - ? WHERE id = ?", (quantity, existing['id']))
+
+def get_inventory(entity_type, entity_id):
+    return query_db("SELECT * FROM inventory WHERE entity_type = ? AND entity_id = ?", (entity_type, entity_id))
+
+def set_entity_stat(entity_type, entity_id, stat_name, stat_value):
+    execute_db("INSERT OR REPLACE INTO entity_stats (entity_type, entity_id, stat_name, stat_value) VALUES (?, ?, ?, ?)",
+               (entity_type, entity_id, stat_name, str(stat_value)))
+
+def get_entity_stats(entity_type, entity_id):
+    return query_db("SELECT * FROM entity_stats WHERE entity_type = ? AND entity_id = ?", (entity_type, entity_id))
+
 if __name__ == "__main__":
     print("Initializing database...")
     init_db()

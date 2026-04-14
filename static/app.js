@@ -21,6 +21,8 @@ const socialListEl = document.getElementById('social-list');
 const pacingSelector = document.getElementById('pacing-selector');
 const arcDisplayEl = document.getElementById('arc-display');
 const milestoneDisplayEl = document.getElementById('milestone-display');
+const inventoryListEl = document.getElementById('inventory-list');
+const statsListEl = document.getElementById('stats-list');
 const locationNameEl = document.getElementById('current-location-name');
 const backgroundVisualEl = document.getElementById('background-visual');
 const sparkBtn = document.getElementById('spark-btn');
@@ -304,6 +306,12 @@ function handleMessage(message) {
             if (message.relationships) {
                 renderSocialStanding(message.relationships);
             }
+            if (message.inventory) {
+                renderInventory(message.inventory);
+            }
+            if (message.stats) {
+                renderStats(message.stats);
+            }
             if (message.location) {
                 locationNameEl.innerText = currentLocationName = message.location;
             }
@@ -458,6 +466,27 @@ function renderArc(arc, milestoneIdx) {
     } else if (milestoneIdx >= arc.milestones.length) {
         milestoneDisplayEl.innerHTML = "<strong>Adventure Arc Completed!</strong>";
     }
+}
+
+function renderInventory(items) {
+    inventoryListEl.innerHTML = items.length === 0 ? "Empty" : "";
+    items.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'inventory-item';
+        div.title = item.description;
+        div.innerText = `${item.item_name} x${item.quantity}`;
+        inventoryListEl.appendChild(div);
+    });
+}
+
+function renderStats(stats) {
+    statsListEl.innerHTML = stats.length === 0 ? "No stats" : "";
+    stats.forEach(s => {
+        const div = document.createElement('div');
+        div.className = 'stat-item';
+        div.innerHTML = `<span class="stat-label">${s.stat_name}:</span> ${s.stat_value}`;
+        statsListEl.appendChild(div);
+    });
 }
 
     // End of stream detection (this is heuristic based on the current server logic)

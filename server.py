@@ -88,9 +88,13 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Get context
                     facts = curator.get_relevant_context(user_input)
                     
+                    # Get Player State for Validation
+                    player_inv = db.get_inventory("player", 0)
+                    player_stats = db.get_entity_stats("player", 0)
+
                     # Logic Validation (Phase 1/2)
                     if intent in ['ACTION', 'DIALOGUE']:
-                        is_valid, reason = validator.validate_action(user_input, facts)
+                        is_valid, reason = validator.validate_action(user_input, facts, inventory=player_inv, stats=player_stats)
                         if not is_valid:
                             await websocket.send_text(json.dumps({"type": "validation_failure", "content": reason}))
                             # Skip generation for invalid actions
@@ -346,6 +350,10 @@ async def websocket_endpoint(websocket: WebSocket):
                 active_arc = db.get_active_arc()
                 milestone_idx = db.get_current_milestone_index()
 
+                # Get player inventory and stats
+                inventory = db.get_inventory("player", 0)
+                stats = db.get_entity_stats("player", 0)
+
                 # Get character relationships with player
                 relationships = []
                 for c in chars:
@@ -368,8 +376,22 @@ async def websocket_endpoint(websocket: WebSocket):
                     "location_image": loc_url,
                     "pacing": curr_pacing,
                     "active_arc": active_arc,
-                    "milestone_index": milestone_idx
+                    "milestone_index": milestone_idx,
+                    "inventory": [dict(i) for i in inventory],
+                    "stats": [dict(s) for s in stats]
                 }))
+
+            elif message["type"] == "add_item":
+                item = message["content"]
+                db.add_inventory_item("player", 0, item["name"], item.get("description", ""), item.get("quantity", 1))
+                await websocket.send_text(json.dumps({"type": "info", "content": f"Item '{item['name']}' added."}))
+                await websocket.send_text(json.dumps({"type": "state_update_request"}))
+
+            elif message["type"] == "set_stat":
+                stat = message["content"]
+                db.set_entity_stat("player", 0, stat["name"], stat["value"])
+                await websocket.send_text(json.dumps({"type": "info", "content": f"Stat '{stat['name']}' set to {stat['value']}."}))
+                await websocket.send_text(json.dumps({"type": "state_update_request"}))
 
             elif message["type"] == "get_map":
                 locations = db.get_all_locations()

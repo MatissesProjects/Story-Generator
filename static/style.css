@@ -239,6 +239,34 @@ h3 {
     font-style: italic;
 }
 
+/* Inventory & Stats Styles */
+#inventory-list, #stats-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.inventory-item {
+    background: #333;
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    border: 1px solid var(--border-color);
+}
+
+.stat-item {
+    background: rgba(74, 144, 226, 0.1);
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    border: 1px solid var(--accent-color);
+}
+
+.stat-label {
+    color: #aaa;
+    margin-right: 0.3rem;
+}
+
 #story-area {
     display: flex;
     flex-direction: column;

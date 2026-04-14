@@ -2,7 +2,7 @@ import llm
 import config
 import json
 
-def validate_action(user_input, context_facts):
+def validate_action(user_input, context_facts, inventory=None, stats=None):
     """
     Validates if the user's action is logically possible within the story's world context.
     Returns (is_valid, reason)
@@ -13,18 +13,32 @@ def validate_action(user_input, context_facts):
     # Prepare a prompt for the 'Logic Validator'
     context_str = "\n".join([f"- {f}" for f in context_facts])
     
+    inv_str = "None"
+    if inventory:
+        inv_str = ", ".join([f"{i['item_name']} (x{i['quantity']})" for i in inventory])
+        
+    stats_str = "None"
+    if stats:
+        stats_str = ", ".join([f"{s['stat_name']}: {s['stat_value']}" for s in stats])
+
     prompt = f"""
-[SYSTEM: You are the Logic Validator for an interactive story. Your job is to ensure player actions are consistent with the established world lore and character abilities. 
+[SYSTEM: You are the Logic Validator for an interactive story. Your job is to ensure player actions are consistent with the established world lore, character abilities, and current inventory/stats.
 
 WORLD CONTEXT/LORE:
 {context_str}
+
+CHARACTER INVENTORY:
+{inv_str}
+
+CHARACTER STATS:
+{stats_str}
 
 PLAYER ACTION:
 "{user_input}"
 
 RULES:
-1. If the action is possible given the lore, reply with JSON: {{"valid": true, "reason": ""}}
-2. If the action is impossible (e.g., using magic in a no-magic zone, flying without wings, interacting with non-existent objects), reply with JSON: {{"valid": false, "reason": "A brief, immersive explanation of why it failed."}}
+1. If the action is possible given the lore and character state, reply with JSON: {{"valid": true, "reason": ""}}
+2. If the action is impossible (e.g., using an item you don't have, flying without wings, interacting with non-existent objects), reply with JSON: {{"valid": false, "reason": "A brief, immersive explanation of why it failed."}}
 3. Be firm but fair. If the lore is silent, assume it's possible.
 
 REPLY ONLY IN JSON.]
