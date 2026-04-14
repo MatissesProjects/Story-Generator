@@ -1,14 +1,14 @@
 # Music Orchestration Implementation Plan
 
 ## Phase 1: Mood Detection
-- [ ] Add `detect_mood()` to `director.py` to categorize the emotional tone of the current segment.
-- [ ] Update the prompt assembly to include mood metadata.
+- [x] Add `detect_mood()` to `music_orchestrator.py` (Used in `server.py`).
+- [x] Update the prompt assembly to include mood metadata.
 
 ## Phase 2: Audio Controller
-- [ ] Create `music_engine.py`.
-- [ ] Implement track loading, loop management, and cross-fading.
-- [ ] Integrate with the WebSocket server to sync music changes.
+- [x] Create `music_orchestrator.py`.
+- [x] Implement track selection from `AudioSequencer` database.
+- [x] Integrate with the WebSocket server to sync music changes.
 
-## Phase 3: SFX Integration
-- [ ] Build a library of common narrative sound effects.
-- [ ] Update the `parser.py` to detect SFX-worthy events in the generated text.
+## Phase 3: Frontend Integration
+- [x] Implement cross-fading and looping in `app.js`.
+- [x] Mount external music directories in `server.py`.

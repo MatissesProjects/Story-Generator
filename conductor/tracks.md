@@ -17,3 +17,4 @@
 | `environment-art` | Generate and display immersive landscape and scene visuals. | 🛠️ In Progress | [Link](./tracks/environment-art/index.md) |
 | `music-orchestration` | Implement dynamic background music and atmospheric soundscapes. | 🛠️ In Progress | [Link](./tracks/music-orchestration/index.md) |
 | `world-map-system` | Track and visualize character locations and world geography. | 🛠️ In Progress | [Link](./tracks/world-map-system/index.md) |
+| `system-refinement` | Project-wide polish, state persistence, and advanced narrative branching. | 🛠️ In Progress | [Link](./tracks/system-refinement/index.md) |
