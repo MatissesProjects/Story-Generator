@@ -19,7 +19,7 @@
 | `world-map-system` | Track and visualize character locations and world geography. | ✅ Completed | [Link](./tracks/world-map-system/index.md) |
 | `system-refinement` | Project-wide polish, state persistence, and advanced narrative branching. | ✅ Completed | [Link](./tracks/system-refinement/index.md) |
 | `quest-system` | Implement structured goals, objectives, and quest tracking. | ✅ Completed | [Link](./tracks/quest-system/index.md) |
-| `social-layer` | Build a character relationship graph and social influence model. | 🛠️ In Progress | [Link](./tracks/social-layer/index.md) |
+| `social-layer` | Build a character relationship graph and social influence model. | ✅ Completed | [Link](./tracks/social-layer/index.md) |
 | `foreshadowing-engine` | Track minor narrative seeds for future payoffs. | 🛠️ In Progress | [Link](./tracks/foreshadowing-engine/index.md) |
 | `dicemaster-module` | Add mechanical conflict resolution via dice rolls and DC checks. | 🛠️ In Progress | [Link](./tracks/dicemaster-module/index.md) |
 | `canon-checker` | Implement advanced lore validation for LLM-generated concepts. | 🛠️ In Progress | [Link](./tracks/canon-checker/index.md) |

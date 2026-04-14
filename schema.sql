@@ -119,3 +119,25 @@ CREATE TABLE IF NOT EXISTS quest_objectives (
     status TEXT DEFAULT 'active',
     FOREIGN KEY (quest_id) REFERENCES quests(id)
 );
+
+CREATE TABLE IF NOT EXISTS relationships (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    char_a_id INTEGER, -- 0 for Player
+    char_b_id INTEGER,
+    trust INTEGER DEFAULT 0,
+    fear INTEGER DEFAULT 0,
+    affection INTEGER DEFAULT 0,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(char_a_id, char_b_id)
+);
+
+CREATE TABLE IF NOT EXISTS interaction_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    char_a_id INTEGER,
+    char_b_id INTEGER,
+    event_description TEXT NOT NULL,
+    delta_trust INTEGER DEFAULT 0,
+    delta_fear INTEGER DEFAULT 0,
+    delta_affection INTEGER DEFAULT 0,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
