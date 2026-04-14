@@ -90,6 +90,38 @@ def get_story_state(key):
     result = query_db("SELECT value FROM story_state WHERE key = ?", (key,), one=True)
     return result['value'] if result else None
 
+# World Map Functions
+def add_location(name, description, x, y, biome_type, region_id=None):
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.execute(
+            "INSERT INTO locations (name, description, x, y, biome_type, region_id) VALUES (?, ?, ?, ?, ?, ?)",
+            (name, description, x, y, biome_type, region_id)
+        )
+        conn.commit()
+        return cur.lastrowid
+
+def get_location(location_id):
+    return query_db("SELECT * FROM locations WHERE id = ?", (location_id,), one=True)
+
+def get_location_by_name(name):
+    return query_db("SELECT * FROM locations WHERE name = ?", (name,), one=True)
+
+def get_all_locations():
+    return query_db("SELECT * FROM locations")
+
+def set_entity_position(entity_type, entity_id, location_id):
+    execute_db(
+        "INSERT OR REPLACE INTO entity_positions (entity_type, entity_id, current_location_id) VALUES (?, ?, ?)",
+        (entity_type, entity_id, location_id)
+    )
+
+def get_entity_position(entity_type, entity_id):
+    return query_db(
+        "SELECT * FROM entity_positions WHERE entity_type = ? AND entity_id = ?",
+        (entity_type, entity_id),
+        one=True
+    )
+
 if __name__ == "__main__":
     print("Initializing database...")
     init_db()

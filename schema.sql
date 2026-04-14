@@ -42,3 +42,42 @@ CREATE TABLE IF NOT EXISTS story_state (
     key TEXT PRIMARY KEY,
     value TEXT
 );
+
+CREATE TABLE IF NOT EXISTS regions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    theme TEXT,
+    security_level INTEGER DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS locations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    x INTEGER NOT NULL,
+    y INTEGER NOT NULL,
+    biome_type TEXT,
+    region_id INTEGER,
+    FOREIGN KEY (region_id) REFERENCES regions(id)
+);
+
+CREATE TABLE IF NOT EXISTS paths (
+    from_id INTEGER,
+    to_id INTEGER,
+    distance REAL,
+    path_type TEXT,
+    PRIMARY KEY (from_id, to_id),
+    FOREIGN KEY (from_id) REFERENCES locations(id),
+    FOREIGN KEY (to_id) REFERENCES locations(id)
+);
+
+CREATE TABLE IF NOT EXISTS entity_positions (
+    entity_type TEXT, -- 'player' or 'character'
+    entity_id INTEGER,
+    current_location_id INTEGER,
+    destination_id INTEGER,
+    travel_progress REAL DEFAULT 0.0,
+    PRIMARY KEY (entity_type, entity_id),
+    FOREIGN KEY (current_location_id) REFERENCES locations(id),
+    FOREIGN KEY (destination_id) REFERENCES locations(id)
+);

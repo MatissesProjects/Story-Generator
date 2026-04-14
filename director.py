@@ -1,6 +1,7 @@
 import db
 import llm
 import researcher
+import world_engine
 import config
 import random
 import json
@@ -99,8 +100,13 @@ RECENT HISTORY:
 NEW INPUT:
 "{user_input}"
 
-If the location has changed or is explicitly named for the first time, reply with JSON: {{"location": "Name of Location", "description": "Brief atmospheric description of the surroundings"}}
-If the location is the same as before or unclear, reply with JSON: {{"location": null, "description": null}}
+If the location has changed or is explicitly named for the first time, reply with JSON: {
+    "location": "Name of Location", 
+    "description": "Brief atmospheric description",
+    "relative_to": "Name of a previous location if known, else null",
+    "direction": "north/south/east/west/etc if implied, else null"
+}
+If the location is the same as before or unclear, reply with JSON: {"location": null, "description": null, "relative_to": null, "direction": null}
 
 REPLY ONLY IN JSON.]
 """
@@ -116,10 +122,10 @@ REPLY ONLY IN JSON.]
             clean_json = clean_json.split("```")[1].split("```")[0].strip()
             
         result = json.loads(clean_json)
-        return result.get("location"), result.get("description")
+        return result.get("location"), result.get("description"), result.get("relative_to"), result.get("direction")
     except Exception as e:
         print(f"Director Error (identify_location): {e}. Raw: {response}")
-        return None, None
+        return None, None, None, None
 
 if __name__ == "__main__":
     # Test

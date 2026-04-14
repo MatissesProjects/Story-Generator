@@ -20,6 +20,7 @@ import random
 
 app = FastAPI()
 music = music_orchestrator.MusicOrchestrator()
+world = world_engine.WorldEngine()
 
 # Mount the static directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -113,7 +114,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     
                     # Environment Detection & Generation (Every turn)
                     recent_history = db.get_recent_history(limit=5)
-                    loc_name, loc_desc = director.identify_location(user_input, recent_history)
+                    loc_name, loc_desc, rel_to, direction = director.identify_location(user_input, recent_history)
                     
                     # Music Orchestration (Every 3 turns or on location change)
                     if db.get_history_count() % 3 == 0 or loc_name:
@@ -139,7 +140,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     if loc_name:
                         prev_loc = db.get_story_state("current_location")
                         if loc_name != prev_loc:
+                            # Use world engine to place it
+                            world.resolve_new_location(loc_name, loc_desc, relative_to_name=rel_to, direction=direction)
                             db.set_story_state("current_location", loc_name)
+                            # Update player position
+                            world.move_entity("player", 0, loc_name)
+                            
                             env_url = vision.generate_environment(loc_name, loc_desc)
                             await websocket.send_text(json.dumps({"type": "scene_update", "location": loc_name, "url": env_url}))
 
