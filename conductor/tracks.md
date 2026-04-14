@@ -14,7 +14,14 @@
 | `autonomous-research` | Implement online research for dynamic idea injection. | ✅ Completed | [Link](./tracks/autonomous-research/index.md) |
 | `frontend-ui` | Build a web-based interface for the story engine. | ✅ Completed | [Link](./tracks/frontend-ui/index.md) |
 | `visual-generation` | Implement local image generation for character portraits. | ✅ Completed | [Link](./tracks/visual-generation/index.md) |
-| `environment-art` | Generate and display immersive landscape and scene visuals. | 🛠️ In Progress | [Link](./tracks/environment-art/index.md) |
-| `music-orchestration` | Implement dynamic background music and atmospheric soundscapes. | 🛠️ In Progress | [Link](./tracks/music-orchestration/index.md) |
-| `world-map-system` | Track and visualize character locations and world geography. | 🛠️ In Progress | [Link](./tracks/world-map-system/index.md) |
-| `system-refinement` | Project-wide polish, state persistence, and advanced narrative branching. | 🛠️ In Progress | [Link](./tracks/system-refinement/index.md) |
+| `environment-art` | Generate and display immersive landscape and scene visuals. | ✅ Completed | [Link](./tracks/environment-art/index.md) |
+| `music-orchestration` | Implement dynamic background music and atmospheric soundscapes. | ✅ Completed | [Link](./tracks/music-orchestration/index.md) |
+| `world-map-system` | Track and visualize character locations and world geography. | ✅ Completed | [Link](./tracks/world-map-system/index.md) |
+| `system-refinement` | Project-wide polish, state persistence, and advanced narrative branching. | ✅ Completed | [Link](./tracks/system-refinement/index.md) |
+| `quest-system` | Implement structured goals, objectives, and quest tracking. | 🛠️ In Progress | [Link](./tracks/quest-system/index.md) |
+| `social-layer` | Build a character relationship graph and social influence model. | 🛠️ In Progress | [Link](./tracks/social-layer/index.md) |
+| `foreshadowing-engine` | Track minor narrative seeds for future payoffs. | 🛠️ In Progress | [Link](./tracks/foreshadowing-engine/index.md) |
+| `dicemaster-module` | Add mechanical conflict resolution via dice rolls and DC checks. | 🛠️ In Progress | [Link](./tracks/dicemaster-module/index.md) |
+| `canon-checker` | Implement advanced lore validation for LLM-generated concepts. | 🛠️ In Progress | [Link](./tracks/canon-checker/index.md) |
+| `pacing-director` | Control narrative rhythm (Action, Introspection, Mystery). | 🛠️ In Progress | [Link](./tracks/pacing-director/index.md) |
+| `adventure-arcs` | Support pre-defined story structures and milestones. | 🛠️ In Progress | [Link](./tracks/adventure-arcs/index.md) |
