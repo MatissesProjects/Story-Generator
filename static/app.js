@@ -17,6 +17,7 @@ const narrativeSeedEl = document.getElementById('narrative-seed');
 const plotThreadsEl = document.getElementById('plot-threads');
 const characterListEl = document.getElementById('character-list');
 const questListEl = document.getElementById('quest-list');
+const socialListEl = document.getElementById('social-list');
 const locationNameEl = document.getElementById('current-location-name');
 const backgroundVisualEl = document.getElementById('background-visual');
 const sparkBtn = document.getElementById('spark-btn');
@@ -405,6 +406,23 @@ function renderQuests(quests) {
             </ul>
         `;
         questListEl.appendChild(item);
+    });
+}
+
+function renderSocialStanding(relationships) {
+    socialListEl.innerHTML = "";
+    relationships.forEach(rel => {
+        const item = document.createElement('div');
+        item.className = 'social-item';
+        item.innerHTML = `
+            <h4>${rel.other_name}</h4>
+            <div class="social-stats">
+                <span>🤝 <span class="stat-val">${rel.trust}</span></span>
+                <span>😨 <span class="stat-val">${rel.fear}</span></span>
+                <span>❤️ <span class="stat-val">${rel.affection}</span></span>
+            </div>
+        `;
+        socialListEl.appendChild(item);
     });
 }
 

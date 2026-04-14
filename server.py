@@ -280,12 +280,24 @@ async def websocket_endpoint(websocket: WebSocket):
                 # Get active quests
                 quests = db.get_active_quests()
                 
+                # Get character relationships with player
+                relationships = []
+                for c in chars:
+                    rel = db.get_relationship(0, c['id'])
+                    relationships.append({
+                        "other_name": c['name'],
+                        "trust": rel['trust'],
+                        "fear": rel['fear'],
+                        "affection": rel['affection']
+                    })
+
                 await websocket.send_text(json.dumps({
                     "type": "state_update", 
                     "seed": seed, 
                     "threads": [t['description'] for t in threads],
                     "characters": char_list,
                     "quests": [dict(q) for q in quests],
+                    "relationships": relationships,
                     "location": curr_loc,
                     "location_image": loc_url
                 }))
