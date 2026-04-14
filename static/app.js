@@ -3,6 +3,8 @@ let socket;
 let currentStoryText = "";
 const audioQueue = [];
 let isPlaying = false;
+let currentMusic = null;
+let nextMusic = null;
 
 // DOM Elements
 const historyContainer = document.getElementById('history-container');
@@ -134,7 +136,55 @@ function handleMessage(message) {
                 backgroundVisualEl.style.backgroundImage = `url('${message.url}')`;
             }
             break;
+
+        case 'music_event':
+            addLog("Music", `Mood: ${message.mood} - Playing: ${message.filename}`);
+            updateMusic(message.url);
+            break;
     }
+}
+
+function updateMusic(url) {
+    if (currentMusic && currentMusic.src.includes(url)) return;
+
+    const newAudio = new Audio(url);
+    newAudio.loop = true;
+    newAudio.volume = 0;
+    
+    if (currentMusic) {
+        fadeOut(currentMusic);
+    }
+
+    currentMusic = newAudio;
+    currentMusic.play().then(() => {
+        fadeIn(currentMusic);
+    }).catch(e => console.warn("Music autoplay blocked:", e));
+}
+
+function fadeIn(audio) {
+    let vol = 0;
+    const interval = setInterval(() => {
+        vol += 0.05;
+        if (vol >= 0.5) {
+            audio.volume = 0.5;
+            clearInterval(interval);
+        } else {
+            audio.volume = vol;
+        }
+    }, 200);
+}
+
+function fadeOut(audio) {
+    let vol = audio.volume;
+    const interval = setInterval(() => {
+        vol -= 0.05;
+        if (vol <= 0) {
+            audio.pause();
+            clearInterval(interval);
+        } else {
+            audio.volume = vol;
+        }
+    }, 200);
 }
 
         function renderCharacters() {

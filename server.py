@@ -12,12 +12,14 @@ import summarizer
 import researcher
 import validator
 import vision
+import music_orchestrator
 import config
 import os
 import json
 import random
 
 app = FastAPI()
+music = music_orchestrator.MusicOrchestrator()
 
 # Mount the static directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -26,6 +28,15 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 if not os.path.exists(config.PORTRAITS_DIR):
     os.makedirs(config.PORTRAITS_DIR)
 app.mount("/portraits", StaticFiles(directory=config.PORTRAITS_DIR), name="portraits")
+
+# Mount AudioSequencer directories if they exist
+music_examples = os.path.join(config.AUDIO_SEQUENCER_PATH, "musicExamples")
+if os.path.exists(music_examples):
+    app.mount("/music_examples", StaticFiles(directory=music_examples), name="music_examples")
+
+gen_assets = os.path.join(config.AUDIO_SEQUENCER_PATH, "generated_assets")
+if os.path.exists(gen_assets):
+    app.mount("/gen_assets", StaticFiles(directory=gen_assets), name="gen_assets")
 
 # Mount the audio output directory so it can be accessed via HTTP
 if not os.path.exists(config.AUDIO_OUTPUT_DIR):
@@ -103,6 +114,28 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Environment Detection & Generation (Every turn)
                     recent_history = db.get_recent_history(limit=5)
                     loc_name, loc_desc = director.identify_location(user_input, recent_history)
+                    
+                    # Music Orchestration (Every 3 turns or on location change)
+                    if db.get_history_count() % 3 == 0 or loc_name:
+                        mood = music.detect_mood(full_response)
+                        track = music.select_track(mood)
+                        if track:
+                            # Map file path to mounted URL
+                            file_path = track['file_path']
+                            url = None
+                            if "musicExamples" in file_path:
+                                url = f"/music_examples/{os.path.basename(file_path)}"
+                            elif "generated_assets" in file_path:
+                                url = f"/gen_assets/{os.path.basename(file_path)}"
+                            
+                            if url:
+                                await websocket.send_text(json.dumps({
+                                    "type": "music_event", 
+                                    "url": url, 
+                                    "mood": mood, 
+                                    "filename": track['filename']
+                                }))
+
                     if loc_name:
                         prev_loc = db.get_story_state("current_location")
                         if loc_name != prev_loc:

@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     PORTRAITS_DIR: str = Field(default="static/portraits", validation_alias="PORTRAITS_DIR")
     ENVIRONMENTS_DIR: str = Field(default="static/environments", validation_alias="ENVIRONMENTS_DIR")
 
+    # Music settings
+    AUDIO_SEQUENCER_PATH: str = Field(default="C:/Users/matis/GitHub/AudioSequencer", validation_alias="AUDIO_SEQUENCER_PATH")
+    MUSIC_DB_PATH: str = Field(default="C:/Users/matis/GitHub/AudioSequencer/audio_library.db", validation_alias="MUSIC_DB_PATH")
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     def get_websocket_url(self, host: str = "localhost") -> str:
@@ -53,6 +57,8 @@ EMBEDDING_MODEL = _settings.EMBEDDING_MODEL
 VISION_MODEL = _settings.VISION_MODEL
 PORTRAITS_DIR = _settings.PORTRAITS_DIR
 ENVIRONMENTS_DIR = _settings.ENVIRONMENTS_DIR
+AUDIO_SEQUENCER_PATH = _settings.AUDIO_SEQUENCER_PATH
+MUSIC_DB_PATH = _settings.MUSIC_DB_PATH
 
 def get_websocket_url(host="localhost"):
     return _settings.get_websocket_url(host)
