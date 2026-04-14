@@ -1,5 +1,6 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import db
 import llm
 import spark
@@ -13,13 +14,21 @@ import validator
 import config
 import os
 import json
+import random
 
 app = FastAPI()
+
+# Mount the static directory
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Mount the audio output directory so it can be accessed via HTTP
 if not os.path.exists(config.AUDIO_OUTPUT_DIR):
     os.makedirs(config.AUDIO_OUTPUT_DIR)
 app.mount("/audio", StaticFiles(directory=config.AUDIO_OUTPUT_DIR), name="audio")
+
+@app.get("/")
+async def get():
+    return FileResponse('static/index.html')
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -129,6 +138,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 thread_data = message["content"]
                 db.add_plot_thread(thread_data["description"])
                 await websocket.send_text(json.dumps({"type": "info", "content": f"Plot thread '{thread_data['description']}' added."}))
+
+            elif message["type"] == "get_state":
+                seed = db.get_story_state("narrative_seed")
+                threads = db.get_active_plot_threads()
+                await websocket.send_text(json.dumps({
+                    "type": "state_update", 
+                    "seed": seed, 
+                    "threads": [t['description'] for t in threads]
+                }))
 
     except WebSocketDisconnect:
         print("Client disconnected")

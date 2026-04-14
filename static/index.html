@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Story Generator</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>Story Generator</h1>
+            <div id="controls">
+                <button id="spark-btn">Get Spark Idea</button>
+            </div>
+        </header>
+
+        <main>
+            <section id="sidebar">
+                <div class="sidebar-item">
+                    <h3>Story So Far</h3>
+                    <div id="narrative-seed">The story is just beginning...</div>
+                </div>
+                <div class="sidebar-item">
+                    <h3>Plot Threads</h3>
+                    <ul id="plot-threads"></ul>
+                    <form id="add-plot-thread-form">
+                        <input type="text" id="plot-thread-input" placeholder="Add plot thread..." required>
+                        <button type="submit">+</button>
+                    </form>
+                </div>
+                <div class="sidebar-item">
+                    <h3>Add Character</h3>
+                    <form id="add-char-form">
+                        <input type="text" id="char-name" placeholder="Name" required>
+                        <input type="text" id="char-traits" placeholder="Traits" required>
+                        <textarea id="char-desc" placeholder="Description" rows="2" required></textarea>
+                        <button type="submit">Add Character</button>
+                    </form>
+                </div>
+            </section>
+
+            <section id="story-area">
+                <div id="history-container"></div>
+                <div id="current-chunk"></div>
+                <div id="status-indicator"></div>
+                <form id="input-form">
+                    <input type="text" id="user-input" placeholder="Type your action or 'continue'..." autocomplete="off">
+                    <button type="submit">Send</button>
+                </form>
+            </section>
+
+            <section id="log-area">
+                <div id="debug-log">
+                    <h3>Debug Console</h3>
+                    <div id="debug-output"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="/static/app.js"></script>
+</body>
+</html>
