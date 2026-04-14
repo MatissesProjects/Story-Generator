@@ -8,6 +8,7 @@ import parser
 import tts
 import director
 import summarizer
+import researcher
 import config
 import os
 import json
@@ -74,6 +75,13 @@ async def websocket_endpoint(websocket: WebSocket):
                     if db.get_history_count() % 10 == 0:
                         summarizer.update_narrative_seed()
                         await websocket.send_text(json.dumps({"type": "info", "content": "Narrative summary updated."}))
+
+                    # Trigger autonomous research for inspiration (every 15 turns)
+                    if db.get_history_count() % 15 == 0:
+                        all_entities = db.get_all_entities()
+                        research_theme = random.choice(all_entities) if all_entities else "weird mythology"
+                        researcher.perform_research_injection(research_theme)
+                        await websocket.send_text(json.dumps({"type": "info", "content": f"Researcher found new inspiration for '{research_theme}'."}))
 
                     # Parse and generate audio
                     dialogue_lines = parser.parse_dialogue(full_response)
