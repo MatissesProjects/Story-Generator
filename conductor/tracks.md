@@ -11,3 +11,4 @@
 | `narrative-orchestration` | Build the "Director Agent" and autonomous continuation logic. | 🛠️ In Progress | [Link](./tracks/narrative-orchestration/index.md) |
 | `episodic-summarization` | Implement token-saving summarization for long-term memory. | 🛠️ In Progress | [Link](./tracks/episodic-summarization/index.md) |
 | `logic-validation` | Create the intent parsing and world rule enforcement layer. | 🛠️ In Progress | [Link](./tracks/logic-validation/index.md) |
+| `autonomous-research` | Implement online research for dynamic idea injection. | 🛠️ In Progress | [Link](./tracks/autonomous-research/index.md) |
