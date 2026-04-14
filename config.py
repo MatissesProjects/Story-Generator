@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     # Vision settings
     VISION_MODEL: str = Field(default="stabilityai/sdxl-turbo", validation_alias="VISION_MODEL")
     PORTRAITS_DIR: str = Field(default="static/portraits", validation_alias="PORTRAITS_DIR")
+    ENVIRONMENTS_DIR: str = Field(default="static/environments", validation_alias="ENVIRONMENTS_DIR")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -51,6 +52,7 @@ VECTOR_DB_PATH = _settings.VECTOR_DB_PATH
 EMBEDDING_MODEL = _settings.EMBEDDING_MODEL
 VISION_MODEL = _settings.VISION_MODEL
 PORTRAITS_DIR = _settings.PORTRAITS_DIR
+ENVIRONMENTS_DIR = _settings.ENVIRONMENTS_DIR
 
 def get_websocket_url(host="localhost"):
     return _settings.get_websocket_url(host)

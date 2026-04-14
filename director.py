@@ -83,6 +83,44 @@ REPLY ONLY IN JSON.]
         print(f"Director Error (parsing JSON): {e}. Raw: {response}")
         return False, ""
 
+def identify_location(user_input, recent_history):
+    """
+    Uses the LLM to identify if the story has moved to a new location.
+    Returns (location_name, description) or (None, None).
+    """
+    history_text = "\n".join([f"P: {h['user_input']}\nS: {h['assistant_response']}" for h in recent_history[-3:]])
+    
+    prompt = f"""
+[SYSTEM: You are the Scene Parser. Analyze the recent story history and determine the current physical location of the player.
+
+RECENT HISTORY:
+{history_text}
+
+NEW INPUT:
+"{user_input}"
+
+If the location has changed or is explicitly named for the first time, reply with JSON: {{"location": "Name of Location", "description": "Brief atmospheric description of the surroundings"}}
+If the location is the same as before or unclear, reply with JSON: {{"location": null, "description": null}}
+
+REPLY ONLY IN JSON.]
+"""
+    response = ""
+    for chunk in llm.generate_story_segment(prompt):
+        response += chunk
+        
+    try:
+        clean_json = response.strip()
+        if "```json" in clean_json:
+            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
+        elif "```" in clean_json:
+            clean_json = clean_json.split("```")[1].split("```")[0].strip()
+            
+        result = json.loads(clean_json)
+        return result.get("location"), result.get("description")
+    except Exception as e:
+        print(f"Director Error (identify_location): {e}. Raw: {response}")
+        return None, None
+
 if __name__ == "__main__":
     # Test
     print("Testing Director Agent...")

@@ -14,6 +14,8 @@ const debugOutput = document.getElementById('debug-output');
 const narrativeSeedEl = document.getElementById('narrative-seed');
 const plotThreadsEl = document.getElementById('plot-threads');
 const characterListEl = document.getElementById('character-list');
+const locationNameEl = document.getElementById('current-location-name');
+const backgroundVisualEl = document.getElementById('background-visual');
 const sparkBtn = document.getElementById('spark-btn');
 const addCharForm = document.getElementById('add-char-form');
 const addPlotThreadForm = document.getElementById('add-plot-thread-form');
@@ -107,6 +109,12 @@ function handleMessage(message) {
                 characters = message.characters;
                 renderCharacters();
             }
+            if (message.location) {
+                locationNameEl.innerText = message.location;
+            }
+            if (message.location_image) {
+                backgroundVisualEl.style.backgroundImage = `url('${message.location_image}')`;
+            }
             break;
 
         case 'portrait_update':
@@ -118,8 +126,16 @@ function handleMessage(message) {
             }
             renderCharacters();
             break;
-        }
-        }
+
+        case 'scene_update':
+            addLog("Scene", `Entered: ${message.location}`);
+            locationNameEl.innerText = message.location;
+            if (message.url) {
+                backgroundVisualEl.style.backgroundImage = `url('${message.url}')`;
+            }
+            break;
+    }
+}
 
         function renderCharacters() {
         characterListEl.innerHTML = "";

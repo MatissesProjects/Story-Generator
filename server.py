@@ -32,6 +32,11 @@ if not os.path.exists(config.AUDIO_OUTPUT_DIR):
     os.makedirs(config.AUDIO_OUTPUT_DIR)
 app.mount("/audio", StaticFiles(directory=config.AUDIO_OUTPUT_DIR), name="audio")
 
+# Mount the environments directory
+if not os.path.exists(config.ENVIRONMENTS_DIR):
+    os.makedirs(config.ENVIRONMENTS_DIR)
+app.mount("/environments", StaticFiles(directory=config.ENVIRONMENTS_DIR), name="environments")
+
 @app.get("/")
 async def get():
     return FileResponse('static/index.html')
@@ -95,6 +100,16 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Log to history for future summarization
                     db.log_history(user_input, full_response)
                     
+                    # Environment Detection & Generation (Every turn)
+                    recent_history = db.get_recent_history(limit=5)
+                    loc_name, loc_desc = director.identify_location(user_input, recent_history)
+                    if loc_name:
+                        prev_loc = db.get_story_state("current_location")
+                        if loc_name != prev_loc:
+                            db.set_story_state("current_location", loc_name)
+                            env_url = vision.generate_environment(loc_name, loc_desc)
+                            await websocket.send_text(json.dumps({"type": "scene_update", "location": loc_name, "url": env_url}))
+
                     # Trigger periodic summarization (every 10 turns)
                     if db.get_history_count() % 10 == 0:
                         summarizer.update_narrative_seed()
@@ -151,7 +166,14 @@ async def websocket_endpoint(websocket: WebSocket):
             elif message["type"] == "get_state":
                 seed = db.get_story_state("narrative_seed")
                 threads = db.get_active_plot_threads()
+                curr_loc = db.get_story_state("current_location")
                 
+                loc_url = None
+                if curr_loc:
+                    safe_name = "".join([char for char in curr_loc if char.isalnum()]).lower()
+                    loc_path = os.path.join(config.ENVIRONMENTS_DIR, f"{safe_name}.png")
+                    loc_url = f"/static/environments/{safe_name}.png" if os.path.exists(loc_path) else None
+
                 # Get characters with portraits
                 chars = db.query_db("SELECT name, description, traits FROM characters")
                 char_list = []
@@ -170,7 +192,9 @@ async def websocket_endpoint(websocket: WebSocket):
                     "type": "state_update", 
                     "seed": seed, 
                     "threads": [t['description'] for t in threads],
-                    "characters": char_list
+                    "characters": char_list,
+                    "location": curr_loc,
+                    "location_image": loc_url
                 }))
 
     except WebSocketDisconnect:

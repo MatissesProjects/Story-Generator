@@ -21,6 +21,9 @@ pipe.to(device)
 if not os.path.exists(config.PORTRAITS_DIR):
     os.makedirs(config.PORTRAITS_DIR)
 
+if not os.path.exists(config.ENVIRONMENTS_DIR):
+    os.makedirs(config.ENVIRONMENTS_DIR)
+
 def stylize_prompt(character_name, description, traits):
     """
     Uses the LLM to turn raw character details into a high-quality SD prompt.
@@ -73,8 +76,60 @@ def generate_portrait(name, description, traits):
     
     return f"/static/portraits/{safe_name}.png"
 
+def stylize_environment_prompt(location_name, description):
+    """
+    Uses the LLM to turn location details into a high-quality SD prompt.
+    """
+    prompt = f"""
+[SYSTEM: You are an expert AI Art Prompt Engineer. Your goal is to take location details and turn them into a high-quality, professional digital art landscape prompt for Stable Diffusion.
+
+LOCATION: {location_name}
+DESCRIPTION: {description}
+
+FORMAT: Provide a single comma-separated list of descriptive keywords. Focus on: lighting, atmosphere, art style (e.g., epic concept art, digital landscape painting), specific architectural or natural features, and a sense of scale.
+Avoid: "and", "the", "a", complete sentences.
+
+Example: "Epic concept art, ancient stone ruins, overgrown with glowing vines, massive mountain range in background, sunset lighting, mystical atmosphere, 8k resolution, cinematic"
+
+Provide ONLY the prompt string.]
+"""
+    sd_prompt = ""
+    for chunk in llm.generate_story_segment(prompt):
+        sd_prompt += chunk
+        
+    return sd_prompt.strip().strip('"').strip("'")
+
+def generate_environment(location_name, description):
+    """
+    Generates an environment image and saves it to the static directory.
+    Returns the URL path.
+    """
+    safe_name = "".join([c for c in location_name if c.isalnum()]).lower()
+    output_path = os.path.join(config.ENVIRONMENTS_DIR, f"{safe_name}.png")
+    
+    # Check if we already have it
+    if os.path.exists(output_path):
+        return f"/static/environments/{safe_name}.png"
+
+    print(f"Vision Engine: Generating environment for {location_name}...")
+    
+    final_prompt = stylize_environment_prompt(location_name, description)
+    print(f"Vision Engine: Final Environment Prompt: {final_prompt}")
+    
+    # Generate (landscape-ish if possible, though SDXL Turbo likes 512x512 or 1024x1024)
+    # We'll stick to default for now to ensure speed and quality
+    image = pipe(prompt=final_prompt, num_inference_steps=4, guidance_scale=0.0).images[0]
+    
+    image.save(output_path)
+    print(f"Vision Engine: Saved environment to {output_path}")
+    
+    return f"/static/environments/{safe_name}.png"
+
 if __name__ == "__main__":
     # Test
     print("Testing Vision Engine...")
     test_portrait = generate_portrait("Malakar", "A shadowy assassin in a dark cloak", "Swift, Ruthless, Glowing Eyes")
     print(f"Portrait generated at: {test_portrait}")
+    
+    test_env = generate_environment("The Whispering Woods", "A forest where the trees share secrets of the ancient kings. It is known for its eerie, rustling sounds.")
+    print(f"Environment generated at: {test_env}")
