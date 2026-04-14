@@ -17,6 +17,7 @@ import world_engine
 import dicemaster
 import social_engine
 import foreshadowing
+import canon_checker
 import config
 import os
 import json
@@ -144,6 +145,15 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Foreshadowing: Extract new seeds from the response
                     curr_loc_name = db.get_story_state("current_location") or "Unknown"
                     foreshadowing.extract_seeds(full_response, curr_loc_name)
+
+                    # Canon Checker: Validate world-building consistency
+                    claims = canon_checker.extract_claims(full_response)
+                    if claims:
+                        contradictions = canon_checker.check_for_contradictions(claims, facts)
+                        if contradictions:
+                            for c in contradictions:
+                                await websocket.send_text(json.dumps({"type": "info", "content": f"Canon Warning: {c['violation']}"}))
+                                await websocket.send_text(json.dumps({"type": "debug", "content": f"Contradiction: {c['claim']} violates {c['violation']}"}))
                     
                     # Quest Evaluation (Check for completed objectives)
                     quest_updates = director.evaluate_quest_progress(full_response)

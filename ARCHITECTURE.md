@@ -23,6 +23,7 @@ The system follows a **Modular Orchestration** pattern (an adaptation of MVC). I
 | `curator.py` | **Context Manager** | Aggregates relevant facts from both SQLite (Keywords) and ChromaDB (Semantic) to build the prompt context. |
 | `validator.py` | **Physics Engine** | Intercepts player actions before generation to ensure they are logically possible within the established world rules. |
 | `foreshadowing.py` | **Narrative Seeds** | Extracts minor unresolved details from AI responses and triggers payoffs later in the story. |
+| `canon_checker.py` | **Canon Auditor** | Validates LLM responses against established lore to prevent contradictions. |
 
 ### 💾 The Persistence Layer (Memory)
 | File | Responsibility | Key Logic |
