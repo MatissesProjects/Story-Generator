@@ -117,6 +117,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Log to history for future summarization
                     db.log_history(user_input, full_response)
                     
+                    # Quest Evaluation (Check for completed objectives)
+                    quest_updates = director.evaluate_quest_progress(full_response)
+                    for update in quest_updates:
+                        db.update_objective_status(update['objective_id'], update['status'])
+                        await websocket.send_text(json.dumps({"type": "info", "content": f"Objective update: {update['status']}"}))
+
                     # Get location ID for snapshot
                     curr_loc_name = db.get_story_state("current_location")
                     loc_id = None
@@ -217,6 +223,18 @@ async def websocket_endpoint(websocket: WebSocket):
                 thread_data = message["content"]
                 db.add_plot_thread(thread_data["description"])
                 await websocket.send_text(json.dumps({"type": "info", "content": f"Plot thread '{thread_data['description']}' added."}))
+
+            elif message["type"] == "add_quest":
+                quest_data = message["content"]
+                quest_id = db.add_quest(quest_data["title"], quest_data["description"], quest_data.get("priority", 1))
+                for obj in quest_data.get("objectives", []):
+                    db.add_quest_objective(quest_id, obj)
+                await websocket.send_text(json.dumps({"type": "info", "content": f"Quest '{quest_data['title']}' added."}))
+
+            elif message["type"] == "add_quest_objective":
+                obj_data = message["content"]
+                db.add_quest_objective(obj_data["quest_id"], obj_data["description"])
+                await websocket.send_text(json.dumps({"type": "info", "content": "Objective added."}))
 
             elif message["type"] == "get_state":
                 seed = db.get_story_state("narrative_seed")
