@@ -81,3 +81,25 @@ CREATE TABLE IF NOT EXISTS entity_positions (
     FOREIGN KEY (current_location_id) REFERENCES locations(id),
     FOREIGN KEY (destination_id) REFERENCES locations(id)
 );
+
+CREATE TABLE IF NOT EXISTS snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    parent_id INTEGER,
+    session_id TEXT NOT NULL,
+    turn_number INTEGER NOT NULL,
+    branch_name TEXT DEFAULT 'main',
+    narrative_seed TEXT, -- The Story So Far at this point
+    user_input TEXT,
+    assistant_response TEXT,
+    location_id INTEGER,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (parent_id) REFERENCES snapshots(id),
+    FOREIGN KEY (location_id) REFERENCES locations(id)
+);
+
+CREATE TABLE IF NOT EXISTS story_heads (
+    session_id TEXT PRIMARY KEY,
+    current_snapshot_id INTEGER,
+    active_branch TEXT DEFAULT 'main',
+    FOREIGN KEY (current_snapshot_id) REFERENCES snapshots(id)
+);

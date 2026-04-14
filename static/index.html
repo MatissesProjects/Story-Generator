@@ -9,15 +9,31 @@
 <body>
     <div id="app">
         <div id="background-visual"></div>
+        <div id="map-overlay" class="modal">
+            <div class="modal-content">
+                <span id="close-map" class="close">&times;</span>
+                <h2>World Map</h2>
+                <canvas id="map-canvas"></canvas>
+            </div>
+        </div>
         <header>
             <h1>Story Generator</h1>
             <div id="location-display">Current Location: <span id="current-location-name">Unknown</span></div>
             <div id="controls">
                 <button id="spark-btn">Get Spark Idea</button>
+                <button id="map-btn">View World Map</button>
+                <button id="timeline-btn">View Timeline</button>
             </div>
         </header>
 
         <main>
+            <div id="timeline-overlay" class="modal">
+                <div class="modal-content">
+                    <span id="close-timeline" class="close">&times;</span>
+                    <h2>Narrative Timeline (Version Control)</h2>
+                    <div id="timeline-container"></div>
+                </div>
+            </div>
             <section id="sidebar">
                 <div class="sidebar-item">
                     <h3>Story So Far</h3>

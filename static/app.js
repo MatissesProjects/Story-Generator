@@ -19,10 +19,20 @@ const characterListEl = document.getElementById('character-list');
 const locationNameEl = document.getElementById('current-location-name');
 const backgroundVisualEl = document.getElementById('background-visual');
 const sparkBtn = document.getElementById('spark-btn');
+const mapBtn = document.getElementById('map-btn');
+const mapOverlay = document.getElementById('map-overlay');
+const closeMap = document.getElementById('close-map');
+const mapCanvas = document.getElementById('map-canvas');
+const timelineBtn = document.getElementById('timeline-btn');
+const timelineOverlay = document.getElementById('timeline-overlay');
+const closeTimeline = document.getElementById('close-timeline');
+const timelineContainer = document.getElementById('timeline-container');
 const addCharForm = document.getElementById('add-char-form');
 const addPlotThreadForm = document.getElementById('add-plot-thread-form');
 
 let characters = [];
+let currentPosition = { x: 0, y: 0 };
+let currentLocationName = "";
 
 function connect() {
     socket = new WebSocket(wsUrl);
@@ -48,6 +58,127 @@ function connect() {
     };
 }
 
+// Map logic
+mapBtn.onclick = () => {
+    mapOverlay.style.display = "block";
+    socket.send(jsonMsg("get_map", {}));
+};
+
+closeMap.onclick = () => {
+    mapOverlay.style.display = "none";
+};
+
+window.onclick = (event) => {
+    if (event.target == mapOverlay) {
+        mapOverlay.style.display = "none";
+    }
+};
+
+function renderMap(data) {
+    const ctx = mapCanvas.getContext('2d');
+    const width = mapCanvas.width = mapCanvas.offsetWidth;
+    const height = mapCanvas.height = mapCanvas.offsetHeight;
+    
+    ctx.clearRect(0, 0, width, height);
+    
+    if (data.locations.length === 0) {
+        ctx.fillStyle = "white";
+        ctx.textAlign = "center";
+        ctx.fillText("No locations discovered yet.", width/2, height/2);
+        return;
+    }
+
+    // Find bounds to center/scale map
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    data.locations.forEach(l => {
+        if (l.x < minX) minX = l.x;
+        if (l.y < minY) minY = l.y;
+        if (l.x > maxX) maxX = l.x;
+        if (l.y > maxY) maxY = l.y;
+    });
+
+    const padding = 50;
+    const mapWidth = (maxX - minX) || 1;
+    const mapHeight = (maxY - minY) || 1;
+    const scale = Math.min((width - padding*2) / mapWidth, (height - padding*2) / mapHeight, 1);
+    
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const offsetX = centerX - ((minX + maxX) / 2) * scale;
+    const offsetY = centerY - ((minY + maxY) / 2) * scale;
+
+    // Draw Paths
+    ctx.strokeStyle = "#444";
+    ctx.lineWidth = 2;
+    data.paths.forEach(p => {
+        const from = data.locations.find(l => l.id === p.from_id);
+        const to = data.locations.find(l => l.id === p.to_id);
+        if (from && to) {
+            ctx.beginPath();
+            ctx.moveTo(from.x * scale + offsetX, -from.y * scale + offsetY); // Flip Y for canvas
+            ctx.lineTo(to.x * scale + offsetX, -to.y * scale + offsetY);
+            ctx.stroke();
+        }
+    });
+
+    // Draw Locations
+    data.locations.forEach(l => {
+        const x = l.x * scale + offsetX;
+        const y = -l.y * scale + offsetY;
+        
+        const isCurrent = l.name === currentLocationName;
+        
+        ctx.fillStyle = isCurrent ? "#4a90e2" : "#333";
+        ctx.beginPath();
+        ctx.arc(x, y, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = isCurrent ? 3 : 1;
+        ctx.stroke();
+        
+        ctx.fillStyle = "white";
+        ctx.font = "12px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(l.name, x, y + 20);
+    });
+}
+
+// Timeline logic
+timelineBtn.onclick = () => {
+    timelineOverlay.style.display = "block";
+    socket.send(jsonMsg("get_timeline", {}));
+};
+
+closeTimeline.onclick = () => {
+    timelineOverlay.style.display = "none";
+};
+
+function renderTimeline(data) {
+    timelineContainer.innerHTML = "";
+    data.snapshots.forEach(snap => {
+        const item = document.createElement('div');
+        item.className = 'timeline-item';
+        item.onclick = () => {
+            if (confirm(`Checkout Turn ${snap.turn_number}? This will reset the story to this point.`)) {
+                socket.send(jsonMsg("checkout_snapshot", { snapshot_id: snap.id }));
+                timelineOverlay.style.display = "none";
+            }
+        };
+
+        item.innerHTML = `
+            <div class="timeline-header">
+                <span>Turn #${snap.turn_number}</span>
+                <span>${new Date(snap.timestamp).toLocaleTimeString()}</span>
+            </div>
+            <div class="timeline-content">
+                <div class="timeline-player">P: ${snap.user_input || "(Continuation)"}</div>
+                <div>S: ${snap.assistant_response.substring(0, 100)}...</div>
+            </div>
+        `;
+        timelineContainer.appendChild(item);
+    });
+}
+
 function handleMessage(message) {
     switch (message.type) {
         case 'story_chunk':
@@ -63,17 +194,26 @@ function handleMessage(message) {
 
         case 'debug':
             addLog("Debug", message.content);
-            // Check for narrative seed in debug or specific type
-            if (message.content.includes("Seed: true")) {
-                // If the seed changed, we might want to update it, but usually it's pushed as 'info'
-            }
             break;
 
         case 'info':
             addLog("Info", message.content);
-            if (message.content.includes("Narrative summary updated")) {
-                // Request state update or wait for next turn to see seed in debug
-            }
+            break;
+
+        case 'map_data':
+            renderMap(message);
+            break;
+
+        case 'timeline_data':
+            renderTimeline(message);
+            break;
+
+        case 'state_update_request':
+            socket.send(jsonMsg("get_state", {}));
+            // Clear current chat history visually to show we've switched
+            historyContainer.innerHTML = "<em>Narrative checkout complete. Current state loaded.</em>";
+            currentStoryText = "";
+            currentChunkEl.innerText = "";
             break;
 
         case 'spark':
@@ -112,7 +252,7 @@ function handleMessage(message) {
                 renderCharacters();
             }
             if (message.location) {
-                locationNameEl.innerText = message.location;
+                locationNameEl.innerText = currentLocationName = message.location;
             }
             if (message.location_image) {
                 backgroundVisualEl.style.backgroundImage = `url('${message.location_image}')`;
@@ -131,7 +271,7 @@ function handleMessage(message) {
 
         case 'scene_update':
             addLog("Scene", `Entered: ${message.location}`);
-            locationNameEl.innerText = message.location;
+            locationNameEl.innerText = currentLocationName = message.location;
             if (message.url) {
                 backgroundVisualEl.style.backgroundImage = `url('${message.url}')`;
             }

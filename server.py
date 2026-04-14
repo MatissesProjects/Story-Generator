@@ -112,6 +112,17 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Log to history for future summarization
                     db.log_history(user_input, full_response)
                     
+                    # Get location ID for snapshot
+                    curr_loc_name = db.get_story_state("current_location")
+                    loc_id = None
+                    if curr_loc_name:
+                        loc_obj = db.get_location_by_name(curr_loc_name)
+                        loc_id = loc_obj['id'] if loc_obj else None
+
+                    # Commit Snapshot (Narrative Version Control)
+                    session_id = "default_session" # Future: dynamic sessions
+                    db.commit_snapshot(session_id, user_input, full_response, narrative_seed, loc_id)
+                    
                     # Environment Detection & Generation (Every turn)
                     recent_history = db.get_recent_history(limit=5)
                     loc_name, loc_desc, rel_to, direction = director.identify_location(user_input, recent_history)
@@ -235,6 +246,46 @@ async def websocket_endpoint(websocket: WebSocket):
                     "location": curr_loc,
                     "location_image": loc_url
                 }))
+
+            elif message["type"] == "get_map":
+                locations = db.get_all_locations()
+                paths = db.get_all_paths()
+                # Convert to plain lists/dicts
+                loc_list = [dict(l) for l in locations]
+                path_list = [dict(p) for p in paths]
+                await websocket.send_text(json.dumps({
+                    "type": "map_data",
+                    "locations": loc_list,
+                    "paths": path_list
+                }))
+
+            elif message["type"] == "get_timeline":
+                session_id = "default_session"
+                history = db.get_snapshot_history(session_id)
+                await websocket.send_text(json.dumps({
+                    "type": "timeline_data",
+                    "snapshots": [dict(s) for s in history]
+                }))
+
+            elif message["type"] == "checkout_snapshot":
+                snap_id = message["snapshot_id"]
+                snap = db.query_db("SELECT * FROM snapshots WHERE id = ?", (snap_id,), one=True)
+                if snap:
+                    # Update story head
+                    db.execute_db(
+                        "UPDATE story_heads SET current_snapshot_id = ? WHERE session_id = ?",
+                        (snap_id, "default_session")
+                    )
+                    # Restore state
+                    db.set_story_state("narrative_seed", snap['narrative_seed'])
+                    if snap['location_id']:
+                        loc = db.get_location(snap['location_id'])
+                        if loc:
+                            db.set_story_state("current_location", loc['name'])
+                    
+                    await websocket.send_text(json.dumps({"type": "info", "content": f"Switched to turn {snap['turn_number']}."}))
+                    # Request full state update
+                    await websocket.send_text(json.dumps({"type": "state_update_request"}))
 
     except WebSocketDisconnect:
         print("Client disconnected")

@@ -109,6 +109,9 @@ def get_location_by_name(name):
 def get_all_locations():
     return query_db("SELECT * FROM locations")
 
+def get_all_paths():
+    return query_db("SELECT * FROM paths")
+
 def set_entity_position(entity_type, entity_id, location_id):
     execute_db(
         "INSERT OR REPLACE INTO entity_positions (entity_type, entity_id, current_location_id) VALUES (?, ?, ?)",
@@ -121,6 +124,62 @@ def get_entity_position(entity_type, entity_id):
         (entity_type, entity_id),
         one=True
     )
+
+# Snapshot / Branching Functions
+def commit_snapshot(session_id, user_input, response, seed, location_id, branch_name='main'):
+    """
+    Saves a new turn as a snapshot and updates the story head.
+    """
+    head = get_story_head(session_id)
+    parent_id = head['current_snapshot_id'] if head else None
+    turn_number = (head['turn_number'] + 1) if head else 1
+    
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.execute(
+            """INSERT INTO snapshots 
+               (parent_id, session_id, turn_number, branch_name, narrative_seed, user_input, assistant_response, location_id) 
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (parent_id, session_id, turn_number, branch_name, seed, user_input, response, location_id)
+        )
+        snapshot_id = cur.lastrowid
+        
+        conn.execute(
+            "INSERT OR REPLACE INTO story_heads (session_id, current_snapshot_id, active_branch) VALUES (?, ?, ?)",
+            (session_id, snapshot_id, branch_name)
+        )
+        conn.commit()
+        return snapshot_id
+
+def get_story_head(session_id):
+    """
+    Returns the current active snapshot info for a session.
+    """
+    return query_db(
+        """SELECT s.* FROM snapshots s 
+           JOIN story_heads h ON s.id = h.current_snapshot_id 
+           WHERE h.session_id = ?""",
+        (session_id,),
+        one=True
+    )
+
+def get_snapshot_history(session_id, head_id=None):
+    """
+    Walks up the parent tree from a head ID to get the linear history.
+    """
+    if not head_id:
+        head = get_story_head(session_id)
+        if not head: return []
+        head_id = head['id']
+        
+    history = []
+    curr_id = head_id
+    while curr_id:
+        snap = query_db("SELECT * FROM snapshots WHERE id = ?", (curr_id,), one=True)
+        if not snap: break
+        history.append(snap)
+        curr_id = snap['parent_id']
+        
+    return history[::-1] # Reverse to get chronological order
 
 if __name__ == "__main__":
     print("Initializing database...")
