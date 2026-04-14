@@ -1,12 +1,12 @@
 # Foreshadowing Engine Implementation Plan
 
 ## Phase 1: Seed Extraction
-- [ ] Update `schema.sql` with the `foreshadowed_elements` table.
-- [ ] Create an LLM "Seed Extractor" that scans Assistant responses for minor, interesting details that aren't yet plot threads.
+- [x] Update `schema.sql` with the `foreshadowed_elements` table.
+- [x] Create an LLM "Seed Extractor" in `foreshadowing.py`.
 
 ## Phase 2: Payoff Logic
-- [ ] Update `director.py` to occasionally (e.g., every 20 turns) prioritize a foreshadowed element for payoff.
-- [ ] Implement a `payoff_element(id)` function to mark seeds as resolved.
+- [x] Update `director.py` (Integrated via `server.py` and `foreshadowing.py`) to occasionally prioritize a foreshadowed element for payoff.
+- [x] Implement a `resolve_foreshadowing(id)` function.
 
 ## Phase 3: Visualization
-- [ ] Add a "Foreshadowing Log" (hidden by default) to the debug console to track active seeds.
+- [x] Log foreshadowing events to the debug console.

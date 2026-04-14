@@ -4,7 +4,7 @@ import config
 
 OLLAMA_URL = config.OLLAMA_URL
 
-def generate_story_segment(prompt, model=config.OLLAMA_MODEL, context_facts=None, director_instructions=None, persona_blocks=None, narrative_seed=None, mechanical_result=None):
+def generate_story_segment(prompt, model=config.OLLAMA_MODEL, context_facts=None, director_instructions=None, persona_blocks=None, narrative_seed=None, mechanical_result=None, foreshadowing_payoff=None):
     full_prompt = prompt
     
     # Build up system/context block
@@ -26,6 +26,9 @@ def generate_story_segment(prompt, model=config.OLLAMA_MODEL, context_facts=None
 
     if mechanical_result:
         context_blocks.append(f"MECHANICS: {mechanical_result}")
+
+    if foreshadowing_payoff:
+        context_blocks.append(f"FORESHADOWING: {foreshadowing_payoff}")
         
     if context_blocks:
         full_context = "\n\n".join(context_blocks)

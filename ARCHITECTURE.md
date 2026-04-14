@@ -22,6 +22,7 @@ The system follows a **Modular Orchestration** pattern (an adaptation of MVC). I
 | `director.py` | **Narrative DM** | Analyzes plot stagnation, identifies location changes, and generates hidden "Director Instructions" to nudge the story forward. |
 | `curator.py` | **Context Manager** | Aggregates relevant facts from both SQLite (Keywords) and ChromaDB (Semantic) to build the prompt context. |
 | `validator.py` | **Physics Engine** | Intercepts player actions before generation to ensure they are logically possible within the established world rules. |
+| `foreshadowing.py` | **Narrative Seeds** | Extracts minor unresolved details from AI responses and triggers payoffs later in the story. |
 
 ### 💾 The Persistence Layer (Memory)
 | File | Responsibility | Key Logic |

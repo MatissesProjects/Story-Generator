@@ -16,6 +16,7 @@ import music_orchestrator
 import world_engine
 import dicemaster
 import social_engine
+import foreshadowing
 import config
 import os
 import json
@@ -112,6 +113,15 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Hierarchical Memory: Get the 'Story So Far'
                     narrative_seed = db.get_story_state("narrative_seed")
                     
+                    # Foreshadowing: Check for pending payoffs
+                    foreshadow_note = ""
+                    recent_history = db.get_recent_history(limit=5)
+                    payoff = foreshadowing.check_for_payoff(recent_history)
+                    if payoff:
+                        payoff_id, element_name, foreshadow_note = payoff
+                        db.resolve_foreshadowing(payoff_id)
+                        await websocket.send_text(json.dumps({"type": "info", "content": f"Foreshadowing payoff: {element_name}"}))
+
                     await websocket.send_text(json.dumps({"type": "debug", "content": f"Intent: {intent}, Using context: {len(facts)} facts, Director: {director_instructions is not None}, Personas: {len(persona_blocks)}, Seed: {narrative_seed is not None}"}))
                     
                     full_response = ""
@@ -122,13 +132,18 @@ async def websocket_endpoint(websocket: WebSocket):
                         director_instructions=director_instructions, 
                         persona_blocks=persona_blocks,
                         narrative_seed=narrative_seed,
-                        mechanical_result=mechanical_result # Pass the roll result
+                        mechanical_result=mechanical_result,
+                        foreshadowing_payoff=foreshadow_note # Pass payoff instruction
                     ):
                         await websocket.send_text(json.dumps({"type": "story_chunk", "content": chunk}))
                         full_response += chunk
                     
                     # Log to history for future summarization
                     db.log_history(user_input, full_response)
+
+                    # Foreshadowing: Extract new seeds from the response
+                    curr_loc_name = db.get_story_state("current_location") or "Unknown"
+                    foreshadowing.extract_seeds(full_response, curr_loc_name)
                     
                     # Quest Evaluation (Check for completed objectives)
                     quest_updates = director.evaluate_quest_progress(full_response)
