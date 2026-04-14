@@ -79,6 +79,52 @@ REPLY ONLY IN JSON.]
         print(f"Director Error (evaluate_quest_progress): {e}. Raw: {response}")
         return []
 
+def evaluate_milestone_progress(history_text):
+    """
+    Checks if the current active arc milestone has been completed.
+    """
+    arc = db.get_active_arc()
+    if not arc:
+        return False
+        
+    idx = db.get_current_milestone_index()
+    if idx < 0 or idx >= len(arc['milestones']):
+        return False
+        
+    milestone = arc['milestones'][idx]
+    
+    prompt = f"""
+[SYSTEM: You are the Narrative Milestone Arbiter. Analyze the recent story history and determine if the current milestone has been achieved.
+
+MILESTONE: {milestone['name']}
+DESCRIPTION: {milestone['description']}
+COMPLETION CRITERIA: {milestone['completion_criteria']}
+
+RECENT HISTORY:
+"{history_text}"
+
+If the criteria have been met, reply with JSON: {{"completed": true}}
+Else, reply with JSON: {{"completed": false}}
+
+REPLY ONLY IN JSON.]
+"""
+    response = ""
+    for chunk in llm.generate_story_segment(prompt):
+        response += chunk
+        
+    try:
+        clean_json = response.strip()
+        if "```json" in clean_json:
+            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
+        elif "```" in clean_json:
+            clean_json = clean_json.split("```")[1].split("```")[0].strip()
+            
+        result = json.loads(clean_json)
+        return result.get("completed", False)
+    except Exception as e:
+        print(f"Director Error (evaluate_milestone_progress): {e}. Raw: {response}")
+        return False
+
 def get_persona_blocks(user_input):
     """
     Identifies characters mentioned in the input and retrieves their persona constraints

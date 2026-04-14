@@ -19,6 +19,8 @@ const characterListEl = document.getElementById('character-list');
 const questListEl = document.getElementById('quest-list');
 const socialListEl = document.getElementById('social-list');
 const pacingSelector = document.getElementById('pacing-selector');
+const arcDisplayEl = document.getElementById('arc-display');
+const milestoneDisplayEl = document.getElementById('milestone-display');
 const locationNameEl = document.getElementById('current-location-name');
 const backgroundVisualEl = document.getElementById('background-visual');
 const sparkBtn = document.getElementById('spark-btn');
@@ -311,6 +313,7 @@ function handleMessage(message) {
             if (message.pacing) {
                 pacingSelector.value = message.pacing;
             }
+            renderArc(message.active_arc, message.milestone_index);
             break;
 
         case 'portrait_update':
@@ -435,6 +438,26 @@ function renderSocialStanding(relationships) {
         `;
         socialListEl.appendChild(item);
     });
+}
+
+function renderArc(arc, milestoneIdx) {
+    if (!arc) {
+        arcDisplayEl.innerText = "No active arc.";
+        milestoneDisplayEl.innerHTML = "";
+        return;
+    }
+
+    arcDisplayEl.innerText = arc.title;
+    
+    if (milestoneIdx >= 0 && milestoneIdx < arc.milestones.length) {
+        const m = arc.milestones[milestoneIdx];
+        milestoneDisplayEl.innerHTML = `
+            <span class="milestone-name">Chapter ${milestoneIdx + 1}: ${m.name}</span>
+            <span class="milestone-desc">${m.description}</span>
+        `;
+    } else if (milestoneIdx >= arc.milestones.length) {
+        milestoneDisplayEl.innerHTML = "<strong>Adventure Arc Completed!</strong>";
+    }
 }
 
     // End of stream detection (this is heuristic based on the current server logic)

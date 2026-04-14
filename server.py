@@ -178,6 +178,22 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Social Layer: Update relationships based on interaction
                     social_engine.update_social_state(user_input, full_response)
 
+                    # Adventure Arcs: Check for milestone completion
+                    if director.evaluate_milestone_progress(full_response):
+                        idx = db.get_current_milestone_index()
+                        arc = db.get_active_arc()
+                        if arc and idx < len(arc['milestones']) - 1:
+                            db.set_current_milestone_index(idx + 1)
+                            new_milestone = arc['milestones'][idx + 1]
+                            await websocket.send_text(json.dumps({
+                                "type": "info", 
+                                "content": f"Milestone Achieved! Next Chapter: {new_milestone['name']}"
+                            }))
+                            # Trigger a special summary for chapter transition
+                            summarizer.update_narrative_seed()
+                        else:
+                            await websocket.send_text(json.dumps({"type": "info", "content": "Adventure Arc Completed!"}))
+
                     # Environment Detection & Generation (Every turn)
                     recent_history = db.get_recent_history(limit=5)
                     loc_name, loc_desc, rel_to, direction = director.identify_location(user_input, recent_history)
@@ -280,6 +296,18 @@ async def websocket_endpoint(websocket: WebSocket):
                 db.add_quest_objective(obj_data["quest_id"], obj_data["description"])
                 await websocket.send_text(json.dumps({"type": "info", "content": "Objective added."}))
 
+            elif message["type"] == "load_arc":
+                filename = message["filename"]
+                filepath = os.path.join("static", "arcs", filename)
+                if os.path.exists(filepath):
+                    with open(filepath, "r") as f:
+                        arc_data = json.load(f)
+                        db.set_active_arc(arc_data)
+                        await websocket.send_text(json.dumps({"type": "info", "content": f"Adventure Arc '{arc_data['title']}' loaded."}))
+                        await websocket.send_text(json.dumps({"type": "state_update_request"}))
+                else:
+                    await websocket.send_text(json.dumps({"type": "info", "content": f"Arc file {filename} not found."}))
+
             elif message["type"] == "set_pacing":
                 pacing = message["pacing"]
                 db.set_story_state("current_pacing", pacing)
@@ -314,6 +342,10 @@ async def websocket_endpoint(websocket: WebSocket):
                 # Get active quests
                 quests = db.get_active_quests()
                 
+                # Get active arc
+                active_arc = db.get_active_arc()
+                milestone_idx = db.get_current_milestone_index()
+
                 # Get character relationships with player
                 relationships = []
                 for c in chars:
@@ -334,7 +366,9 @@ async def websocket_endpoint(websocket: WebSocket):
                     "relationships": relationships,
                     "location": curr_loc,
                     "location_image": loc_url,
-                    "pacing": curr_pacing
+                    "pacing": curr_pacing,
+                    "active_arc": active_arc,
+                    "milestone_index": milestone_idx
                 }))
 
             elif message["type"] == "get_map":

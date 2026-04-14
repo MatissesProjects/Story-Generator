@@ -1,0 +1,30 @@
+{
+    "title": "The Ancient Relic",
+    "description": "A journey to recover a forgotten artifact from a sunken temple.",
+    "milestones": [
+        {
+            "id": 1,
+            "name": "The Call to Adventure",
+            "description": "Meeting the mysterious stranger who knows the relic's location.",
+            "completion_criteria": "The player has agreed to search for the relic and has received a map or directions."
+        },
+        {
+            "id": 2,
+            "name": "The Sunken Coast",
+            "description": "Navigating the treacherous cliffs and arriving at the water's edge.",
+            "completion_criteria": "The player has reached the entrance of the sunken temple."
+        },
+        {
+            "id": 3,
+            "name": "The Heart of the Temple",
+            "description": "Solving the ancient puzzles and facing the guardian.",
+            "completion_criteria": "The player has defeated or bypassed the guardian and found the relic's chamber."
+        },
+        {
+            "id": 4,
+            "name": "The Great Escape",
+            "description": "Fleeing the collapsing temple with the relic in hand.",
+            "completion_criteria": "The player has successfully escaped the temple with the relic."
+        }
+    ]
+}

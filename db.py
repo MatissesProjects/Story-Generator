@@ -266,6 +266,22 @@ def get_pending_foreshadowing():
 def resolve_foreshadowing(element_id):
     execute_db("UPDATE foreshadowed_elements SET payoff_status = 'resolved' WHERE id = ?", (element_id,))
 
+# Adventure Arc Functions
+def set_active_arc(arc_json):
+    set_story_state("active_arc", json.dumps(arc_json))
+    set_story_state("current_milestone_index", "0")
+
+def get_active_arc():
+    arc_str = get_story_state("active_arc")
+    return json.loads(arc_str) if arc_str else None
+
+def get_current_milestone_index():
+    idx = get_story_state("current_milestone_index")
+    return int(idx) if idx is not None else -1
+
+def set_current_milestone_index(index):
+    set_story_state("current_milestone_index", str(index))
+
 if __name__ == "__main__":
     print("Initializing database...")
     init_db()
