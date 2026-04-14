@@ -16,6 +16,7 @@ const debugOutput = document.getElementById('debug-output');
 const narrativeSeedEl = document.getElementById('narrative-seed');
 const plotThreadsEl = document.getElementById('plot-threads');
 const characterListEl = document.getElementById('character-list');
+const questListEl = document.getElementById('quest-list');
 const locationNameEl = document.getElementById('current-location-name');
 const backgroundVisualEl = document.getElementById('background-visual');
 const sparkBtn = document.getElementById('spark-btn');
@@ -289,6 +290,9 @@ function handleMessage(message) {
                 characters = message.characters;
                 renderCharacters();
             }
+            if (message.quests) {
+                renderQuests(message.quests);
+            }
             if (message.location) {
                 locationNameEl.innerText = currentLocationName = message.location;
             }
@@ -365,25 +369,44 @@ function fadeOut(audio) {
     }, 200);
 }
 
-        function renderCharacters() {
-        characterListEl.innerHTML = "";
-        characters.forEach(char => {
+function renderCharacters() {
+    characterListEl.innerHTML = "";
+    characters.forEach(char => {
         const card = document.createElement('div');
         card.className = 'char-card';
-
+        
         const img = document.createElement('img');
         img.className = 'char-portrait';
         img.src = char.portrait || '/static/placeholder-portrait.png'; // Fallback
-
+        
         const info = document.createElement('div');
         info.className = 'char-info';
         info.innerHTML = `<h4>${char.name}</h4><p>${char.traits}</p>`;
-
+        
         card.appendChild(img);
         card.appendChild(info);
         characterListEl.appendChild(card);
-        });
-        }
+    });
+}
+
+function renderQuests(quests) {
+    questListEl.innerHTML = "";
+    quests.forEach(quest => {
+        const item = document.createElement('div');
+        item.className = 'quest-item';
+        
+        const objectivesHtml = quest.objectives.map(o => `<li>${o.description}</li>`).join("");
+        
+        item.innerHTML = `
+            <h4>${quest.title}</h4>
+            <p>${quest.description}</p>
+            <ul class="quest-objectives">
+                ${objectivesHtml}
+            </ul>
+        `;
+        questListEl.appendChild(item);
+    });
+}
 
     // End of stream detection (this is heuristic based on the current server logic)
     // In a real app, the server would send a 'stream_end' message.

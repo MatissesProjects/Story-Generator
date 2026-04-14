@@ -146,6 +146,42 @@ h3 {
     line-height: 1.2;
 }
 
+/* Quest Styles */
+#quest-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.quest-item {
+    background: rgba(74, 144, 226, 0.1);
+    border-left: 3px solid var(--accent-color);
+    padding: 0.5rem;
+    border-radius: 0 4px 4px 0;
+}
+
+.quest-item h4 {
+    font-size: 0.9rem;
+    margin-bottom: 0.2rem;
+}
+
+.quest-item p {
+    font-size: 0.8rem;
+    color: #aaa;
+    margin-bottom: 0.4rem;
+}
+
+.quest-objectives {
+    list-style: none;
+    font-size: 0.75rem;
+    color: #eee;
+}
+
+.quest-objectives li::before {
+    content: "○ ";
+    color: var(--accent-color);
+}
+
 #story-area {
     display: flex;
     flex-direction: column;

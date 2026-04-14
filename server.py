@@ -261,11 +261,15 @@ async def websocket_endpoint(websocket: WebSocket):
                         "portrait": url
                     })
                 
+                # Get active quests
+                quests = db.get_active_quests()
+                
                 await websocket.send_text(json.dumps({
                     "type": "state_update", 
                     "seed": seed, 
                     "threads": [t['description'] for t in threads],
                     "characters": char_list,
+                    "quests": [dict(q) for q in quests],
                     "location": curr_loc,
                     "location_image": loc_url
                 }))
