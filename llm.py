@@ -4,12 +4,15 @@ import config
 
 OLLAMA_URL = config.OLLAMA_URL
 
-def generate_story_segment(prompt, model=config.OLLAMA_MODEL, context_facts=None, director_instructions=None, persona_blocks=None):
+def generate_story_segment(prompt, model=config.OLLAMA_MODEL, context_facts=None, director_instructions=None, persona_blocks=None, narrative_seed=None):
     full_prompt = prompt
     
     # Build up system/context block
     context_blocks = []
     
+    if narrative_seed:
+        context_blocks.append(f"STORY SO FAR:\n{narrative_seed}")
+        
     if persona_blocks:
         persona_text = "CHARACTER PERSONAS:\n" + "\n".join(persona_blocks)
         context_blocks.append(persona_text)

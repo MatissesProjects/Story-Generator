@@ -72,6 +72,24 @@ def log_event(description):
 def get_recent_timeline(limit=5):
     return query_db("SELECT event_description FROM timeline ORDER BY id DESC LIMIT ?", (limit,))
 
+def log_history(user_input, assistant_response):
+    execute_db("INSERT INTO history (user_input, assistant_response) VALUES (?, ?)", 
+               (user_input, assistant_response))
+
+def get_recent_history(limit=10):
+    return query_db("SELECT user_input, assistant_response FROM history ORDER BY id DESC LIMIT ?", (limit,))
+
+def get_history_count():
+    result = query_db("SELECT COUNT(*) as count FROM history", one=True)
+    return result['count']
+
+def set_story_state(key, value):
+    execute_db("INSERT OR REPLACE INTO story_state (key, value) VALUES (?, ?)", (key, value))
+
+def get_story_state(key):
+    result = query_db("SELECT value FROM story_state WHERE key = ?", (key,), one=True)
+    return result['value'] if result else None
+
 if __name__ == "__main__":
     print("Initializing database...")
     init_db()

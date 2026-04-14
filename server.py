@@ -7,6 +7,7 @@ import curator
 import parser
 import tts
 import director
+import summarizer
 import config
 import os
 import json
@@ -49,14 +50,31 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Persona Conditioning: Get persona blocks for mentioned characters
                     persona_blocks = director.get_persona_blocks(user_input)
                     
-                    await websocket.send_text(json.dumps({"type": "debug", "content": f"Intent: {intent}, Using context: {len(facts)} facts, Director: {director_instructions is not None}, Personas: {len(persona_blocks)}"}))
+                    # Hierarchical Memory: Get the 'Story So Far'
+                    narrative_seed = db.get_story_state("narrative_seed")
+                    
+                    await websocket.send_text(json.dumps({"type": "debug", "content": f"Intent: {intent}, Using context: {len(facts)} facts, Director: {director_instructions is not None}, Personas: {len(persona_blocks)}, Seed: {narrative_seed is not None}"}))
                     
                     full_response = ""
                     # Stream LLM output back to client
-                    for chunk in llm.generate_story_segment(prompt, context_facts=facts, director_instructions=director_instructions, persona_blocks=persona_blocks):
+                    for chunk in llm.generate_story_segment(
+                        prompt, 
+                        context_facts=facts, 
+                        director_instructions=director_instructions, 
+                        persona_blocks=persona_blocks,
+                        narrative_seed=narrative_seed
+                    ):
                         await websocket.send_text(json.dumps({"type": "story_chunk", "content": chunk}))
                         full_response += chunk
                     
+                    # Log to history for future summarization
+                    db.log_history(user_input, full_response)
+                    
+                    # Trigger periodic summarization (every 10 turns)
+                    if db.get_history_count() % 10 == 0:
+                        summarizer.update_narrative_seed()
+                        await websocket.send_text(json.dumps({"type": "info", "content": "Narrative summary updated."}))
+
                     # Parse and generate audio
                     dialogue_lines = parser.parse_dialogue(full_response)
                     for speaker, text in dialogue_lines:

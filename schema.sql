@@ -30,3 +30,15 @@ CREATE TABLE IF NOT EXISTS meta_lore (
     description TEXT NOT NULL,
     keywords TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_input TEXT,
+    assistant_response TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS story_state (
+    key TEXT PRIMARY KEY,
+    value TEXT
+);
