@@ -9,6 +9,7 @@ import tts
 import director
 import summarizer
 import researcher
+import validator
 import config
 import os
 import json
@@ -45,6 +46,14 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Get context
                     facts = curator.get_relevant_context(user_input)
                     
+                    # Logic Validation (Phase 1/2)
+                    if intent in ['ACTION', 'DIALOGUE']:
+                        is_valid, reason = validator.validate_action(user_input, facts)
+                        if not is_valid:
+                            await websocket.send_text(json.dumps({"type": "validation_failure", "content": reason}))
+                            # Skip generation for invalid actions
+                            continue
+
                     # Director Agent: Evaluate story state
                     director_instructions = director.evaluate_state(user_input)
                     
