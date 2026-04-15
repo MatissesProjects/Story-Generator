@@ -4,8 +4,10 @@ import config
 import asyncio
 import json
 import agency_engine
+import entropy_engine
 
 agency = agency_engine.AgencyEngine()
+entropy = entropy_engine.EntropyEngine()
 
 async def trigger_tick():
     """
@@ -21,6 +23,9 @@ async def trigger_tick():
     
     # 2. Run Scheduled Updates
     events = []
+    
+    # Entropy Logic (Memory Decay & Lore Mutation)
+    await entropy.run_tick(new_time)
     
     # NPC Agency Logic
     npc_actions = await agency.run_tick(new_time)

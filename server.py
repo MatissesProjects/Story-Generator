@@ -278,7 +278,12 @@ async def websocket_endpoint(websocket: WebSocket):
                         contradictions = await canon_checker.check_for_contradictions(claims, facts)
                         if contradictions:
                             for c in contradictions:
-                                await websocket.send_text(json.dumps({"type": "info", "content": f"Canon Warning: {c['violation']}"}))
+                                resolution = await canon_checker.resolve_contradiction(c, facts)
+                                if resolution:
+                                    msg = f"Canon Alert: {c['violation']} -> Resolved via {resolution['resolution_type']}"
+                                    await websocket.send_text(json.dumps({"type": "info", "content": msg}))
+                                else:
+                                    await websocket.send_text(json.dumps({"type": "info", "content": f"Canon Warning: {c['violation']}"}))
 
                     # Music selection
                     if config.MUSIC_ENABLED:

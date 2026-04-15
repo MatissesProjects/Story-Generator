@@ -39,6 +39,64 @@ REPLY ONLY IN JSON.]
         print(f"CanonChecker Error (extract_claims): {e}. Raw: {response}")
         return []
 
+async def resolve_contradiction(contradiction, context_lore):
+    """
+    Automated 'Lore Duel' resolution for canon contradictions.
+    Decides whether to Retcon, mark as Unreliable Narrator, or trigger a World Change.
+    """
+    claim = contradiction['claim']
+    violation = contradiction['violation']
+    lore_str = "\n".join([f"- {l}" for l in context_lore])
+    
+    prompt = f"""
+[SYSTEM: You are the Canon Resolution Engine. A contradiction has occurred in the story.
+ESTABLISHED CANON:
+{lore_str}
+
+NEW CLAIM:
+"{claim}"
+
+VIOLATION:
+"{violation}"
+
+Decide how to resolve this. Choose one of the following approaches:
+1. "Unreliable Narrator": The character or narrator was simply wrong, lying, or exaggerating. (The world state does not change).
+2. "World Change": Something in the world has fundamentally changed to make the new claim true. (Generate a new lore entry explaining the shift).
+3. "Retcon": The old canon was actually a misconception, and the new claim is the true reality. (Replace the old canon).
+
+Reply ONLY with a JSON object:
+{{
+    "resolution_type": "Unreliable Narrator" | "World Change" | "Retcon",
+    "explanation": "A brief explanation of why this happened.",
+    "new_lore": "If World Change or Retcon, provide the new lore string. Else null."
+}}
+]
+"""
+    response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
+    
+    try:
+        clean_json = response.strip()
+        if "```json" in clean_json:
+            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
+        elif "```" in clean_json:
+            clean_json = clean_json.split("```")[1].split("```")[0].strip()
+            
+        result = json.loads(clean_json)
+        
+        # Apply the resolution
+        rtype = result.get("resolution_type")
+        if rtype in ["World Change", "Retcon"] and result.get("new_lore"):
+            db.add_lore("Resolved Canon Shift", result["new_lore"])
+            print(f"Canon Checker: Resolved via {rtype}. Added new lore: {result['new_lore']}")
+        else:
+            print(f"Canon Checker: Resolved via {rtype}. Explanation: {result.get('explanation')}")
+            
+        return result
+        
+    except Exception as e:
+        print(f"CanonChecker Error (resolve_contradiction): {e}. Raw: {response}")
+        return None
+
 async def check_for_contradictions(claims, context_lore):
     """
     Compares extracted claims against existing lore to find contradictions.

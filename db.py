@@ -281,6 +281,9 @@ def get_relationship(char_a_id, char_b_id):
         return {"trust": 0, "fear": 0, "affection": 0}
     return dict(result)
 
+def get_all_relationships():
+    return query_db("SELECT * FROM relationships")
+
 def update_relationship(char_a_id, char_b_id, delta_trust, delta_fear, delta_affection, event_desc):
     a, b = min(char_a_id, char_b_id), max(char_a_id, char_b_id)
     
