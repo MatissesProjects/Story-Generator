@@ -10,6 +10,20 @@ def init_db():
     
     with sqlite3.connect(DB_PATH) as conn:
         conn.executescript(schema)
+        
+        # Simple migration for 'locations' table
+        cursor = conn.execute("PRAGMA table_info(locations)")
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        if 'elevation' not in columns:
+            print("Migrating database: Adding 'elevation' to 'locations'")
+            conn.execute("ALTER TABLE locations ADD COLUMN elevation INTEGER DEFAULT 0")
+            
+        if 'climate' not in columns:
+            print("Migrating database: Adding 'climate' to 'locations'")
+            conn.execute("ALTER TABLE locations ADD COLUMN climate TEXT DEFAULT 'Temperate'")
+        
+        conn.commit()
 
 def query_db(query, args=(), one=False):
     with sqlite3.connect(DB_PATH) as conn:
