@@ -1,12 +1,12 @@
 # Pacing Director Implementation Plan
 
 ## Phase 1: Directive Schema
-- [ ] Update `llm.py` to handle a `pacing_directive` parameter.
-- [ ] Create specialized prompt templates for each pacing category.
+- [x] Update `llm.py` to handle a `pacing_directive` parameter.
+- [x] Create specialized prompt templates for each pacing category.
 
 ## Phase 2: Automated Pacing
-- [ ] Update `director.py` to suggest pacing changes based on `check_narrative_gaps()` (e.g., if too much dialogue, suggest Action).
+- [x] Implement background state management for pacing in `server.py`.
 
 ## Phase 3: UI Controls
-- [ ] Add a "Narrative Tempo" widget to the Web UI.
-- [ ] Display the current pacing mode in the status indicator.
+- [x] Add a "Narrative Pacing" selector to the Web UI.
+- [x] Synchronize pacing state via WebSockets.

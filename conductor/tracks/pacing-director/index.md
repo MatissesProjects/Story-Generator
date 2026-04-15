@@ -1,8 +1,12 @@
 # Pacing Director Index
 
 ## Status
-- **Current Phase**: Proposed
-- **Next Step**: Define the prompt overrides for each pacing mode.
+- **Current Phase**: Completed
+- **Next Step**: Consider automated pacing suggestions in the Director Agent.
+
+## Completed
+- [x] Phase 1: Directive Schema
+- [x] Phase 2: UI Controls
 
 ## Documents
 - [Specification](./spec.md)

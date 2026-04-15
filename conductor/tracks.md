@@ -22,6 +22,6 @@
 | `social-layer` | Build a character relationship graph and social influence model. | ✅ Completed | [Link](./tracks/social-layer/index.md) |
 | `foreshadowing-engine` | Track minor narrative seeds for future payoffs. | ✅ Completed | [Link](./tracks/foreshadowing-engine/index.md) |
 | `dicemaster-module` | Add mechanical conflict resolution via dice rolls and DC checks. | ✅ Completed | [Link](./tracks/dicemaster-module/index.md) |
-| `canon-checker` | Implement advanced lore validation for LLM-generated concepts. | 🛠️ In Progress | [Link](./tracks/canon-checker/index.md) |
-| `pacing-director` | Control narrative rhythm (Action, Introspection, Mystery). | 🛠️ In Progress | [Link](./tracks/pacing-director/index.md) |
-| `adventure-arcs` | Support pre-defined story structures and milestones. | 🛠️ In Progress | [Link](./tracks/adventure-arcs/index.md) |
+| `canon-checker` | Implement advanced lore validation for LLM-generated concepts. | ✅ Completed | [Link](./tracks/canon-checker/index.md) |
+| `pacing-director` | Control narrative rhythm (Action, Introspection, Mystery). | ✅ Completed | [Link](./tracks/pacing-director/index.md) |
+| `adventure-arcs` | Support pre-defined story structures and milestones. | ✅ Completed | [Link](./tracks/adventure-arcs/index.md) |

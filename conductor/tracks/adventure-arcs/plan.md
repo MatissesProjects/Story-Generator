@@ -1,13 +1,13 @@
 # Adventure Arcs Implementation Plan
 
 ## Phase 1: Arc Loader
-- [ ] Create `static/arcs/` directory for template files.
-- [ ] Implement `load_arc(filename)` in `db.py` to populate the initial lore and plot threads.
+- [x] Create `static/arcs/` directory for template files.
+- [x] Implement `set_active_arc()` and `get_active_arc()` in `db.py`.
 
 ## Phase 2: Milestone Manager
-- [ ] Update `director.py` to track the current "Chapter" and "Active Milestone."
-- [ ] Create an LLM prompt to detect if a milestone's conditions have been met.
+- [x] Update `director.py` to track the current "Chapter" and "Active Milestone" via `evaluate_milestone_progress`.
+- [x] Integrate milestone detection into the main turn loop in `server.py`.
 
 ## Phase 3: Chapter Transitions
-- [ ] Update `summarizer.py` to perform a "Chapter Summary" when an arc milestone is reached.
-- [ ] Add visual "Chapter Complete" notifications to the UI.
+- [x] Update the Web UI to display the current Arc title and Milestone description.
+- [x] Trigger automatic narrative summarization on chapter transitions.

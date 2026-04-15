@@ -1,8 +1,13 @@
 # Adventure Arcs Index
 
 ## Status
-- **Current Phase**: Proposed
-- **Next Step**: Design the JSON schema for arc templates.
+- **Current Phase**: Completed
+- **Next Step**: Expand arc library with more templates.
+
+## Completed
+- [x] Phase 1: Arc Loader
+- [x] Phase 2: Milestone Manager
+- [x] Phase 3: Chapter Transitions
 
 ## Documents
 - [Specification](./spec.md)
