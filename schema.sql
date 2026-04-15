@@ -3,7 +3,10 @@ CREATE TABLE IF NOT EXISTS characters (
     name TEXT NOT NULL,
     description TEXT,
     traits TEXT,
-    voice_id TEXT
+    voice_id TEXT,
+    length_scale REAL DEFAULT 1.0,
+    noise_scale REAL DEFAULT 0.667,
+    noise_w REAL DEFAULT 0.8
 );
 
 CREATE TABLE IF NOT EXISTS lore (

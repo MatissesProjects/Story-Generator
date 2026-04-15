@@ -47,9 +47,10 @@ async def main():
             print("\n[Audio Generation...]")
             dialogue_lines = parser.parse_dialogue(full_response)
             for speaker, text in dialogue_lines:
-                voice_model = db.get_character_voice(speaker)
+                voice_config = db.get_character_voice(speaker)
+                
                 print(f"Generating audio for {speaker}...")
-                audio_path = tts.generate_audio(text, speaker, voice_model)
+                audio_path = tts.generate_audio(text, speaker, voice_config=voice_config)
                 if audio_path:
                     tts.play_audio(audio_path)
             # ---------------------------------

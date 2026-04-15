@@ -2,6 +2,19 @@ import os
 import wave
 import config
 from piper import PiperVoice
+from dataclasses import dataclass
+from typing import Optional
+
+# For Piper 1.x, the SynthesisConfig might be in piper.voice or similar
+try:
+    from piper.voice import SynthesisConfig
+except ImportError:
+    @dataclass
+    class SynthesisConfig:
+        speaker_id: Optional[int] = None
+        length_scale: Optional[float] = None
+        noise_scale: Optional[float] = None
+        noise_w: Optional[float] = None
 
 # Cache for loaded voices to avoid reloading from disk every time
 VOICE_CACHE = {}
@@ -23,12 +36,21 @@ def get_voice(voice_model="en_US-lessac-medium.onnx"):
     
     return VOICE_CACHE[model_path]
 
-def generate_audio(text, speaker_id, voice_model="en_US-lessac-medium.onnx"):
+def generate_audio(text, speaker_id, voice_config=None):
     """
     Generates a WAV file for the given text using the piper-tts Python API.
+    voice_config: dict with {voice_id, length_scale, noise_scale, noise_w}
     """
     if not text.strip():
         return None
+
+    if voice_config is None:
+        voice_config = {
+            "voice_id": "en_US-lessac-medium.onnx",
+            "length_scale": 1.0,
+            "noise_scale": 0.667,
+            "noise_w": 0.8
+        }
 
     output_dir = config.AUDIO_OUTPUT_DIR
     if not os.path.exists(output_dir):
@@ -36,13 +58,19 @@ def generate_audio(text, speaker_id, voice_model="en_US-lessac-medium.onnx"):
 
     output_file = os.path.join(output_dir, f"{speaker_id}_{hash(text) % 10000}.wav")
     
-    voice = get_voice(voice_model)
+    voice = get_voice(voice_config.get('voice_id', 'en_US-lessac-medium.onnx'))
     if not voice:
         return None
 
     try:
+        syn_config = SynthesisConfig(
+            length_scale=voice_config.get('length_scale', 1.0),
+            noise_scale=voice_config.get('noise_scale', 0.667),
+            noise_w=voice_config.get('noise_w', 0.8)
+        )
+
         with wave.open(output_file, "wb") as wav_file:
-            voice.synthesize_wav(text, wav_file)
+            voice.synthesize_wav(text, wav_file, syn_config=syn_config)
         
         if os.path.exists(output_file):
             return output_file
@@ -73,9 +101,14 @@ else:
 
 if __name__ == "__main__":
     # Quick test
-    print("Testing Piper TTS Python API integration...")
-    test_text = "The ancient gears of the library groaned as the secret door finally opened."
-    path = generate_audio(test_text, "test_voice")
+    print("Testing Piper TTS Python API integration with modifications...")
+    test_config = {
+        "voice_id": "en_US-lessac-medium.onnx",
+        "length_scale": 1.5, # Slower
+        "noise_scale": 0.8,
+        "noise_w": 1.0
+    }
+    path = generate_audio("This is a test of the modified voice system.", "test_voice", voice_config=test_config)
     if path:
         print(f"Audio generated at {path}. Playing...")
         play_audio(path)

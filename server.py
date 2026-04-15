@@ -280,8 +280,9 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Dialogue Audio Synthesis
                     dialogue_lines = parser.parse_dialogue(full_response)
                     for speaker, text in dialogue_lines:
-                        voice_model = db.get_character_voice(speaker)
-                        audio_path = tts.generate_audio(text, speaker, voice_model)
+                        voice_config = db.get_character_voice(speaker)
+                        
+                        audio_path = tts.generate_audio(text, speaker, voice_config=voice_config)
                         if audio_path:
                             audio_url = f"/audio/{os.path.basename(audio_path)}"
                             await websocket.send_text(json.dumps({"type": "audio_event", "url": audio_url, "speaker": speaker}))
@@ -299,7 +300,10 @@ async def websocket_endpoint(websocket: WebSocket):
                     char_data["name"], 
                     char_data["description"], 
                     char_data["traits"], 
-                    char_data.get("voice_id", "en_US-lessac-medium.onnx")
+                    char_data.get("voice_id", "en_US-lessac-medium.onnx"),
+                    char_data.get("length_scale", 1.0),
+                    char_data.get("noise_scale", 0.667),
+                    char_data.get("noise_w", 0.8)
                 )
                 portrait_url = await vision.generate_portrait(char_data["name"], char_data["description"], char_data["traits"])
                 await websocket.send_text(json.dumps({"type": "info", "content": f"Character {char_data['name']} added with portrait."}))

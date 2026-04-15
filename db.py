@@ -23,6 +23,15 @@ def init_db():
             print("Migrating database: Adding 'climate' to 'locations'")
             conn.execute("ALTER TABLE locations ADD COLUMN climate TEXT DEFAULT 'Temperate'")
         
+        # Simple migration for 'characters' table
+        cursor = conn.execute("PRAGMA table_info(characters)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if 'length_scale' not in columns:
+            print("Migrating database: Adding voice modification columns to 'characters'")
+            conn.execute("ALTER TABLE characters ADD COLUMN length_scale REAL DEFAULT 1.0")
+            conn.execute("ALTER TABLE characters ADD COLUMN noise_scale REAL DEFAULT 0.667")
+            conn.execute("ALTER TABLE characters ADD COLUMN noise_w REAL DEFAULT 0.8")
+        
         conn.commit()
 
 def query_db(query, args=(), one=False):
@@ -49,13 +58,28 @@ def get_all_entities():
     return [c['name'] for c in chars] + [l['topic'] for l in lore_topics]
 
 def get_character_voice(name):
-    result = query_db("SELECT voice_id FROM characters WHERE name = ?", (name,), one=True)
-    return result['voice_id'] if result and result['voice_id'] else "en_US-lessac-medium.onnx" # Default voice
+    result = query_db("SELECT voice_id, length_scale, noise_scale, noise_w FROM characters WHERE name = ?", (name,), one=True)
+    if result:
+        return {
+            "voice_id": result['voice_id'] or "en_US-lessac-medium.onnx",
+            "length_scale": result['length_scale'],
+            "noise_scale": result['noise_scale'],
+            "noise_w": result['noise_w']
+        }
+    return {
+        "voice_id": "en_US-ryan-high.onnx",
+        "length_scale": 1.0,
+        "noise_scale": 0.667,
+        "noise_w": 0.8
+    }
 
-def add_character(name, description, traits, voice_id="en_US-lessac-medium.onnx"):
+def add_character(name, description, traits, voice_id="en_US-lessac-medium.onnx", length_scale=1.0, noise_scale=0.667, noise_w=0.8):
     with sqlite3.connect(DB_PATH) as conn:
-        cur = conn.execute("INSERT INTO characters (name, description, traits, voice_id) VALUES (?, ?, ?, ?)", 
-                        (name, description, traits, voice_id))
+        cur = conn.execute("""
+            INSERT INTO characters 
+            (name, description, traits, voice_id, length_scale, noise_scale, noise_w) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (name, description, traits, voice_id, length_scale, noise_scale, noise_w))
         conn.commit()
         char_id = cur.lastrowid
         memory_engine.add_character_vector(name, description, traits, char_id)
