@@ -1,6 +1,6 @@
 import subprocess
 import os
-import winsound # Using built-in winsound for WAV playback on Windows
+import pygame # Using pygame for audio playback on Linux/Cross-platform
 import config
 
 # Path to the Piper executable and models
@@ -47,10 +47,19 @@ def generate_audio(text, speaker_id, voice_model="en_US-lessac-medium.onnx"):
 
 def play_audio(file_path):
     """
-    Plays the generated WAV file using winsound.
+    Plays the generated WAV file using pygame.
     """
     if file_path and os.path.exists(file_path):
-        winsound.PlaySound(file_path, winsound.SND_FILENAME)
+        if not pygame.mixer.get_init():
+            pygame.mixer.init()
+        try:
+            sound = pygame.mixer.Sound(file_path)
+            sound.play()
+            # Wait for the sound to finish playing
+            while pygame.mixer.get_busy():
+                pygame.time.delay(100)
+        except Exception as e:
+            print(f"Error playing audio with pygame: {e}")
 
 if __name__ == "__main__":
     # Quick test if piper is installed
