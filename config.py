@@ -12,10 +12,10 @@ class Settings(BaseSettings):
 
     # Ollama settings
     OLLAMA_URL: str = Field(default="http://localhost:11434/api/generate", validation_alias="OLLAMA_URL")
-    OLLAMA_MODEL: str = Field(default="gemma4:e4b", validation_alias="OLLAMA_MODEL") # Main creative model
-    CREATIVE_MODEL: str = Field(default="gemma4:e4b", validation_alias="CREATIVE_MODEL")
-    FAST_MODEL: str = Field(default="gemma4:e4b", validation_alias="FAST_MODEL") # Small model for logic/parsing
-
+    OLLAMA_MODEL: str = Field(default="gemma4:26b", validation_alias="OLLAMA_MODEL") # Main creative model
+    CREATIVE_MODEL: str = Field(default="gemma4:26b", validation_alias="CREATIVE_MODEL")
+    FAST_MODEL: str = Field(default="gemma4:26b", validation_alias="FAST_MODEL") # Small model for logic/parsing
+                                          # e4b
     # TTS settings
     PIPER_EXE: str = Field(default="piper", validation_alias="PIPER_EXE")
     MODELS_DIR: str = Field(default="models", validation_alias="MODELS_DIR")

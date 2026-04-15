@@ -91,11 +91,11 @@ def get_story_state(key):
     return result['value'] if result else None
 
 # World Map Functions
-def add_location(name, description, x, y, biome_type, region_id=None):
+def add_location(name, description, x, y, biome_type, elevation=0, climate='Temperate', region_id=None):
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.execute(
-            "INSERT INTO locations (name, description, x, y, biome_type, region_id) VALUES (?, ?, ?, ?, ?, ?)",
-            (name, description, x, y, biome_type, region_id)
+            "INSERT INTO locations (name, description, x, y, biome_type, elevation, climate, region_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (name, description, x, y, biome_type, elevation, climate, region_id)
         )
         conn.commit()
         return cur.lastrowid

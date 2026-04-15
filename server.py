@@ -85,34 +85,89 @@ async def websocket_endpoint(websocket: WebSocket):
                     else:
                         prompt = user_input
                         
-                    # Get context
-                    facts = curator.get_relevant_context(user_input)
+                    # Get Context and Director Plan in parallel
+                    context_task = asyncio.to_thread(curator.get_relevant_context, user_input)
                     
                     # Get Player State for Validation
                     player_inv = db.get_inventory("player", 0)
                     player_stats = db.get_entity_stats("player", 0)
+                    active_threads = db.get_active_plot_threads()
+                    active_quests = db.get_active_quests()
+                    recent_history = db.get_recent_history(limit=10)
 
-                    # Logic Validation (Phase 1/2)
+                    # Parallel 1: Context, Validation, hidden check
+                    # We need facts for validation and dicemaster
+                    facts = await context_task
+                    
+                    val_task = None
                     if intent in ['ACTION', 'DIALOGUE']:
-                        is_valid, reason = validator.validate_action(user_input, facts, inventory=player_inv, stats=player_stats)
-                        if not is_valid:
-                            await websocket.send_text(json.dumps({"type": "validation_failure", "content": reason}))
-                            # Skip generation for invalid actions
-                            continue
-
-                    # DiceMaster: Perform hidden check for actions
-                    mechanical_result = ""
+                        val_task = validator.validate_action(user_input, facts, inventory=player_inv, stats=player_stats)
+                    
+                    dice_task = None
                     if intent == 'ACTION':
-                        success, roll, dc, sides, reason = dicemaster.perform_hidden_check(user_input, facts)
+                        dice_task = dicemaster.perform_hidden_check(user_input, facts)
+
+                    # Parallel 2: Director Plan
+                    plan_task = director.generate_action_plan(user_input, recent_history, active_threads, active_quests)
+                    
+                    # Gather initial results
+                    validation_result = (True, "")
+                    mechanical_result = ""
+                    
+                    tasks_to_gather = [plan_task]
+                    if val_task: tasks_to_gather.append(val_task)
+                    if dice_task: tasks_to_gather.append(dice_task)
+                    
+                    gathered_results = await asyncio.gather(*tasks_to_gather)
+                    
+                    plan = gathered_results[0]
+                    idx = 1
+                    if val_task:
+                        validation_result = gathered_results[idx]
+                        idx += 1
+                    if dice_task:
+                        success, roll, dc, sides, reason = gathered_results[idx]
                         res_str = "SUCCESS" if success else "FAILURE"
                         mechanical_result = f"MECHANICAL RESULT: {res_str} (Rolled {roll} vs DC {dc} on a D{sides}). Narrate the outcome accordingly."
-                        # Log to debug
                         await websocket.send_text(json.dumps({"type": "debug", "content": f"DiceMaster: {mechanical_result} - {reason}"}))
+                        idx += 1
 
-                    # Director Agent: Evaluate story state
+                    # Logic Validation Check
+                    if not validation_result[0]:
+                        await websocket.send_text(json.dumps({"type": "validation_failure", "content": validation_result[1]}))
+                        continue
+
+                    # Execute Plan Updates (Synchronous DB calls)
+                    for update in plan['quest_updates']:
+                        db.update_objective_status(update['objective_id'], update['status'])
+                        await websocket.send_text(json.dumps({"type": "info", "content": f"Objective update: {update['status']}"}))
+
+                    if plan['milestone_completed']:
+                        m_idx = db.get_current_milestone_index()
+                        arc = db.get_active_arc()
+                        if arc and m_idx < len(arc['milestones']) - 1:
+                            db.set_current_milestone_index(m_idx + 1)
+                            new_milestone = arc['milestones'][m_idx + 1]
+                            await websocket.send_text(json.dumps({
+                                "type": "info", 
+                                "content": f"Milestone Achieved! Next Chapter: {new_milestone['name']}"
+                            }))
+                            summarizer.update_narrative_seed()
+                        else:
+                            await websocket.send_text(json.dumps({"type": "info", "content": "Adventure Arc Completed!"}))
+
+                    if plan['new_location']:
+                        loc = plan['new_location']
+                        # world.resolve_new_location is now async
+                        await world.resolve_new_location(loc['name'], loc['desc'], relative_to_name=loc['rel_to'], direction=loc['direction'])
+                        db.set_story_state("current_location", loc['name'])
+                        world.move_entity("player", 0, loc['name'])
+                        
+                        env_url = await vision.generate_environment(loc['name'], loc['desc'])
+                        await websocket.send_text(json.dumps({"type": "scene_update", "location": loc['name'], "url": env_url}))
+
+                    # Director Instructions & Personas
                     director_instructions = director.evaluate_state(user_input)
-                    
-                    # Persona Conditioning: Get persona blocks for mentioned characters
                     persona_blocks = director.get_persona_blocks(user_input)
                     
                     # Hierarchical Memory: Get the 'Story So Far'
@@ -123,7 +178,6 @@ async def websocket_endpoint(websocket: WebSocket):
 
                     # Foreshadowing: Check for pending payoffs
                     foreshadow_note = ""
-                    recent_history = db.get_recent_history(limit=5)
                     payoff = foreshadowing.check_for_payoff(recent_history)
                     if payoff:
                         payoff_id, element_name, foreshadow_note = payoff
@@ -134,14 +188,15 @@ async def websocket_endpoint(websocket: WebSocket):
                     
                     full_response = ""
                     # Stream LLM output back to client
-                    for chunk in llm.generate_story_segment(
+                    async for chunk in llm.async_generate_story_segment(
                         prompt, 
                         context_facts=facts, 
                         director_instructions=director_instructions, 
                         persona_blocks=persona_blocks,
                         narrative_seed=narrative_seed,
                         mechanical_result=mechanical_result,
-                        foreshadowing_payoff=foreshadow_note # Pass payoff instruction
+                        foreshadowing_payoff=foreshadow_note,
+                        pacing_directive=current_pacing
                     ):
                         await websocket.send_text(json.dumps({"type": "story_chunk", "content": chunk}))
                         full_response += chunk
@@ -149,106 +204,55 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Log to history for future summarization
                     db.log_history(user_input, full_response)
 
-                    # Foreshadowing: Extract new seeds from the response
+                    # Post-generation parallel tasks
                     curr_loc_name = db.get_story_state("current_location") or "Unknown"
-                    foreshadowing.extract_seeds(full_response, curr_loc_name)
-
-                    # Canon Checker: Validate world-building consistency
-                    claims = canon_checker.extract_claims(full_response)
+                    
+                    post_tasks = [
+                        foreshadowing.extract_seeds(full_response, curr_loc_name),
+                        canon_checker.extract_claims(full_response),
+                        social_engine.update_social_state(user_input, full_response),
+                        music.detect_mood(full_response)
+                    ]
+                    
+                    post_results = await asyncio.gather(*post_tasks)
+                    
+                    # Canon check results (Phase 2)
+                    claims = post_results[1]
                     if claims:
-                        contradictions = canon_checker.check_for_contradictions(claims, facts)
+                        contradictions = await canon_checker.check_for_contradictions(claims, facts)
                         if contradictions:
                             for c in contradictions:
                                 await websocket.send_text(json.dumps({"type": "info", "content": f"Canon Warning: {c['violation']}"}))
-                                await websocket.send_text(json.dumps({"type": "debug", "content": f"Contradiction: {c['claim']} violates {c['violation']}"}))
-                    
-                    # Quest Evaluation (Check for completed objectives)
-                    quest_updates = director.evaluate_quest_progress(full_response)
-                    for update in quest_updates:
-                        db.update_objective_status(update['objective_id'], update['status'])
-                        await websocket.send_text(json.dumps({"type": "info", "content": f"Objective update: {update['status']}"}))
 
-                    # Get location ID for snapshot
-                    curr_loc_name = db.get_story_state("current_location")
+                    # Music results
+                    mood = post_results[3]
+                    if db.get_history_count() % 3 == 0 or plan['new_location']:
+                        track = music.select_track(mood)
+                        if track:
+                            file_path = track['file_path']
+                            url = f"/music_examples/{os.path.basename(file_path)}" if "musicExamples" in file_path else f"/gen_assets/{os.path.basename(file_path)}"
+                            await websocket.send_text(json.dumps({"type": "music_event", "url": url, "mood": mood, "filename": track['filename']}))
+
+                    # Research Check
+                    if plan['needs_research']:
+                        await websocket.send_text(json.dumps({"type": "info", "content": f"Director suggests research mission: '{plan['research_theme']}'"}))
+                        await researcher.perform_research_injection(plan['research_theme'], context=full_response)
+                        await websocket.send_text(json.dumps({"type": "info", "content": f"Researcher injected new inspiration for '{plan['research_theme']}'."}))
+
+                    # Initiative Check (Proactive DM)
+                    if intent in ['CONTINUE', 'EMPTY'] and not plan['new_location'] and not plan['quest_updates']:
+                        # If nothing happened, trigger initiative
+                        initiative = await director.generate_initiative(recent_history, active_threads)
+                        await websocket.send_text(json.dumps({"type": "info", "content": "Director Initiative Triggered."}))
+                        await websocket.send_text(json.dumps({"type": "story_chunk", "content": f"\n\n[SUDDEN EVENT]: {initiative}"}))
+                        db.log_history("DIRECTOR_INITIATIVE", initiative)
+
+                    # Commit Snapshot
                     loc_id = None
                     if curr_loc_name:
                         loc_obj = db.get_location_by_name(curr_loc_name)
                         loc_id = loc_obj['id'] if loc_obj else None
-
-                    # Commit Snapshot (Narrative Version Control)
-                    session_id = "default_session" # Future: dynamic sessions
-                    db.commit_snapshot(session_id, user_input, full_response, narrative_seed, loc_id)
-                    
-                    # Social Layer: Update relationships based on interaction
-                    social_engine.update_social_state(user_input, full_response)
-
-                    # Adventure Arcs: Check for milestone completion
-                    if director.evaluate_milestone_progress(full_response):
-                        idx = db.get_current_milestone_index()
-                        arc = db.get_active_arc()
-                        if arc and idx < len(arc['milestones']) - 1:
-                            db.set_current_milestone_index(idx + 1)
-                            new_milestone = arc['milestones'][idx + 1]
-                            await websocket.send_text(json.dumps({
-                                "type": "info", 
-                                "content": f"Milestone Achieved! Next Chapter: {new_milestone['name']}"
-                            }))
-                            # Trigger a special summary for chapter transition
-                            summarizer.update_narrative_seed()
-                        else:
-                            await websocket.send_text(json.dumps({"type": "info", "content": "Adventure Arc Completed!"}))
-
-                    # Environment Detection & Generation (Every turn)
-                    recent_history = db.get_recent_history(limit=5)
-                    loc_name, loc_desc, rel_to, direction = director.identify_location(user_input, recent_history)
-                    
-                    # Music Orchestration (Every 3 turns or on location change)
-                    if db.get_history_count() % 3 == 0 or loc_name:
-                        mood = music.detect_mood(full_response)
-                        track = music.select_track(mood)
-                        if track:
-                            # Map file path to mounted URL
-                            file_path = track['file_path']
-                            url = None
-                            if "musicExamples" in file_path:
-                                url = f"/music_examples/{os.path.basename(file_path)}"
-                            elif "generated_assets" in file_path:
-                                url = f"/gen_assets/{os.path.basename(file_path)}"
-                            
-                            if url:
-                                await websocket.send_text(json.dumps({
-                                    "type": "music_event", 
-                                    "url": url, 
-                                    "mood": mood, 
-                                    "filename": track['filename']
-                                }))
-
-                    if loc_name:
-                        prev_loc = db.get_story_state("current_location")
-                        if loc_name != prev_loc:
-                            # Use world engine to place it
-                            world.resolve_new_location(loc_name, loc_desc, relative_to_name=rel_to, direction=direction)
-                            db.set_story_state("current_location", loc_name)
-                            # Update player position
-                            world.move_entity("player", 0, loc_name)
-                            
-                            env_url = vision.generate_environment(loc_name, loc_desc)
-                            await websocket.send_text(json.dumps({"type": "scene_update", "location": loc_name, "url": env_url}))
-
-                    # Trigger periodic summarization (every 10 turns)
-                    if db.get_history_count() % 10 == 0:
-                        summarizer.update_narrative_seed()
-                        await websocket.send_text(json.dumps({"type": "info", "content": "Narrative summary updated."}))
-
-                        # ALSO check for narrative gaps and trigger research if needed
-                        recent_history = db.get_recent_history(limit=5)
-                        active_threads = db.get_active_plot_threads()
-                        needs_research, theme = director.check_narrative_gaps(recent_history, active_threads)
-                        
-                        if needs_research:
-                            await websocket.send_text(json.dumps({"type": "info", "content": f"Director suggests research mission: '{theme}'"}))
-                            researcher.perform_research_injection(theme, context=full_response)
-                            await websocket.send_text(json.dumps({"type": "info", "content": f"Researcher injected new inspiration for '{theme}'."}))
+                    db.commit_snapshot("default_session", user_input, full_response, narrative_seed, loc_id)
 
                     # Parse and generate audio
                     dialogue_lines = parser.parse_dialogue(full_response)
@@ -256,10 +260,14 @@ async def websocket_endpoint(websocket: WebSocket):
                         voice_model = db.get_character_voice(speaker)
                         audio_path = tts.generate_audio(text, speaker, voice_model)
                         if audio_path:
-                            # Send URL to client for playback
                             audio_url = f"/audio/{os.path.basename(audio_path)}"
                             await websocket.send_text(json.dumps({"type": "audio_event", "url": audio_url, "speaker": speaker}))
-                            
+
+                    # Trigger periodic summarization (every 10 turns)
+                    if db.get_history_count() % 10 == 0:
+                        await summarizer.update_narrative_seed()
+                        await websocket.send_text(json.dumps({"type": "info", "content": "Narrative summary updated."}))
+
             elif message["type"] == "add_character":
                 char_data = message["content"]
                 db.add_character(

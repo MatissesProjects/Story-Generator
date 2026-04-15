@@ -47,10 +47,9 @@ def add_character_vector(name, description, traits, char_id):
         ids=[f"char_{char_id}"]
     )
 
-def search_semantic(query, n_results=3, threshold=0.5):
+def search_semantic_with_scores(query, n_results=3, threshold=0.5):
     """
-    Searches both collections for semantically similar entries.
-    Returns a list of strings ready for prompt injection.
+    Searches both collections and returns (fact, similarity_score).
     """
     results = []
     
@@ -69,20 +68,18 @@ def search_semantic(query, n_results=3, threshold=0.5):
     # Process lore results
     if lore_results['distances'] and lore_results['distances'][0]:
         for i, distance in enumerate(lore_results['distances'][0]):
-            # distance is 1 - cosine_similarity for 'cosine' space
-            # smaller distance = more similar
-            similarity = 1 - distance
+            similarity = 1.0 - distance
             if similarity >= threshold:
                 doc = lore_results['documents'][0][i]
-                results.append(f"LORE (Semantic): {doc}")
+                results.append((f"LORE (Semantic): {doc}", similarity))
                 
     # Process character results
     if char_results['distances'] and char_results['distances'][0]:
         for i, distance in enumerate(char_results['distances'][0]):
-            similarity = 1 - distance
+            similarity = 1.0 - distance
             if similarity >= threshold:
                 doc = char_results['documents'][0][i]
-                results.append(f"CHARACTER (Semantic): {doc}")
+                results.append((f"CHARACTER (Semantic): {doc}", similarity))
                 
     return results
 
@@ -92,7 +89,7 @@ if __name__ == "__main__":
     test_query = "What do we know about dark realms?"
     add_lore_vector("The Abyss", "A terrifying dimension of pure shadow and cold.", 999)
     
-    semantic_matches = search_semantic(test_query)
+    semantic_matches = search_semantic_with_scores(test_query)
     print(f"Results for '{test_query}':")
-    for match in semantic_matches:
-        print(f"- {match}")
+    for match, score in semantic_matches:
+        print(f"- {match} (Score: {score:.2f})")
