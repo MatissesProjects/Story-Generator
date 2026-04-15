@@ -32,7 +32,7 @@ def evaluate_state(user_input, recent_history=None):
     
     return instruction
 
-def evaluate_quest_progress(history_text):
+async def evaluate_quest_progress(history_text):
     """
     Uses the LLM to check if any quest objectives were met in the recent history.
     Returns a list of (quest_id, objective_id, status) updates.
@@ -62,9 +62,7 @@ If no progress was made, reply with JSON: {{"updates": []}}
 BE CONSERVATIVE. Only mark as completed if it clearly happened in the text.
 REPLY ONLY IN JSON.]
 """
-    response = ""
-    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
-        response += chunk
+    response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         
     try:
         clean_json = response.strip()
@@ -79,7 +77,7 @@ REPLY ONLY IN JSON.]
         print(f"Director Error (evaluate_quest_progress): {e}. Raw: {response}")
         return []
 
-def evaluate_milestone_progress(history_text):
+async def evaluate_milestone_progress(history_text):
     """
     Checks if the current active arc milestone has been completed.
     """
@@ -108,9 +106,7 @@ Else, reply with JSON: {{"completed": false}}
 
 REPLY ONLY IN JSON.]
 """
-    response = ""
-    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
-        response += chunk
+    response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         
     try:
         clean_json = response.strip()
@@ -147,7 +143,7 @@ def get_persona_blocks(user_input):
                 
     return persona_blocks
 
-def check_narrative_gaps(recent_history, active_threads):
+async def check_narrative_gaps(recent_history, active_threads):
     """
     Uses the LLM to analyze if the story has stalled or become repetitive.
     Returns (needs_research, suggested_theme)
@@ -170,9 +166,7 @@ If the story needs a "crazy new idea" or fresh lore to stay interesting, reply w
 
 REPLY ONLY IN JSON.]
 """
-    response = ""
-    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
-        response += chunk
+    response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         
     try:
         # Basic JSON extraction
@@ -188,10 +182,10 @@ REPLY ONLY IN JSON.]
         print(f"Director Error (parsing JSON): {e}. Raw: {response}")
         return False, ""
 
-def identify_location(user_input, recent_history):
+async def identify_location(user_input, recent_history):
     """
     Uses the LLM to identify if the story has moved to a new location.
-    Returns (location_name, description) or (None, None).
+    Returns (location_name, description, relative_to, direction) or (None, None, None, None).
     """
     history_text = "\n".join([f"P: {h['user_input']}\nS: {h['assistant_response']}" for h in recent_history[-3:]])
     
@@ -204,19 +198,17 @@ RECENT HISTORY:
 NEW INPUT:
 "{user_input}"
 
-If the location has changed or is explicitly named for the first time, reply with JSON: {
+If the location has changed or is explicitly named for the first time, reply with JSON: {{
     "location": "Name of Location", 
     "description": "Brief atmospheric description",
     "relative_to": "Name of a previous location if known, else null",
     "direction": "north/south/east/west/etc if implied, else null"
-}
-If the location is the same as before or unclear, reply with JSON: {"location": null, "description": null, "relative_to": null, "direction": null}
+}}
+If the location is the same as before or unclear, reply with JSON: {{"location": null, "description": null, "relative_to": null, "direction": null}}
 
 REPLY ONLY IN JSON.]
 """
-    response = ""
-    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
-        response += chunk
+    response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         
     try:
         clean_json = response.strip()
@@ -230,6 +222,61 @@ REPLY ONLY IN JSON.]
     except Exception as e:
         print(f"Director Error (identify_location): {e}. Raw: {response}")
         return None, None, None, None
+
+async def generate_action_plan(user_input, recent_history, active_threads, active_quests):
+    """
+    Analyzes the state and generates a structured list of required module actions.
+    This coordinates parallel modules.
+    """
+    plan = {
+        "needs_research": False,
+        "research_theme": "",
+        "quest_updates": [],
+        "milestone_completed": False,
+        "new_location": None
+    }
+    
+    # Run evaluations in parallel
+    results = await asyncio.gather(
+        check_narrative_gaps(recent_history, active_threads),
+        evaluate_quest_progress(user_input), # Note: evaluate_quest_progress uses full text in original, but here we use input
+        evaluate_milestone_progress(user_input),
+        identify_location(user_input, recent_history)
+    )
+    
+    plan["needs_research"], plan["research_theme"] = results[0]
+    plan["quest_updates"] = results[1]
+    plan["milestone_completed"] = results[2]
+    loc_name, loc_desc, rel_to, direction = results[3]
+    if loc_name:
+        plan["new_location"] = {"name": loc_name, "desc": loc_desc, "rel_to": rel_to, "direction": direction}
+        
+    return plan
+
+async def generate_initiative(recent_history, active_threads):
+    """
+    Generates a proactive story event to move the plot forward when it stalls.
+    """
+    history_text = "\n".join([f"P: {h['user_input']}\nS: {h['assistant_response']}" for h in recent_history[-5:]])
+    threads_text = "\n".join([f"- {t['description']}" for t in active_threads])
+    
+    prompt = f"""
+[SYSTEM: You are the Proactive DM. The story has reached a lull. Your goal is to generate a SUDDEN, INTERESTING EVENT that forces the player to react.
+
+STORY HISTORY:
+{history_text}
+
+ACTIVE PLOT THREADS:
+{threads_text}
+
+Instructions:
+1. Pick one of the active plot threads or a character relationship.
+2. Create a sudden interruption, a new discovery, or a direct confrontation.
+3. Be dramatic and high-stakes.
+
+REPLY ONLY WITH THE EVENT DESCRIPTION.]
+"""
+    return await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
 
 if __name__ == "__main__":
     # Test

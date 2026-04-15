@@ -1,8 +1,10 @@
 import db
 import llm
 import json
+import asyncio
+import config
 
-def analyze_interaction(user_input, response_text, character_name):
+async def analyze_interaction(user_input, response_text, character_name):
     """
     Uses the LLM to analyze the social impact of an interaction on a specific character.
     Returns (delta_trust, delta_fear, delta_affection, event_description)
@@ -31,9 +33,7 @@ Reply ONLY with a JSON object:
 }}
 ]
 """
-    response = ""
-    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
-        response += chunk
+    response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         
     try:
         clean_json = response.strip()
@@ -53,12 +53,13 @@ Reply ONLY with a JSON object:
         print(f"SocialEngine Error (analyze_interaction): {e}. Raw: {response}")
         return 0, 0, 0, "Analysis failed."
 
-def update_social_state(user_input, response_text):
+async def update_social_state(user_input, response_text):
     """
     Identifies involved characters and updates their relationships with the player.
     """
     all_entities = db.get_all_entities()
     # Simple check: if a character name is in the response, analyze them
+    analysis_tasks = []
     for entity in all_entities:
         if entity.lower() in response_text.lower() or entity.lower() in user_input.lower():
             # Get character ID
@@ -67,10 +68,19 @@ def update_social_state(user_input, response_text):
                 char = char_results[0]
                 char_id = char['id']
                 
-                dt, df, da, desc = analyze_interaction(user_input, response_text, entity)
-                if dt != 0 or df != 0 or da != 0:
-                    db.update_relationship(0, char_id, dt, df, da, desc)
-                    print(f"Social: Updated relationship with {entity}. Trust: {dt}, Fear: {df}, Affection: {da}")
+                # We can't easily gather these here because update_relationship is synchronous DB call
+                # But we can gather the analysis results
+                analysis_tasks.append((entity, char_id, analyze_interaction(user_input, response_text, entity)))
+
+    if analysis_tasks:
+        entities, char_ids, tasks = zip(*analysis_tasks)
+        results = await asyncio.gather(*tasks)
+        
+        for i in range(len(results)):
+            dt, df, da, desc = results[i]
+            if dt != 0 or df != 0 or da != 0:
+                db.update_relationship(0, char_ids[i], dt, df, da, desc)
+                print(f"Social: Updated relationship with {entities[i]}. Trust: {dt}, Fear: {df}, Affection: {da}")
 
 if __name__ == "__main__":
     # Test

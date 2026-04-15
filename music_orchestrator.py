@@ -20,7 +20,7 @@ class MusicOrchestrator:
             rv = cur.fetchall()
             return (rv[0] if rv else None) if one else rv
 
-    def detect_mood(self, story_text):
+    async def detect_mood(self, story_text):
         """
         Uses the LLM to detect the emotional mood of the current story segment.
         """
@@ -40,11 +40,7 @@ CATEGORIES:
 
 REPLY ONLY WITH THE CATEGORY NAME.]
 """
-        mood = ""
-        for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
-            mood += chunk
-            
-        return mood.strip()
+        return await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
 
     def select_track(self, mood, recent_tracks=None):
         """

@@ -27,7 +27,7 @@ if not os.path.exists(config.ENVIRONMENTS_DIR):
 if not os.path.exists(config.MAP_TILES_DIR):
     os.makedirs(config.MAP_TILES_DIR)
 
-def stylize_prompt(character_name, description, traits):
+async def stylize_prompt(character_name, description, traits):
     """
     Uses the LLM to turn raw character details into a high-quality SD prompt.
     """
@@ -45,13 +45,9 @@ Example: "Hyperrealistic digital portrait, battle-worn knight, scarred face, glo
 
 Provide ONLY the prompt string.]
 """
-    sd_prompt = ""
-    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
-        sd_prompt += chunk
-        
-    return sd_prompt.strip().strip('"').strip("'")
+    return await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
 
-def generate_portrait(name, description, traits):
+async def generate_portrait(name, description, traits):
     """
     Generates a portrait for a character and saves it to the static directory.
     Returns the URL path of the generated image.
@@ -66,7 +62,7 @@ def generate_portrait(name, description, traits):
     print(f"Vision Engine: Generating portrait for {name}...")
     
     # Get a good prompt
-    final_prompt = stylize_prompt(name, description, traits)
+    final_prompt = await stylize_prompt(name, description, traits)
     print(f"Vision Engine: Final Prompt: {final_prompt}")
     
     # Generate
@@ -79,7 +75,7 @@ def generate_portrait(name, description, traits):
     
     return f"/static/portraits/{safe_name}.png"
 
-def stylize_environment_prompt(location_name, description):
+async def stylize_environment_prompt(location_name, description):
     """
     Uses the LLM to turn location details into a high-quality SD prompt.
     """
@@ -96,13 +92,9 @@ Example: "Epic concept art, ancient stone ruins, overgrown with glowing vines, m
 
 Provide ONLY the prompt string.]
 """
-    sd_prompt = ""
-    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
-        sd_prompt += chunk
-        
-    return sd_prompt.strip().strip('"').strip("'")
+    return await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
 
-def generate_environment(location_name, description):
+async def generate_environment(location_name, description):
     """
     Generates an environment image and saves it to the static directory.
     Returns the URL path.
@@ -116,7 +108,7 @@ def generate_environment(location_name, description):
 
     print(f"Vision Engine: Generating environment for {location_name}...")
     
-    final_prompt = stylize_environment_prompt(location_name, description)
+    final_prompt = await stylize_environment_prompt(location_name, description)
     print(f"Vision Engine: Final Environment Prompt: {final_prompt}")
     
     # Generate (landscape-ish if possible, though SDXL Turbo likes 512x512 or 1024x1024)
@@ -128,7 +120,7 @@ def generate_environment(location_name, description):
     
     return f"/static/environments/{safe_name}.png"
 
-def stylize_map_tile_prompt(biome_type):
+async def stylize_map_tile_prompt(biome_type):
     """
     Uses the LLM to turn a biome type into a high-quality SD map tile prompt.
     """
@@ -144,13 +136,9 @@ Example: "Top-down cartography map tile, lush temperate forest, dense green cano
 
 Provide ONLY the prompt string.]
 """
-    sd_prompt = ""
-    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
-        sd_prompt += chunk
-        
-    return sd_prompt.strip().strip('"').strip("'")
+    return await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
 
-def generate_map_tile(biome_type):
+async def generate_map_tile(biome_type):
     """
     Generates a map tile image and saves it to the static directory.
     Returns the URL path.
@@ -164,7 +152,7 @@ def generate_map_tile(biome_type):
 
     print(f"Vision Engine: Generating map tile for {biome_type}...")
     
-    final_prompt = stylize_map_tile_prompt(biome_type)
+    final_prompt = await stylize_map_tile_prompt(biome_type)
     print(f"Vision Engine: Final Tile Prompt: {final_prompt}")
     
     # Generate

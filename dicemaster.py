@@ -5,7 +5,7 @@ import json
 def roll_dice(sides=20):
     return random.randint(1, sides)
 
-def determine_dc(action, context_facts):
+async def determine_dc(action, context_facts):
     """
     Uses the LLM to set a Difficulty Class (DC) and decide which dice to use.
     """
@@ -33,9 +33,7 @@ DC GUIDELINES:
 Reply ONLY with a JSON object: {{"dc": 15, "sides": 20, "reason": "Brief explanation"}}
 ]
 """
-    response = ""
-    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
-        response += chunk
+    response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         
     try:
         clean_json = response.strip()
@@ -50,12 +48,12 @@ Reply ONLY with a JSON object: {{"dc": 15, "sides": 20, "reason": "Brief explana
         print(f"DiceMaster Error (determine_dc): {e}. Raw: {response}")
         return 10, 20, "Standard difficulty"
 
-def perform_hidden_check(action, context_facts):
+async def perform_hidden_check(action, context_facts):
     """
     Executes a full hidden roll against a procedurally determined DC and dice type.
     Returns (success, roll, dc, sides, reason)
     """
-    dc, sides, reason = determine_dc(action, context_facts)
+    dc, sides, reason = await determine_dc(action, context_facts)
     roll = roll_dice(sides)
     success = roll >= dc
     

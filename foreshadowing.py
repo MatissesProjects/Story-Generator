@@ -2,7 +2,7 @@ import db
 import llm
 import json
 
-def extract_seeds(assistant_response, current_location="Unknown"):
+async def extract_seeds(assistant_response, current_location="Unknown"):
     """
     Analyzes the AI response for minor, interesting details that could be foreshadowing seeds.
     """
@@ -33,9 +33,7 @@ Reply ONLY with a JSON object:
 If no good seeds are found, return an empty list.
 REPLY ONLY IN JSON.]
 """
-    response = ""
-    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
-        response += chunk
+    response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         
     try:
         clean_json = response.strip()

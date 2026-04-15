@@ -7,21 +7,23 @@ class WorldEngine:
     def __init__(self):
         self.grid_size = 100 # Arbitrary unit
 
-    def resolve_new_location(self, name, description, relative_to_name=None, direction=None):
+    async def resolve_new_location(self, name, description, relative_to_name=None, direction=None):
         """
-        Determines where a new location should be placed on the 2D map.
-        If relative_to_name is provided, it tries to place it in the specified direction.
-        Otherwise, it places it at (0,0) or a random nearby spot.
+        Determines where a new location should be placed on the 2D map and detects its physical properties.
         """
         existing = db.get_location_by_name(name)
         if existing:
+            # Update last visited
+            db.set_entity_position("player", 0, existing['id'])
             return existing['id']
 
         x, y = 0, 0
+        base_elevation = 0
         if relative_to_name:
             base_loc = db.get_location_by_name(relative_to_name)
             if base_loc:
                 bx, by = base_loc['x'], base_loc['y']
+                base_elevation = base_loc.get('elevation', 0)
                 
                 # Directional offsets
                 offset = self.grid_size
@@ -42,34 +44,52 @@ class WorldEngine:
             # If it's the first location, put it at 0,0
             all_locs = db.get_all_locations()
             if all_locs:
-                # Find a spot near the center of gravity or just random offset from the first one
                 base = all_locs[0]
                 x = base['x'] + random.randint(-self.grid_size, self.grid_size)
                 y = base['y'] + random.randint(-self.grid_size, self.grid_size)
+                base_elevation = base.get('elevation', 0)
 
-        # Detect biome via LLM
-        biome = self.detect_biome(name, description)
+        # Detect physical properties via LLM
+        props = await self.detect_physical_properties(name, description, base_elevation)
         
-        loc_id = db.add_location(name, description, x, y, biome)
+        loc_id = db.add_location(
+            name, description, x, y, 
+            biome_type=props.get('biome', 'Plain'),
+            elevation=props.get('elevation', 0),
+            climate=props.get('climate', 'Temperate')
+        )
         return loc_id
 
-    def detect_biome(self, name, description):
+    async def detect_physical_properties(self, name, description, base_elevation):
         """
-        Uses the LLM to categorize the location into a biome type.
+        Uses the LLM to categorize the location's biome, elevation, and climate.
         """
         prompt = f"""
-[SYSTEM: You are the Cartographer. Categorize the following location into one of these biomes: 
-'Forest', 'Mountain', 'Plain', 'Desert', 'Tundra', 'Swamp', 'Ocean', 'Urban', 'Underground', 'Space'.
+[SYSTEM: You are the Physical World Architect. Analyze the following location and determine its physical properties.
 
 LOCATION: {name}
 DESCRIPTION: {description}
+NEARBY ELEVATION: {base_elevation}
 
-REPLY ONLY WITH THE BIOME NAME.]
+Reply ONLY with a JSON object:
+{{
+    "biome": "Forest/Mountain/Plain/Desert/Tundra/Swamp/Ocean/Urban/Underground/Space",
+    "elevation": -100 to 1000 (relative to sea level 0),
+    "climate": "Arctic/Temperate/Tropical/Arid/Volcanic/Void",
+    "connectivity_score": 0.0 to 1.0 (How easy is it to travel through?)
+}}
+]
 """
-        biome = ""
-        for chunk in llm.generate_story_segment(prompt):
-            biome += chunk
-        return biome.strip()
+        response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
+        try:
+            clean_json = response.strip()
+            if "```json" in clean_json:
+                clean_json = clean_json.split("```json")[1].split("```")[0].strip()
+            elif "```" in clean_json:
+                clean_json = clean_json.split("```")[1].split("```")[0].strip()
+            return json.loads(clean_json)
+        except Exception:
+            return {"biome": "Plain", "elevation": 0, "climate": "Temperate", "connectivity_score": 0.5}
 
     def move_entity(self, entity_type, entity_id, location_name):
         """
