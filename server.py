@@ -19,6 +19,7 @@ import social_engine
 import foreshadowing
 import canon_checker
 import simulation_manager
+import atmosphere_engine
 import config
 import os
 import json
@@ -32,6 +33,7 @@ db.init_db()
 
 music = music_orchestrator.MusicOrchestrator()
 world = world_engine.WorldEngine()
+atmosphere = atmosphere_engine.AtmosphereEngine()
 
 # Mount the static directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -50,7 +52,13 @@ gen_assets = os.path.join(config.AUDIO_SEQUENCER_PATH, "generated_assets")
 if os.path.exists(gen_assets):
     app.mount("/gen_assets", StaticFiles(directory=gen_assets), name="gen_assets")
 
-# Mount the audio output directory so it can be accessed via HTTP
+# Mount Ambiance if it exists
+ambiance_path = os.path.join(config.AUDIO_SEQUENCER_PATH, "ambiance")
+if os.path.exists(ambiance_path):
+    app.mount("/ambiance", StaticFiles(directory=ambiance_path), name="ambiance")
+
+# Mount the audio output directory
+ so it can be accessed via HTTP
 if not os.path.exists(config.AUDIO_OUTPUT_DIR):
     os.makedirs(config.AUDIO_OUTPUT_DIR)
 app.mount("/audio", StaticFiles(directory=config.AUDIO_OUTPUT_DIR), name="audio")
@@ -236,7 +244,8 @@ async def websocket_endpoint(websocket: WebSocket):
                         foreshadowing.extract_seeds(full_response, curr_loc_name),
                         canon_checker.extract_claims(full_response),
                         social_engine.update_social_state(user_input, full_response),
-                        music.detect_mood(full_response)
+                        music.detect_mood(full_response),
+                        atmosphere.detect_atmosphere(full_response, curr_loc_name)
                     ]
                     
                     post_results = await asyncio.gather(*post_tasks)
@@ -257,6 +266,16 @@ async def websocket_endpoint(websocket: WebSocket):
                             file_path = track['file_path']
                             url = f"/music_examples/{os.path.basename(file_path)}" if "musicExamples" in file_path else f"/gen_assets/{os.path.basename(file_path)}"
                             await websocket.send_text(json.dumps({"type": "music_event", "url": url, "mood": mood, "filename": track['filename']}))
+
+                    # Atmosphere update
+                    atmos_data = post_results[4]
+                    await websocket.send_text(json.dumps({"type": "atmosphere_update", "content": atmos_data}))
+
+                    # Ambiance loop selection
+                    amb_filename = atmosphere.get_ambiance_filename(atmos_data.get('ambiance', 'silence'))
+                    if amb_filename:
+                        amb_url = f"/ambiance/{amb_filename}"
+                        await websocket.send_text(json.dumps({"type": "ambiance_event", "url": amb_url}))
 
                     # Research injection
                     if plan['needs_research']:

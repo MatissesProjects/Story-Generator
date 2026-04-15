@@ -4,6 +4,7 @@ let currentStoryText = "";
 const audioQueue = [];
 let isPlaying = false;
 let currentMusic = null;
+let currentAmbiance = null;
 let nextMusic = null;
 
 // DOM Elements
@@ -347,6 +348,17 @@ function handleMessage(message) {
             updateMusic(message.url);
             break;
 
+        case 'atmosphere_update':
+            const atmos = message.content;
+            addLog("Environment", `Lighting: ${atmos.lighting}, Weather: ${atmos.weather}`);
+            applyAtmosphere(atmos);
+            break;
+
+        case 'ambiance_event':
+            addLog("Ambiance", "Changing background ambiance...");
+            updateAmbiance(message.url);
+            break;
+
         case 'progress':
             statusIndicator.innerText = message.content;
             if (message.level === 'success') {
@@ -608,6 +620,65 @@ addPlotThreadForm.onsubmit = (e) => {
     plotThreadsEl.appendChild(li);
     addPlotThreadForm.reset();
 };
+
+function applyAtmosphere(atmos) {
+    const overlay = document.getElementById('atmosphere-overlay');
+    if (!overlay) return;
+
+    // Apply Tint
+    overlay.style.backgroundColor = atmos.tint || 'rgba(0,0,0,0)';
+
+    // Apply Haptic (Screen Shake)
+    if (atmos.haptic && (atmos.haptic.toLowerCase().includes('rumble') || atmos.haptic.toLowerCase().includes('pulse') || atmos.haptic.toLowerCase().includes('shake'))) {
+        document.body.classList.add('shake');
+        setTimeout(() => {
+            document.body.classList.remove('shake');
+        }, 800);
+    }
+}
+
+function updateAmbiance(url) {
+    if (currentAmbiance && currentAmbiance.src.includes(url)) return;
+
+    const newAudio = new Audio(url);
+    newAudio.loop = true;
+    newAudio.volume = 0;
+    
+    if (currentAmbiance) {
+        fadeOut(currentAmbiance);
+    }
+
+    currentAmbiance = newAudio;
+    currentAmbiance.play().then(() => {
+        fadeIn(currentAmbiance, 0.3); // Ambiance slightly quieter than music
+    }).catch(e => console.warn("Ambiance autoplay blocked:", e));
+}
+
+function fadeIn(audio, targetVol = 0.5) {
+    let vol = 0;
+    const interval = setInterval(() => {
+        vol += 0.02;
+        if (vol >= targetVol) {
+            audio.volume = targetVol;
+            clearInterval(interval);
+        } else {
+            audio.volume = vol;
+        }
+    }, 100);
+}
+
+function fadeOut(audio) {
+    let vol = audio.volume;
+    const interval = setInterval(() => {
+        vol -= 0.02;
+        if (vol <= 0) {
+            audio.pause();
+            clearInterval(interval);
+        } else {
+            audio.volume = vol;
+        }
+    }, 100);
+}
 
 function jsonMsg(type, content) {
     return JSON.stringify({ type, content });
