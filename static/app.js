@@ -348,6 +348,10 @@ function handleMessage(message) {
             updateMusic(message.url);
             break;
 
+        case 'visual_update':
+            updateVisualStack(message.content);
+            break;
+
         case 'atmosphere_update':
             const atmos = message.content;
             addLog("Environment", `Lighting: ${atmos.lighting}, Weather: ${atmos.weather}`);
@@ -634,6 +638,25 @@ function applyAtmosphere(atmos) {
         setTimeout(() => {
             document.body.classList.remove('shake');
         }, 800);
+    }
+}
+
+function updateVisualStack(stack) {
+    const layers = {
+        'texture': document.getElementById('layer-texture'),
+        'environment': document.getElementById('layer-environment'),
+        'entity': document.getElementById('layer-entity'),
+        'overlay': document.getElementById('layer-overlay')
+    };
+
+    for (const [key, el] of Object.entries(layers)) {
+        const url = stack[key];
+        if (url) {
+            el.style.backgroundImage = `url('${url}')`;
+            el.style.opacity = (key === 'texture' ? 0.4 : (key === 'overlay' ? 0.3 : 1.0));
+        } else {
+            el.style.opacity = 0;
+        }
     }
 }
 
