@@ -1,86 +1,52 @@
-from duckduckgo_search import DDGS
 import llm
 import db
 import config
-import random
-
-async def optimize_query(theme, context=""):
-    """
-    Uses the LLM to transform a broad theme into a high-signal search query.
-    """
-    prompt = f"""
-[SYSTEM: You are the Research Optimizer. Your goal is to turn a simple story theme or concept into a high-signal search query that will find "weird facts," "niche lore," or "obscure science" to inspire a unique narrative turn.
-
-THEME: {theme}
-STORY CONTEXT: {context}
-
-Example Query: "weirdest bioluminescent survival strategies in extreme environments"
-Example Query: "obscure medieval laws regarding inheritance and ghosts"
-
-Provide ONLY the search query string. No quotes or extra text.]
-"""
-    optimized = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
-    return optimized.strip().strip('"').strip("'")
-
-def search_inspiration(theme_query):
-    """
-    Performs a web search to find weird facts, niche lore, or science for inspiration.
-    """
-    print(f"Researcher: Searching for inspiration on '{theme_query}'...")
-    with DDGS() as ddgs:
-        # Search for weird facts or obscure trivia
-        results = ddgs.text(f"weird obscure facts about {theme_query}", max_results=5)
-        
-    search_text = ""
-    for r in results:
-        search_text += f"Title: {r['title']}\nSnippet: {r['body']}\n\n"
-        
-    return search_text
-
-async def extract_narrative_hooks(search_results, current_context=""):
-    """
-    Uses the LLM to extract crazy narrative ideas from search results.
-    """
-    prompt = f"""
-I have found the following research results about a theme. 
-Your goal is to extract 2-3 "Unexpected Narrative Hooks" that are crazy, unique, and would make a story more interesting. 
-
-CURRENT STORY CONTEXT:
-{current_context}
-
-RESEARCH RESULTS:
-{search_results}
-
-FORMAT EACH HOOK AS:
-[HOOK]: A concise description of the idea and how it could be used.
-"""
-    
-    return await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
 
 async def perform_research_injection(theme, context=""):
     """
-    The full pipeline: Search -> Extract -> Save to Lore/Plots.
+    Uses the LLM to generate fresh, interesting lore or plot ideas based on a theme.
+    Automatically adds it to the database to inspire future turns.
     """
-    optimized_query = await optimize_query(theme, context)
-    print(f"Researcher: Optimized query: {optimized_query}")
+    prompt = f"""
+[SYSTEM: You are the Lead Researcher. The story needs fresh inspiration regarding the theme: '{theme}'.
+Analyze the current story context and provide a single, compelling factual claim or a new mysterious element that could be introduced.
+
+STORY CONTEXT:
+"{context}"
+
+Reply ONLY with the new lore/fact. Be specific, evocative, and consistent with the tone.
+Example: "The Order of the Sun actually worships the eclipse, and their temples are built to mirror the alignment of the planets."]
+"""
+    new_fact = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
     
-    results = search_inspiration(optimized_query)
-    hooks = await extract_narrative_hooks(results, context)
-    
-    # Simple parsing of the hooks (look for [HOOK])
-    hook_list = [h.strip() for h in hooks.split("[HOOK]:") if h.strip()]
-    
-    for hook in hook_list:
-        # Add to Lore
-        db.add_lore(f"Research: {theme}", hook)
-        # Also add as a plot thread for the Director to pick up
-        db.add_plot_thread(f"DEVELOP THIS IDEA: {hook}")
+    if new_fact:
+        # Add to lore as a 'research_injection'
+        db.add_lore(f"Research: {theme}", new_fact)
+        print(f"Researcher: Injected new lore for '{theme}': {new_fact}")
+        return new_fact
         
-    return hook_list
+    return None
+
+async def identify_research_topics(history_text):
+    """
+    Analyzes the story for missing details that could be fleshed out.
+    """
+    prompt = f"""
+[SYSTEM: You are the Research Director. Analyze the following story and identify one interesting concept, location, or group that hasn't been fully explained yet.
+
+STORY:
+"{history_text}"
+
+Reply with ONLY the name/theme of the topic.
+Example: "The history of the Crimson Keep"]
+"""
+    return await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
 
 if __name__ == "__main__":
-    # Test
-    print("Testing Researcher...")
-    ideas = perform_research_injection("deep sea bioluminescence")
-    for i in ideas:
-        print(f"Found Idea: {i}")
+    import asyncio
+    async def test():
+        print("Testing Researcher...")
+        fact = await perform_research_injection("Ancient ruins", "The player is exploring a desert.")
+        print(f"Fact: {fact}")
+    
+    asyncio.run(test())

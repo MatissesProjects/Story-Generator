@@ -10,13 +10,13 @@ async def analyze_interaction(user_input, response_text, character_name):
     Returns (delta_trust, delta_fear, delta_affection, event_description)
     """
     prompt = f"""
-[SYSTEM: You are the Social Analyst. Analyze the following interaction between the Player and {character_name}.
-Determine how this interaction affects {character_name}'s view of the player.
+[SYSTEM: You are the Social Layer Engine. Analyze the following interaction between the PLAYER and the character '{character_name}'.
+How did the player's input and the character's reaction affect their relationship?
 
-PLAYER ACTION/DIALOGUE:
+PLAYER INPUT:
 "{user_input}"
 
-STORY RESPONSE:
+AI RESPONSE:
 "{response_text}"
 
 SCORING RULES:
@@ -84,7 +84,11 @@ async def update_social_state(user_input, response_text):
 
 if __name__ == "__main__":
     # Test
-    print("Testing Social Engine...")
-    db.init_db()
-    db.add_character("Elara", "A kind healer", "Empathetic, Observant")
-    update_social_state("I give Elara a rare medicinal herb I found.", "Elara smiles warmly. 'This will save many lives, thank you.'")
+    import asyncio
+    async def test():
+        print("Testing Social Engine...")
+        db.init_db()
+        db.add_character("Elara", "A kind healer", "Empathetic, Observant")
+        await update_social_state("I give Elara a rare medicinal herb I found.", "Elara smiles warmly. 'This will save many lives, thank you.'")
+    
+    asyncio.run(test())

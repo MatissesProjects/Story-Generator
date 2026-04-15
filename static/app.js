@@ -346,6 +346,20 @@ function handleMessage(message) {
             addLog("Music", `Mood: ${message.mood} - Playing: ${message.filename}`);
             updateMusic(message.url);
             break;
+
+        case 'progress':
+            statusIndicator.innerText = message.content;
+            if (message.level === 'success') {
+                statusIndicator.style.color = '#4ade80';
+                setTimeout(() => {
+                    statusIndicator.style.color = '';
+                    statusIndicator.innerText = "Connected to Story Engine";
+                }, 3000);
+            } else {
+                statusIndicator.style.color = '#facc15'; // yellow/amber for progress
+            }
+            addLog("Progress", message.content);
+            break;
     }
 }
 

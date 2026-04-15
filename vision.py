@@ -165,9 +165,13 @@ async def generate_map_tile(biome_type):
 
 if __name__ == "__main__":
     # Test
-    print("Testing Vision Engine...")
-    test_portrait = generate_portrait("Malakar", "A shadowy assassin in a dark cloak", "Swift, Ruthless, Glowing Eyes")
-    print(f"Portrait generated at: {test_portrait}")
+    import asyncio
+    async def test():
+        print("Testing Vision Engine...")
+        test_portrait = await generate_portrait("Malakar", "A shadowy assassin in a dark cloak", "Swift, Ruthless, Glowing Eyes")
+        print(f"Portrait generated at: {test_portrait}")
+        
+        test_env = await generate_environment("The Whispering Woods", "A forest where the trees share secrets of the ancient kings. It is known for its eerie, rustling sounds.")
+        print(f"Environment generated at: {test_env}")
     
-    test_env = generate_environment("The Whispering Woods", "A forest where the trees share secrets of the ancient kings. It is known for its eerie, rustling sounds.")
-    print(f"Environment generated at: {test_env}")
+    asyncio.run(test())

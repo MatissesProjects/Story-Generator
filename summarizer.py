@@ -18,17 +18,17 @@ async def update_narrative_seed():
     current_seed = db.get_story_state("narrative_seed") or "The story has just begun."
     
     prompt = f"""
-Summarize the following story interaction into 3-5 key plot points that MUST be remembered for consistency. 
-Focus on major events, character changes, and discovered items. 
-Integrate these new points with the existing summary.
+[SYSTEM: You are the Narrative Summarizer. Your goal is to maintain a concise, high-level summary of the story's progress so far.
 
-EXISTING SUMMARY:
+CURRENT SUMMARY:
 {current_seed}
 
-NEW INTERACTION:
+RECENT EVENTS:
 {history_text}
 
 Provide the updated summary as a concise list or paragraph.
+Include key plot developments, discovered locations, and major character changes.
+REPLY ONLY WITH THE UPDATED SUMMARY.]
 """
     
     # Use a direct, non-streaming call for the summary
@@ -38,6 +38,10 @@ Provide the updated summary as a concise list or paragraph.
     print(f"Updated Narrative Seed: {full_summary.strip()[:100]}...")
 
 if __name__ == "__main__":
-    print("Testing Summarizer...")
-    # Add some dummy history if needed, then run
-    update_narrative_seed()
+    import asyncio
+    async def test():
+        print("Testing Summarizer...")
+        db.init_db()
+        await update_narrative_seed()
+    
+    asyncio.run(test())

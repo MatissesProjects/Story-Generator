@@ -7,39 +7,29 @@ async def validate_action(user_input, context_facts, inventory=None, stats=None)
     Validates if the user's action is logically possible within the story's world context.
     Returns (is_valid, reason)
     """
-    if not user_input.strip():
-        return True, ""
-
-    # Prepare a prompt for the 'Logic Validator'
-    context_str = "\n".join([f"- {f}" for f in context_facts])
-    
-    inv_str = "None"
-    if inventory:
-        inv_str = ", ".join([f"{i['item_name']} (x{i['quantity']})" for i in inventory])
-        
-    stats_str = "None"
-    if stats:
-        stats_str = ", ".join([f"{s['stat_name']}: {s['stat_value']}" for s in stats])
+    facts_text = "\n".join(context_facts)
+    inv_text = ", ".join([f"{i['item_name']} (x{i['quantity']})" for i in inventory]) if inventory else "Empty"
+    stats_text = ", ".join([f"{s['stat_name']}: {s['stat_value']}" for s in stats]) if stats else "None"
 
     prompt = f"""
-[SYSTEM: You are the Logic Validator for an interactive story. Your job is to ensure player actions are consistent with the established world lore, character abilities, and current inventory/stats.
-
-WORLD CONTEXT/LORE:
-{context_str}
-
-CHARACTER INVENTORY:
-{inv_str}
-
-CHARACTER STATS:
-{stats_str}
+[SYSTEM: You are the Logic Gatekeeper. Analyze the player's intended action against the known world lore and player state. 
+Is this action logically possible? 
 
 PLAYER ACTION:
 "{user_input}"
 
-RULES:
-1. If the action is possible given the lore and character state, reply with JSON: {{"valid": true, "reason": ""}}
-2. If the action is impossible (e.g., using an item you don't have, flying without wings, interacting with non-existent objects), reply with JSON: {{"valid": false, "reason": "A brief, immersive explanation of why it failed."}}
-3. Be firm but fair. If the lore is silent, assume it's possible.
+KNOWN WORLD LORE:
+{facts_text}
+
+PLAYER INVENTORY:
+{inv_text}
+
+PLAYER STATS:
+{stats_text}
+
+Instructions:
+1. If the action is possible, reply with JSON: {{"is_valid": true, "reason": ""}}
+2. If the action is impossible (e.g. using an item they don't have, teleporting without magic), reply with JSON: {{"is_valid": false, "reason": "Short explanation of why"}}
 
 REPLY ONLY IN JSON.]
 """
@@ -49,7 +39,6 @@ REPLY ONLY IN JSON.]
         
     try:
         # Attempt to parse the JSON from the LLM output
-        # Sometimes models wrap JSON in code blocks
         clean_json = response_text.strip()
         if "```json" in clean_json:
             clean_json = clean_json.split("```json")[1].split("```")[0].strip()
@@ -57,24 +46,16 @@ REPLY ONLY IN JSON.]
             clean_json = clean_json.split("```")[1].split("```")[0].strip()
             
         result = json.loads(clean_json)
-        return result.get("valid", True), result.get("reason", "")
+        return result.get("is_valid", True), result.get("reason", "")
     except Exception as e:
-        print(f"Validator Error (parsing JSON): {e}. Raw response: {response_text}")
-        # Fallback to true if validation fails to avoid blocking the story
-        return True, ""
+        print(f"Validator Error: {e}. Raw output: {response_text}")
+        return True, "" # Fail-safe: allow the action if parsing fails
 
 if __name__ == "__main__":
-    # Test
-    print("Testing Logic Validator...")
-    test_context = [
-        "LORE: This world has no magic. Magic is a myth.",
-        "CHARACTER: Player is a normal human with no special powers."
-    ]
+    import asyncio
+    async def test():
+        print("Testing Validator...")
+        is_valid, reason = await validate_action("I fly to the moon using my sandals.", ["The world has no magic."])
+        print(f"Valid: {is_valid}, Reason: {reason}")
     
-    # Test impossible action
-    is_valid, reason = validate_action("I cast a fireball at the guard.", test_context)
-    print(f"Action: 'I cast a fireball' -> Valid: {is_valid}, Reason: {reason}")
-    
-    # Test possible action
-    is_valid, reason = validate_action("I try to talk to the guard.", test_context)
-    print(f"Action: 'I talk to the guard' -> Valid: {is_valid}, Reason: {reason}")
+    asyncio.run(test())

@@ -2,6 +2,7 @@ import db
 import llm
 import json
 import random
+import config
 
 class WorldEngine:
     def __init__(self):
@@ -97,17 +98,17 @@ Reply ONLY with a JSON object:
         """
         loc = db.get_location_by_name(location_name)
         if not loc:
-            # If location doesn't exist, we might need to create it (though usually handled by identify_location)
             return False
             
         db.set_entity_position(entity_type, entity_id, loc['id'])
         return True
 
 if __name__ == "__main__":
-    print("Testing World Engine...")
-    we = WorldEngine()
-    loc_id = we.resolve_new_location("The Dusty Tavern", "A creaky old building full of travelers.")
-    print(f"Created location {loc_id} at (0,0)")
+    import asyncio
+    async def test():
+        print("Testing World Engine...")
+        we = WorldEngine()
+        loc_id = await we.resolve_new_location("The Dusty Tavern", "A creaky old building full of travelers.")
+        print(f"Created location {loc_id} at (0,0)")
     
-    loc_id2 = we.resolve_new_location("The Whispering Woods", "A dark and scary forest.", "The Dusty Tavern", "North")
-    print(f"Created location {loc_id2} relative to Tavern.")
+    asyncio.run(test())

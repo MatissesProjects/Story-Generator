@@ -1,25 +1,23 @@
 import db
 import llm
 import json
+import config
 
 async def extract_claims(text):
     """
     Uses the LLM to extract factual world-building claims from a story segment.
     """
     prompt = f"""
-[SYSTEM: You are the Canon Auditor. Your task is to identify and extract any new "World-Building Facts" or "Lore Assertions" made in the following text. 
+[SYSTEM: You are the Chronicler. Analyze the following story segment and extract any new factual claims about the world, its history, geography, or characters.
 
-A "Lore Assertion" is a statement that establishes a rule, a property of a species, a historical event, or a law of magic/physics.
-
-TEXT:
+STORY SEGMENT:
 "{text}"
 
 Reply ONLY with a JSON object containing a list of claims:
 {{
     "claims": [
-        "Dragons are immune to fire.",
-        "The Silver Order was founded 200 years ago.",
-        "Casting magic requires a focus crystal."
+        "The city of Aethelgard was built on a floating island.",
+        "The King has a secret twin brother."
     ]
 }}
 
@@ -45,26 +43,28 @@ async def check_for_contradictions(claims, context_lore):
     """
     Compares extracted claims against existing lore to find contradictions.
     """
-    if not claims or not context_lore:
+    if not claims:
         return []
-
-    lore_str = "\n".join([f"- {l}" for l in context_lore])
-    claims_str = "\n".join([f"- {c}" for c in claims])
-
+        
+    lore_text = "\n".join(context_lore)
+    claims_text = "\n".join([f"- {c}" for c in claims])
+    
     prompt = f"""
-[SYSTEM: You are the Lore Arbiter. Compare the "NEW CLAIMS" against the "ESTABLISHED CANON" and identify any direct contradictions.
+[SYSTEM: You are the Keeper of Canon. Compare the following NEW CLAIMS against the EXISTING LORE and identify any direct contradictions.
 
-ESTABLISHED CANON:
-{lore_str}
+EXISTING LORE:
+{lore_text}
 
 NEW CLAIMS:
-{claims_str}
+{claims_text}
 
-If a new claim contradicts established canon, explain why.
 Reply ONLY with a JSON object:
 {{
     "contradictions": [
-        {{"claim": "Dragons are immortal", "violation": "Established canon states dragons die after 500 years."}}
+        {{
+            "claim": "The city of Aethelgard is underground.",
+            "violation": "Existing lore states Aethelgard is a floating island."
+        }}
     ]
 }}
 
@@ -83,17 +83,15 @@ REPLY ONLY IN JSON.]
         result = json.loads(clean_json)
         return result.get("contradictions", [])
     except Exception as e:
-        print(f"CanonChecker Error (check_contradictions): {e}. Raw: {response}")
+        print(f"CanonChecker Error (check_for_contradictions): {e}. Raw: {response}")
         return []
 
 if __name__ == "__main__":
     # Test
-    print("Testing Canon Checker...")
-    text = "The Dragon King, being immortal, watched the centuries pass without aging."
-    lore = ["LORE: Dragons are powerful but finite; they usually live for about 500 years before passing away."]
-    
-    claims = extract_claims(text)
-    print(f"Extracted Claims: {claims}")
-    
-    violations = check_for_contradictions(claims, lore)
-    print(f"Violations: {violations}")
+    import asyncio
+    async def test():
+        print("Testing Canon Checker...")
+        claims = await extract_claims("The mountain of Karak is home to the last dragon, who sleeps in a bed of gold.")
+        print(f"Claims: {claims}")
+        
+    asyncio.run(test())

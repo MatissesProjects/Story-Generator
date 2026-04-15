@@ -4,7 +4,7 @@ import json
 import config
 import requests
 import os
-import winsound
+import pygame
 import argparse
 
 async def receive_messages(websocket, generator_host, generator_port):
@@ -34,9 +34,14 @@ async def receive_messages(websocket, generator_host, generator_port):
                         local_audio = os.path.join(config.AUDIO_OUTPUT_DIR, file_name)
                         with open(local_audio, 'wb') as f:
                             f.write(r.content)
-                        # Play it (try-except to avoid crash if audio device is busy or winsound fails)
+                        # Play it (try-except to avoid crash if audio device is busy or pygame fails)
                         try:
-                            winsound.PlaySound(local_audio, winsound.SND_FILENAME)
+                            if not pygame.mixer.get_init():
+                                pygame.mixer.init()
+                            sound = pygame.mixer.Sound(local_audio)
+                            sound.play()
+                            while pygame.mixer.get_busy():
+                                pygame.time.delay(100)
                         except Exception as playback_error:
                             print(f"\n[Playback Error]: {playback_error}")
                 except Exception as fetch_error:

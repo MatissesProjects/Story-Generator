@@ -1,6 +1,7 @@
 import db
 import llm
 import json
+import config
 
 async def extract_seeds(assistant_response, current_location="Unknown"):
     """
@@ -75,5 +76,9 @@ def check_for_payoff(recent_history):
 
 if __name__ == "__main__":
     # Test
-    print("Testing Foreshadowing Engine...")
-    extract_seeds("As you walk through the marketplace, an old man drops a strange silver coin with a hole in it. He doesn't notice and keeps walking.", "The Marketplace")
+    import asyncio
+    async def test():
+        print("Testing Foreshadowing Engine...")
+        await extract_seeds("As you walk through the marketplace, an old man drops a strange silver coin with a hole in it. He doesn't notice and keeps walking.", "The Marketplace")
+    
+    asyncio.run(test())

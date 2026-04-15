@@ -5,6 +5,7 @@ import world_engine
 import config
 import random
 import json
+import asyncio
 
 def evaluate_state(user_input, recent_history=None):
     """
@@ -239,7 +240,7 @@ async def generate_action_plan(user_input, recent_history, active_threads, activ
     # Run evaluations in parallel
     results = await asyncio.gather(
         check_narrative_gaps(recent_history, active_threads),
-        evaluate_quest_progress(user_input), # Note: evaluate_quest_progress uses full text in original, but here we use input
+        evaluate_quest_progress(user_input), 
         evaluate_milestone_progress(user_input),
         identify_location(user_input, recent_history)
     )

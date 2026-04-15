@@ -1,7 +1,26 @@
 import subprocess
 import os
-import winsound # Using built-in winsound for WAV playback on Windows
 import config
+
+# Use winsound on Windows, pygame elsewhere
+if os.name == 'nt':
+    import winsound
+    def play_audio(file_path):
+        if file_path and os.path.exists(file_path):
+            winsound.PlaySound(file_path, winsound.SND_FILENAME)
+else:
+    import pygame
+    def play_audio(file_path):
+        if file_path and os.path.exists(file_path):
+            if not pygame.mixer.get_init():
+                pygame.mixer.init()
+            try:
+                sound = pygame.mixer.Sound(file_path)
+                sound.play()
+                while pygame.mixer.get_busy():
+                    pygame.time.delay(100)
+            except Exception as e:
+                print(f"Error playing audio with pygame: {e}")
 
 # Path to the Piper executable and models
 PIPER_EXE = config.PIPER_EXE
@@ -48,25 +67,16 @@ def generate_audio(text, speaker_id, voice_model="en_US-lessac-medium.onnx"):
         if process.returncode == 0:
             return output_file
         else:
-            print(f"Piper error: {process.stderr.read()}")
+            print(f"Piper error: {process.stderr.read()}") # type: ignore
             return None
     except Exception as e:
         print(f"Error calling Piper: {e}")
         return None
 
-def play_audio(file_path):
-    """
-    Plays the generated WAV file using winsound.
-    """
-    if file_path and os.path.exists(file_path):
-        winsound.PlaySound(file_path, winsound.SND_FILENAME)
-
 if __name__ == "__main__":
     # Quick test if piper is installed
     print("Testing Piper TTS integration...")
     test_text = "Hello, I am a character in your story."
-    # Note: This will fail if piper is not in PATH or models are missing, 
-    # but the logic is sound for the integration.
     path = generate_audio(test_text, "test_voice")
     if path:
         print(f"Audio generated at {path}. Playing...")
