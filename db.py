@@ -41,6 +41,15 @@ def init_db():
             conn.execute("ALTER TABLE characters ADD COLUMN current_goal TEXT")
             conn.execute("ALTER TABLE characters ADD COLUMN current_task TEXT")
         
+        # Simple migration for 'relationships' table
+        cursor = conn.execute("PRAGMA table_info(relationships)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if 'base_trust' not in columns:
+            print("Migrating database: Adding base anchor columns to 'relationships'")
+            conn.execute("ALTER TABLE relationships ADD COLUMN base_trust INTEGER DEFAULT 0")
+            conn.execute("ALTER TABLE relationships ADD COLUMN base_fear INTEGER DEFAULT 0")
+            conn.execute("ALTER TABLE relationships ADD COLUMN base_affection INTEGER DEFAULT 0")
+
         conn.commit()
 
 def query_db(query, args=(), one=False):

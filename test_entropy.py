@@ -37,24 +37,35 @@ def setup_test_db():
     db.DB_PATH = old_path
 
 @pytest.mark.asyncio
-async def test_relationship_decay():
+async def test_relationship_decay_anchored():
     engine = entropy_engine.EntropyEngine()
     
-    # Run tick, which triggers decay
-    with patch('random.random', return_value=0.99): # Prevent lore mutation
+    chars = db.get_all_characters()
+    id_a = chars[0]['id']
+    id_b = chars[1]['id']
+    
+    # Set relationship with non-zero anchors (Best Friend style)
+    # Current: 20, Anchor: 10 -> Should decay towards 10
+    db.execute_db("UPDATE relationships SET trust=20, base_trust=10 WHERE char_a_id=? AND char_b_id=?", (id_a, id_b))
+    
+    with patch('random.random', return_value=0.99):
         await engine.run_tick(1)
         
     rels = db.get_all_relationships()
-    assert len(rels) == 1
     rel = rels[0]
     
-    # Initial was 10, -10, 20. Decay rate is 0.1
-    # 10 decays by max(1, 1) -> 9
-    # -10 decays by max(1, 1) -> -9
-    # 20 decays by max(1, 2) -> 18
-    assert rel['trust'] == 9
-    assert rel['fear'] == -9
-    assert rel['affection'] == 18
+    # Trust 20, Anchor 10, Diff 10. Decay 10% of 10 = 1. New = 19
+    assert rel['trust'] == 19
+    
+    # Run many ticks to ensure it stops at anchor
+    with patch('llm.async_generate_full_response', new_callable=AsyncMock) as mock_llm:
+        mock_llm.return_value = "Lore mutation ignored"
+        with patch('random.random', return_value=0.99): # Still keep mutation chance low just in case
+            for _ in range(50):
+                await engine.run_tick(1)
+        
+    rel = db.get_all_relationships()[0]
+    assert rel['trust'] == 10
 
 @pytest.mark.asyncio
 async def test_canon_lore_duel_retcon():

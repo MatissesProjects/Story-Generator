@@ -138,6 +138,9 @@ CREATE TABLE IF NOT EXISTS relationships (
     trust INTEGER DEFAULT 0,
     fear INTEGER DEFAULT 0,
     affection INTEGER DEFAULT 0,
+    base_trust INTEGER DEFAULT 0,
+    base_fear INTEGER DEFAULT 0,
+    base_affection INTEGER DEFAULT 0,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(char_a_id, char_b_id)
 );

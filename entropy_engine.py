@@ -20,7 +20,7 @@ class EntropyEngine:
         
     def decay_relationships(self):
         """
-        Moves all relationship scores slightly towards 0.
+        Moves all relationship scores slightly towards their base anchor values.
         """
         relationships = db.get_all_relationships()
         for rel in relationships:
@@ -28,10 +28,15 @@ class EntropyEngine:
             fear = rel['fear']
             affection = rel['affection']
             
-            # Decay towards 0
-            new_trust = self._decay_value(trust)
-            new_fear = self._decay_value(fear)
-            new_affection = self._decay_value(affection)
+            # Anchors
+            base_t = rel['base_trust']
+            base_f = rel['base_fear']
+            base_a = rel['base_affection']
+            
+            # Decay towards anchors
+            new_trust = self._decay_towards_anchor(trust, base_t)
+            new_fear = self._decay_towards_anchor(fear, base_f)
+            new_affection = self._decay_towards_anchor(affection, base_a)
             
             if new_trust != trust or new_fear != fear or new_affection != affection:
                 db.execute_db("""
@@ -40,16 +45,17 @@ class EntropyEngine:
                     WHERE id = ?
                 """, (new_trust, new_fear, new_affection, rel['id']))
 
-    def _decay_value(self, value):
-        if value == 0:
-            return 0
+    def _decay_towards_anchor(self, current, anchor):
+        if current == anchor:
+            return anchor
         
-        decay_amount = max(1, int(abs(value) * self.decay_rate))
+        diff = current - anchor
+        decay_amount = max(1, int(abs(diff) * self.decay_rate))
         
-        if value > 0:
-            return value - decay_amount
+        if diff > 0:
+            return max(anchor, current - decay_amount)
         else:
-            return value + decay_amount
+            return min(anchor, current + decay_amount)
 
     async def mutate_lore(self):
         """
