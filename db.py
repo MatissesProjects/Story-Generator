@@ -32,6 +32,15 @@ def init_db():
             conn.execute("ALTER TABLE characters ADD COLUMN noise_scale REAL DEFAULT 0.667")
             conn.execute("ALTER TABLE characters ADD COLUMN noise_w REAL DEFAULT 0.8")
         
+        if 'social' not in columns:
+            print("Migrating database: Adding motivation columns to 'characters'")
+            conn.execute("ALTER TABLE characters ADD COLUMN social INTEGER DEFAULT 50")
+            conn.execute("ALTER TABLE characters ADD COLUMN ambition INTEGER DEFAULT 50")
+            conn.execute("ALTER TABLE characters ADD COLUMN safety INTEGER DEFAULT 50")
+            conn.execute("ALTER TABLE characters ADD COLUMN resources INTEGER DEFAULT 50")
+            conn.execute("ALTER TABLE characters ADD COLUMN current_goal TEXT")
+            conn.execute("ALTER TABLE characters ADD COLUMN current_task TEXT")
+        
         conn.commit()
 
 def query_db(query, args=(), one=False):
@@ -48,6 +57,16 @@ def execute_db(query, args=()):
 
 def search_characters(name_fragment):
     return query_db("SELECT * FROM characters WHERE name LIKE ?", (f"%{name_fragment}%",))
+
+def get_all_characters():
+    return query_db("SELECT * FROM characters")
+
+def update_character_needs(char_id, social, ambition, safety, resources, goal=None, task=None):
+    execute_db("""
+        UPDATE characters 
+        SET social = ?, ambition = ?, safety = ?, resources = ?, current_goal = ?, current_task = ?
+        WHERE id = ?
+    """, (social, ambition, safety, resources, goal, task, char_id))
 
 def search_lore(topic_fragment):
     return query_db("SELECT * FROM lore WHERE topic LIKE ?", (f"%{topic_fragment}%",))

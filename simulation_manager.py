@@ -3,6 +3,9 @@ import llm
 import config
 import asyncio
 import json
+import agency_engine
+
+agency = agency_engine.AgencyEngine()
 
 async def trigger_tick():
     """
@@ -16,9 +19,18 @@ async def trigger_tick():
     
     print(f"Simulation: Tick {new_time} triggered.")
     
-    # 2. Run Scheduled Updates (Basic for now)
+    # 2. Run Scheduled Updates
     events = []
     
+    # NPC Agency Logic
+    npc_actions = await agency.run_tick(new_time)
+    for action in npc_actions:
+        events.append({
+            "type": "NPC_Action",
+            "description": f"{action['char_name']}: {action['description']}",
+            "location_id": None # Future: get current location of NPC
+        })
+
     # Every tick, there's a chance of a minor world event
     if new_time % 1 == 0:
         event = await generate_background_event(new_time)

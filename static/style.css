@@ -179,6 +179,43 @@ h3 {
     font-size: 0.75rem;
     color: #bbb;
     line-height: 1.2;
+    margin-bottom: 0.5rem;
+}
+
+.char-task {
+    font-size: 0.7rem;
+    background: rgba(0,0,0,0.3);
+    padding: 0.3rem;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    border-left: 2px solid var(--accent-color);
+}
+
+.char-meters {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.meter-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+}
+
+.meter-bar {
+    flex: 1;
+    height: 6px;
+    background: #222;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.meter-fill {
+    height: 100%;
+    background: var(--accent-color);
+    transition: width 1s ease-in-out;
 }
 
 /* Quest Styles */

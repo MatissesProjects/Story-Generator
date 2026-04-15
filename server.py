@@ -423,7 +423,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     loc_path = os.path.join(config.ENVIRONMENTS_DIR, f"{safe_name}.png")
                     loc_url = f"/static/environments/{safe_name}.png" if os.path.exists(loc_path) else None
 
-                chars = db.query_db("SELECT name, description, traits FROM characters")
+                chars = db.query_db("SELECT name, description, traits, social, ambition, safety, resources, current_goal, current_task FROM characters")
                 char_list = []
                 for c in chars:
                     safe_name = "".join([char for char in c['name'] if char.isalnum()]).lower()
@@ -433,7 +433,13 @@ async def websocket_endpoint(websocket: WebSocket):
                         "name": c['name'],
                         "description": c['description'],
                         "traits": c['traits'],
-                        "portrait": url
+                        "portrait": url,
+                        "social": c['social'],
+                        "ambition": c['ambition'],
+                        "safety": c['safety'],
+                        "resources": c['resources'],
+                        "current_goal": c['current_goal'],
+                        "current_task": c['current_task']
                     })
 
                 quests = db.get_active_quests()

@@ -6,7 +6,13 @@ CREATE TABLE IF NOT EXISTS characters (
     voice_id TEXT,
     length_scale REAL DEFAULT 1.0,
     noise_scale REAL DEFAULT 0.667,
-    noise_w REAL DEFAULT 0.8
+    noise_w REAL DEFAULT 0.8,
+    social INTEGER DEFAULT 50,
+    ambition INTEGER DEFAULT 50,
+    safety INTEGER DEFAULT 50,
+    resources INTEGER DEFAULT 50,
+    current_goal TEXT,
+    current_task TEXT
 );
 
 CREATE TABLE IF NOT EXISTS lore (

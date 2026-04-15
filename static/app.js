@@ -430,11 +430,29 @@ function renderCharacters() {
         
         const img = document.createElement('img');
         img.className = 'char-portrait';
-        img.src = char.portrait || '/static/placeholder-portrait.png'; // Fallback
+        img.src = char.portrait || '/static/placeholder-portrait.png'; 
         
         const info = document.createElement('div');
         info.className = 'char-info';
-        info.innerHTML = `<h4>${char.name}</h4><p>${char.traits}</p>`;
+        
+        // Agency indicators
+        const goalHtml = char.current_task ? `<div class="char-task"><strong>Current Activity:</strong> ${char.current_task}</div>` : "";
+        
+        const metersHtml = `
+            <div class="char-meters">
+                <div class="meter-row" title="Social">🤝 <div class="meter-bar"><div class="meter-fill" style="width: ${char.social}%"></div></div></div>
+                <div class="meter-row" title="Ambition">🏆 <div class="meter-bar"><div class="meter-fill" style="width: ${char.ambition}%"></div></div></div>
+                <div class="meter-row" title="Safety">🛡️ <div class="meter-bar"><div class="meter-fill" style="width: ${char.safety}%"></div></div></div>
+                <div class="meter-row" title="Resources">💰 <div class="meter-bar"><div class="meter-fill" style="width: ${char.resources}%"></div></div></div>
+            </div>
+        `;
+
+        info.innerHTML = `
+            <h4>${char.name}</h4>
+            <p>${char.traits}</p>
+            ${goalHtml}
+            ${metersHtml}
+        `;
         
         card.appendChild(img);
         card.appendChild(info);
