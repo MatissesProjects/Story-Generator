@@ -49,6 +49,18 @@ If no good seeds are found, return {{"seeds": []}}. REPLY ONLY IN JSON.]
         print(f"Foreshadowing Error: {e}")
 
 
+async def check_for_payoff(recent_history):
+    """
+    Wrapper for server.py to process recent history and evaluate for payoffs.
+    """
+    if not recent_history:
+        return None
+        
+    # Format the last few turns into a single string for context
+    context_str = "\n".join([f"User: {h['user_input']}\nAI: {h['assistant_response']}" for h in recent_history[-3:]])
+    return await evaluate_context_for_payoff(context_str)
+
+
 async def evaluate_context_for_payoff(current_scene_context: str):
     """
     Passes pending seeds and current context to an LLM to find an organic fit.
@@ -103,14 +115,14 @@ Reply ONLY with a JSON object:
             
             if seed_data:
                 instruction = (
-                    f"NARRATIVE {decision['action_type'].upper()}: Organically weave the '{seed_data['name']}' "
-                    f"(originally found in {seed_data['location']}) into the upcoming response. "
-                    f"Context/Impact to consider: {seed_data['impact']}. "
+                    f"NARRATIVE {decision['action_type'].upper()}: Organically weave the '{seed_data['element_name']}' "
+                    f"(originally found in {seed_data['discovery_location']}) into the upcoming response. "
+                    f"Context/Impact to consider: {seed_data['potential_impact']}. "
                     f"Reasoning: {decision['reasoning']}"
                 )
                 
                 # In a real app, you'd update the DB state here (e.g., stage 1 -> 2, or mark as resolved)
-                return seed_id, seed_data['name'], instruction
+                return seed_id, seed_data['element_name'], instruction
 
     except Exception as e:
         print(f"Payoff Evaluation Error: {e}")

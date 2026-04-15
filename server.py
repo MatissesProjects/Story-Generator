@@ -203,7 +203,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
                     # Foreshadowing check
                     foreshadow_note = ""
-                    payoff = foreshadowing.check_for_payoff(recent_history)
+                    payoff = await foreshadowing.check_for_payoff(recent_history)
                     if payoff:
                         payoff_id, element_name, foreshadow_note = payoff
                         db.resolve_foreshadowing(payoff_id)
