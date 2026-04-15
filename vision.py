@@ -46,7 +46,7 @@ Example: "Hyperrealistic digital portrait, battle-worn knight, scarred face, glo
 Provide ONLY the prompt string.]
 """
     sd_prompt = ""
-    for chunk in llm.generate_story_segment(prompt):
+    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         sd_prompt += chunk
         
     return sd_prompt.strip().strip('"').strip("'")
@@ -97,7 +97,7 @@ Example: "Epic concept art, ancient stone ruins, overgrown with glowing vines, m
 Provide ONLY the prompt string.]
 """
     sd_prompt = ""
-    for chunk in llm.generate_story_segment(prompt):
+    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         sd_prompt += chunk
         
     return sd_prompt.strip().strip('"').strip("'")
@@ -145,7 +145,7 @@ Example: "Top-down cartography map tile, lush temperate forest, dense green cano
 Provide ONLY the prompt string.]
 """
     sd_prompt = ""
-    for chunk in llm.generate_story_segment(prompt):
+    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         sd_prompt += chunk
         
     return sd_prompt.strip().strip('"').strip("'")

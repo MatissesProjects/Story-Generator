@@ -34,7 +34,7 @@ Reply ONLY with a JSON object: {{"dc": 15, "sides": 20, "reason": "Brief explana
 ]
 """
     response = ""
-    for chunk in llm.generate_story_segment(prompt):
+    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         response += chunk
         
     try:

@@ -32,7 +32,7 @@ Reply ONLY with a JSON object:
 ]
 """
     response = ""
-    for chunk in llm.generate_story_segment(prompt):
+    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         response += chunk
         
     try:

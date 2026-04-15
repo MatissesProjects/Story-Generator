@@ -46,7 +46,7 @@ REPLY ONLY IN JSON.]
 
     # We want a non-streaming, fast response
     response_text = ""
-    for chunk in llm.generate_story_segment(prompt):
+    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         response_text += chunk
         
     try:

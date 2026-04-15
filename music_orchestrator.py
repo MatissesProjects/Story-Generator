@@ -41,7 +41,7 @@ CATEGORIES:
 REPLY ONLY WITH THE CATEGORY NAME.]
 """
         mood = ""
-        for chunk in llm.generate_story_segment(prompt):
+        for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
             mood += chunk
             
         return mood.strip()

@@ -33,7 +33,7 @@ Provide the updated summary as a concise list or paragraph.
     
     # Use a direct, non-streaming call for the summary
     full_summary = ""
-    for chunk in llm.generate_story_segment(prompt):
+    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         full_summary += chunk
         
     db.set_story_state("narrative_seed", full_summary.strip())

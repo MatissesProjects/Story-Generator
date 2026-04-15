@@ -24,6 +24,9 @@ The system follows a **Modular Orchestration** pattern (an adaptation of MVC). I
 | `validator.py` | **Physics Engine** | Intercepts player actions before generation to ensure they are logically possible within the established world rules. |
 | `foreshadowing.py` | **Narrative Seeds** | Extracts minor unresolved details from AI responses and triggers payoffs later in the story. |
 | `canon_checker.py` | **Canon Auditor** | Validates LLM responses against established lore to prevent contradictions. |
+| `inventory_stats` | **Entity State** | (Integrated in `db.py` and `validator.py`) Tracks player/NPC items and attributes, enforcing logic based on possession and power. |
+| `pacing_director` | **Rhythm Control** | (Integrated in `server.py` and `llm.py`) Manages narrative tempo via directives like 'Action-Packed' or 'Introspective'. |
+| `adventure_arcs` | **Milestone Manager** | (Integrated in `db.py` and `director.py`) Tracks multi-chapter story structures and handles milestone transitions. |
 
 ### 💾 The Persistence Layer (Memory)
 | File | Responsibility | Key Logic |
@@ -35,8 +38,8 @@ The system follows a **Modular Orchestration** pattern (an adaptation of MVC). I
 ### 🎭 The Generative Services (Action)
 | File | Responsibility | Key Logic |
 | :--- | :--- | :--- |
-| `llm.py` | **Core Intelligence** | Communicates with the local Ollama API. Formats the complex system prompts (Personas, Lore, Directives). |
-| `summarizer.py` | **Long-term Memory** | Periodically compresses story history into a "Narrative Seed" to support infinite story length without token overflow. |
+| `llm.py` | **Core Intelligence** | Communicates with the local Ollama API. Routes tasks to the **CREATIVE_MODEL** (storytelling) or **FAST_MODEL** (logic/analysis). |
+| `summarizer.py` | **Long-term Memory** | Periodically compresses story history into a "Narrative Seed" using the **FAST_MODEL**. |
 | `researcher.py` | **Inspiration Engine** | Performs autonomous web searches (DuckDuckGo) to find "crazy new ideas" and injects them as new Lore/Plots. |
 | `vision.py` | **Visual Engine** | Uses Stable Diffusion (SDXL Turbo) to generate character portraits and cinematic environment art. |
 | `tts.py` | **Voice Engine** | Generates character-specific audio using local Piper TTS models. |

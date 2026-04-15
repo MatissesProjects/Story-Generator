@@ -19,9 +19,9 @@ Example Query: "obscure medieval laws regarding inheritance and ghosts"
 
 Provide ONLY the search query string. No quotes or extra text.]
 """
-    optimized = ""
-    for chunk in llm.generate_story_segment(prompt):
-        optimized += chunk
+    response = ""
+    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
+        response += chunk
         
     return optimized.strip().strip('"').strip("'")
 
@@ -59,7 +59,7 @@ FORMAT EACH HOOK AS:
 """
     
     hooks = ""
-    for chunk in llm.generate_story_segment(prompt):
+    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         hooks += chunk
         
     return hooks.strip()

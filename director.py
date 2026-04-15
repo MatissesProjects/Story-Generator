@@ -63,7 +63,7 @@ BE CONSERVATIVE. Only mark as completed if it clearly happened in the text.
 REPLY ONLY IN JSON.]
 """
     response = ""
-    for chunk in llm.generate_story_segment(prompt):
+    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         response += chunk
         
     try:
@@ -109,7 +109,7 @@ Else, reply with JSON: {{"completed": false}}
 REPLY ONLY IN JSON.]
 """
     response = ""
-    for chunk in llm.generate_story_segment(prompt):
+    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         response += chunk
         
     try:
@@ -171,7 +171,7 @@ If the story needs a "crazy new idea" or fresh lore to stay interesting, reply w
 REPLY ONLY IN JSON.]
 """
     response = ""
-    for chunk in llm.generate_story_segment(prompt):
+    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         response += chunk
         
     try:
@@ -215,7 +215,7 @@ If the location is the same as before or unclear, reply with JSON: {"location": 
 REPLY ONLY IN JSON.]
 """
     response = ""
-    for chunk in llm.generate_story_segment(prompt):
+    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         response += chunk
         
     try:

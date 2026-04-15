@@ -4,7 +4,7 @@ import config
 
 OLLAMA_URL = config.OLLAMA_URL
 
-def generate_story_segment(prompt, model=config.OLLAMA_MODEL, context_facts=None, director_instructions=None, persona_blocks=None, narrative_seed=None, mechanical_result=None, foreshadowing_payoff=None, pacing_directive=None):
+def generate_story_segment(prompt, model=config.CREATIVE_MODEL, context_facts=None, director_instructions=None, persona_blocks=None, narrative_seed=None, mechanical_result=None, foreshadowing_payoff=None, pacing_directive=None):
     full_prompt = prompt
     
     # Build up system/context block

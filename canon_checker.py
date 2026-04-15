@@ -27,7 +27,7 @@ If no specific lore claims are made, return an empty list.
 REPLY ONLY IN JSON.]
 """
     response = ""
-    for chunk in llm.generate_story_segment(prompt):
+    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         response += chunk
         
     try:
@@ -74,7 +74,7 @@ If there are no contradictions, return an empty list.
 REPLY ONLY IN JSON.]
 """
     response = ""
-    for chunk in llm.generate_story_segment(prompt):
+    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         response += chunk
         
     try:

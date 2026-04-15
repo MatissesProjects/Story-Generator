@@ -12,7 +12,9 @@ class Settings(BaseSettings):
 
     # Ollama settings
     OLLAMA_URL: str = Field(default="http://localhost:11434/api/generate", validation_alias="OLLAMA_URL")
-    OLLAMA_MODEL: str = Field(default="gemma4:e4b", validation_alias="OLLAMA_MODEL")
+    OLLAMA_MODEL: str = Field(default="gemma4:e4b", validation_alias="OLLAMA_MODEL") # Main creative model
+    CREATIVE_MODEL: str = Field(default="gemma4:e4b", validation_alias="CREATIVE_MODEL")
+    FAST_MODEL: str = Field(default="gemma4:e4b", validation_alias="FAST_MODEL") # Small model for logic/parsing
 
     # TTS settings
     PIPER_EXE: str = Field(default="piper", validation_alias="PIPER_EXE")
@@ -50,6 +52,8 @@ GENERATOR_HOST = _settings.GENERATOR_HOST
 GENERATOR_PORT = _settings.GENERATOR_PORT
 OLLAMA_URL = _settings.OLLAMA_URL
 OLLAMA_MODEL = _settings.OLLAMA_MODEL
+CREATIVE_MODEL = _settings.CREATIVE_MODEL
+FAST_MODEL = _settings.FAST_MODEL
 PIPER_EXE = _settings.PIPER_EXE
 MODELS_DIR = _settings.MODELS_DIR
 AUDIO_OUTPUT_DIR = _settings.AUDIO_OUTPUT_DIR
