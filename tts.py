@@ -1,8 +1,57 @@
-import subprocess
 import os
+import wave
 import config
+from piper import PiperVoice
 
-# Use winsound on Windows, pygame elsewhere
+# Cache for loaded voices to avoid reloading from disk every time
+VOICE_CACHE = {}
+
+def get_voice(voice_model="en_US-lessac-medium.onnx"):
+    """
+    Loads or retrieves a PiperVoice from the cache.
+    """
+    model_path = os.path.join(config.MODELS_DIR, voice_model)
+    config_path = f"{model_path}.json"
+
+    if model_path not in VOICE_CACHE:
+        if not os.path.exists(model_path):
+            print(f"ERROR: Voice model '{model_path}' not found.")
+            return None
+        
+        print(f"TTS: Loading voice model {voice_model}...")
+        VOICE_CACHE[model_path] = PiperVoice.load(model_path, config_path=config_path)
+    
+    return VOICE_CACHE[model_path]
+
+def generate_audio(text, speaker_id, voice_model="en_US-lessac-medium.onnx"):
+    """
+    Generates a WAV file for the given text using the piper-tts Python API.
+    """
+    if not text.strip():
+        return None
+
+    output_dir = config.AUDIO_OUTPUT_DIR
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    output_file = os.path.join(output_dir, f"{speaker_id}_{hash(text) % 10000}.wav")
+    
+    voice = get_voice(voice_model)
+    if not voice:
+        return None
+
+    try:
+        with wave.open(output_file, "wb") as wav_file:
+            voice.synthesize_wav(text, wav_file)
+        
+        if os.path.exists(output_file):
+            return output_file
+        return None
+    except Exception as e:
+        print(f"Error generating audio with Piper API: {e}")
+        return None
+
+# Use winsound on Windows, pygame elsewhere for playback
 if os.name == 'nt':
     import winsound
     def play_audio(file_path):
@@ -22,64 +71,13 @@ else:
             except Exception as e:
                 print(f"Error playing audio with pygame: {e}")
 
-# Path to the Piper executable and models
-PIPER_EXE = config.PIPER_EXE
-MODELS_DIR = config.MODELS_DIR
-OUTPUT_DIR = config.AUDIO_OUTPUT_DIR
-
-if not os.path.exists(OUTPUT_DIR):
-    os.makedirs(OUTPUT_DIR)
-
-def generate_audio(text, speaker_id, voice_model="en_US-lessac-medium.onnx"):
-    """
-    Calls Piper TTS to generate a WAV file for the given text.
-    """
-    if not text.strip():
-        return None
-
-    # Check if executable exists
-    import shutil
-    if not os.path.exists(PIPER_EXE) and shutil.which(PIPER_EXE) is None:
-        print(f"CRITICAL ERROR: Piper executable '{PIPER_EXE}' not found. Please download it and place it in the project root or add it to your PATH.")
-        print("Download from: https://github.com/rhasspy/piper/releases")
-        return None
-
-    output_file = os.path.join(OUTPUT_DIR, f"{speaker_id}_{hash(text) % 10000}.wav")
-    model_path = os.path.join(MODELS_DIR, voice_model)
-    
-    # Check if model exists
-    if not os.path.exists(model_path):
-        print(f"ERROR: Voice model '{model_path}' not found.")
-        print(f"Please create the '{MODELS_DIR}' folder and download '{voice_model}' AND its '.json' counterpart.")
-        print("Download from: https://huggingface.co/rhasspy/piper-voices/tree/main/en/en_US/lessac/medium")
-        return None
-    
-    command = [
-        PIPER_EXE,
-        "--model", model_path,
-        "--output_file", output_file
-    ]
-    
-    try:
-        process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        process.communicate(input=text)
-        
-        if process.returncode == 0:
-            return output_file
-        else:
-            print(f"Piper error: {process.stderr.read()}") # type: ignore
-            return None
-    except Exception as e:
-        print(f"Error calling Piper: {e}")
-        return None
-
 if __name__ == "__main__":
-    # Quick test if piper is installed
-    print("Testing Piper TTS integration...")
-    test_text = "Hello, I am a character in your story."
+    # Quick test
+    print("Testing Piper TTS Python API integration...")
+    test_text = "The ancient gears of the library groaned as the secret door finally opened."
     path = generate_audio(test_text, "test_voice")
     if path:
         print(f"Audio generated at {path}. Playing...")
         play_audio(path)
     else:
-        print("Audio generation failed (Expected if Piper/Models are not set up).")
+        print("Audio generation failed.")

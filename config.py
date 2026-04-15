@@ -18,7 +18,7 @@ class Settings(BaseSettings):
 
     # TTS settings
     PIPER_EXE: str = Field(default="piper", validation_alias="PIPER_EXE")
-    MODELS_DIR: str = Field(default="models", validation_alias="MODELS_DIR")
+    MODELS_DIR: str = Field(default="voices", validation_alias="MODELS_DIR")
     AUDIO_OUTPUT_DIR: str = Field(default="audio_output", validation_alias="AUDIO_OUTPUT_DIR")
 
     # Vector DB settings
