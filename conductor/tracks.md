@@ -25,3 +25,4 @@
 | `canon-checker` | Implement advanced lore validation for LLM-generated concepts. | ✅ Completed | [Link](./tracks/canon-checker/index.md) |
 | `pacing-director` | Control narrative rhythm (Action, Introspection, Mystery). | ✅ Completed | [Link](./tracks/pacing-director/index.md) |
 | `adventure-arcs` | Support pre-defined story structures and milestones. | ✅ Completed | [Link](./tracks/adventure-arcs/index.md) |
+| `cinematic-experience` | Blend literary character techniques (anchors) with YouTube-style cinematic delivery (Ken Burns, layered audio). | 📝 Planned | [Link](./tracks/cinematic-experience/index.md) |
