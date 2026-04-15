@@ -34,8 +34,15 @@ class Settings(BaseSettings):
     # Music settings
     AUDIO_SEQUENCER_PATH: str = Field(default="/home/matisse/GitHub/AudioSequencer", validation_alias="AUDIO_SEQUENCER_PATH")
     MUSIC_DB_PATH: str = Field(default="/home/matisse/GitHub/AudioSequencer/audio_library.db", validation_alias="MUSIC_DB_PATH")
+    MUSIC_ENABLED: bool = Field(default=True, validation_alias="MUSIC_ENABLED")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Auto-disable music if path doesn't exist
+        if not os.path.exists(self.AUDIO_SEQUENCER_PATH):
+            self.MUSIC_ENABLED = False
 
     def get_websocket_url(self, host: str = "localhost") -> str:
         return f"ws://{host}:{self.GENERATOR_PORT}/ws"
@@ -65,6 +72,7 @@ ENVIRONMENTS_DIR = _settings.ENVIRONMENTS_DIR
 MAP_TILES_DIR = _settings.MAP_TILES_DIR
 AUDIO_SEQUENCER_PATH = _settings.AUDIO_SEQUENCER_PATH
 MUSIC_DB_PATH = _settings.MUSIC_DB_PATH
+MUSIC_ENABLED = _settings.MUSIC_ENABLED
 
 def get_websocket_url(host="localhost"):
     return _settings.get_websocket_url(host)

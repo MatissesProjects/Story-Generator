@@ -281,13 +281,14 @@ async def websocket_endpoint(websocket: WebSocket):
                                 await websocket.send_text(json.dumps({"type": "info", "content": f"Canon Warning: {c['violation']}"}))
 
                     # Music selection
-                    mood = post_results[3]
-                    if db.get_history_count() % 3 == 0 or plan['new_location']:
-                        track = music.select_track(mood)
-                        if track:
-                            file_path = track['file_path']
-                            url = f"/music_examples/{os.path.basename(file_path)}" if "musicExamples" in file_path else f"/gen_assets/{os.path.basename(file_path)}"
-                            await websocket.send_text(json.dumps({"type": "music_event", "url": url, "mood": mood, "filename": track['filename']}))
+                    if config.MUSIC_ENABLED:
+                        mood = post_results[3]
+                        if db.get_history_count() % 3 == 0 or plan['new_location']:
+                            track = music.select_track(mood)
+                            if track:
+                                file_path = track['file_path']
+                                url = f"/music_examples/{os.path.basename(file_path)}" if "musicExamples" in file_path else f"/gen_assets/{os.path.basename(file_path)}"
+                                await websocket.send_text(json.dumps({"type": "music_event", "url": url, "mood": mood, "filename": track['filename']}))
 
                     # Atmosphere update
                     atmos_data = post_results[4]
@@ -299,10 +300,11 @@ async def websocket_endpoint(websocket: WebSocket):
                     await websocket.send_text(json.dumps({"type": "visual_update", "content": visual_stack}))
 
                     # Ambiance loop selection
-                    amb_filename = atmosphere.get_ambiance_filename(atmos_data.get('ambiance', 'silence'))
-                    if amb_filename:
-                        amb_url = f"/ambiance/{amb_filename}"
-                        await websocket.send_text(json.dumps({"type": "ambiance_event", "url": amb_url}))
+                    if config.MUSIC_ENABLED:
+                        amb_filename = atmosphere.get_ambiance_filename(atmos_data.get('ambiance', 'silence'))
+                        if amb_filename:
+                            amb_url = f"/ambiance/{amb_filename}"
+                            await websocket.send_text(json.dumps({"type": "ambiance_event", "url": amb_url}))
 
                     # Research injection
                     if plan['needs_research']:

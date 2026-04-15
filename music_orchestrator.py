@@ -7,9 +7,12 @@ import config
 class MusicOrchestrator:
     def __init__(self):
         # We'll use the AudioSequencer generated assets or sample tracks
-        self.tracks = self._load_tracks()
+        self.enabled = config.MUSIC_ENABLED
+        self.tracks = self._load_tracks() if self.enabled else []
 
     def _load_tracks(self):
+        if not self.enabled:
+            return []
         # Scan config.AUDIO_SEQUENCER_PATH for .wav/.mp3 files
         # For now, let's look in musicExamples and generated_assets
         tracks = []
@@ -63,6 +66,9 @@ REPLY ONLY WITH THE CATEGORY NAME.]
         """
         Selects a track from the AudioSequencer database that matches the mood.
         """
+        if not self.enabled or not mood:
+            return None
+            
         # For now, let's use a simple mapping or keyword search in filenames/lyrics
         # In a more advanced version, we'd use embeddings.
         
@@ -96,6 +102,10 @@ if __name__ == "__main__":
     async def test():
         print("Testing Music Orchestrator...")
         mo = MusicOrchestrator()
+        if not mo.enabled:
+            print("Music is disabled (check config.AUDIO_SEQUENCER_PATH). Skipping LLM test.")
+            return
+            
         mood = await mo.detect_mood("The dark shadows lengthened as a mysterious figure emerged from the fog, eyes glowing with a faint blue light.")
         print(f"Detected Mood: {mood}")
         track = mo.select_track(mood)
