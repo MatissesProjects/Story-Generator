@@ -1,10 +1,12 @@
 import requests
 import json
 import config
+import httpx
+import asyncio
 
 OLLAMA_URL = config.OLLAMA_URL
 
-def generate_story_segment(prompt, model=config.CREATIVE_MODEL, context_facts=None, director_instructions=None, persona_blocks=None, narrative_seed=None, mechanical_result=None, foreshadowing_payoff=None, pacing_directive=None):
+def _build_full_prompt(prompt, context_facts=None, director_instructions=None, persona_blocks=None, narrative_seed=None, mechanical_result=None, foreshadowing_payoff=None, pacing_directive=None):
     full_prompt = prompt
     
     # Build up system/context block
@@ -44,6 +46,11 @@ def generate_story_segment(prompt, model=config.CREATIVE_MODEL, context_facts=No
         full_context = "\n\n".join(context_blocks)
         full_prompt = f"[SYSTEM: {full_context}]\n\n{prompt}"
     
+    return full_prompt
+
+def generate_story_segment(prompt, model=config.CREATIVE_MODEL, context_facts=None, director_instructions=None, persona_blocks=None, narrative_seed=None, mechanical_result=None, foreshadowing_payoff=None, pacing_directive=None):
+    full_prompt = _build_full_prompt(prompt, context_facts, director_instructions, persona_blocks, narrative_seed, mechanical_result, foreshadowing_payoff, pacing_directive)
+    
     payload = {
         "model": model,
         "prompt": full_prompt,
@@ -60,6 +67,37 @@ def generate_story_segment(prompt, model=config.CREATIVE_MODEL, context_facts=No
                 yield chunk["response"]
             if chunk.get("done"):
                 break
+
+async def async_generate_story_segment(prompt, model=config.CREATIVE_MODEL, context_facts=None, director_instructions=None, persona_blocks=None, narrative_seed=None, mechanical_result=None, foreshadowing_payoff=None, pacing_directive=None):
+    """
+    Asynchronous version of generate_story_segment using httpx.
+    """
+    full_prompt = _build_full_prompt(prompt, context_facts, director_instructions, persona_blocks, narrative_seed, mechanical_result, foreshadowing_payoff, pacing_directive)
+    
+    payload = {
+        "model": model,
+        "prompt": full_prompt,
+        "stream": True
+    }
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        async with client.stream("POST", OLLAMA_URL, json=payload) as response:
+            async for line in response.aiter_lines():
+                if line:
+                    chunk = json.loads(line)
+                    if "response" in chunk:
+                        yield chunk["response"]
+                    if chunk.get("done"):
+                        break
+
+async def async_generate_full_response(prompt, model=config.CREATIVE_MODEL, **kwargs):
+    """
+    Utility to get a full non-streaming response asynchronously.
+    """
+    full_text = ""
+    async for chunk in async_generate_story_segment(prompt, model=model, **kwargs):
+        full_text += chunk
+    return full_text
 
 if __name__ == "__main__":
     # Simple test

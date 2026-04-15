@@ -2,17 +2,17 @@ import db
 import llm
 import config
 
-def update_narrative_seed():
+async def update_narrative_seed():
     """
     Summarizes the recent history and updates the 'narrative_seed' in story_state.
     """
-    # Get all history to build the full summary
-    history = db.query_db("SELECT user_input, assistant_response FROM history ORDER BY id ASC")
+    # Get recent history to build the incremental summary
+    history = db.get_recent_history(limit=10)
     if not history:
         return
         
     history_text = ""
-    for turn in history:
+    for turn in reversed(history): # get_recent_history returns newest first
         history_text += f"Player: {turn['user_input']}\nStory: {turn['assistant_response']}\n\n"
         
     current_seed = db.get_story_state("narrative_seed") or "The story has just begun."
@@ -32,9 +32,7 @@ Provide the updated summary as a concise list or paragraph.
 """
     
     # Use a direct, non-streaming call for the summary
-    full_summary = ""
-    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
-        full_summary += chunk
+    full_summary = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         
     db.set_story_state("narrative_seed", full_summary.strip())
     print(f"Updated Narrative Seed: {full_summary.strip()[:100]}...")

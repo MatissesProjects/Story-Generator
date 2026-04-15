@@ -18,13 +18,22 @@ def generate_audio(text, speaker_id, voice_model="en_US-lessac-medium.onnx"):
     if not text.strip():
         return None
 
+    # Check if executable exists
+    import shutil
+    if not os.path.exists(PIPER_EXE) and shutil.which(PIPER_EXE) is None:
+        print(f"CRITICAL ERROR: Piper executable '{PIPER_EXE}' not found. Please download it and place it in the project root or add it to your PATH.")
+        print("Download from: https://github.com/rhasspy/piper/releases")
+        return None
+
     output_file = os.path.join(OUTPUT_DIR, f"{speaker_id}_{hash(text) % 10000}.wav")
     model_path = os.path.join(MODELS_DIR, voice_model)
     
-    # Check if model exists, if not, use a default or print a warning
+    # Check if model exists
     if not os.path.exists(model_path):
-        print(f"Warning: Voice model {model_path} not found. Using default if available.")
-        # For MVP, we'll just assume piper is configured correctly or has a default
+        print(f"ERROR: Voice model '{model_path}' not found.")
+        print(f"Please create the '{MODELS_DIR}' folder and download '{voice_model}' AND its '.json' counterpart.")
+        print("Download from: https://huggingface.co/rhasspy/piper-voices/tree/main/en/en_US/lessac/medium")
+        return None
     
     command = [
         PIPER_EXE,
