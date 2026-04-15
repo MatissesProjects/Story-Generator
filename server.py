@@ -20,6 +20,7 @@ import foreshadowing
 import canon_checker
 import simulation_manager
 import atmosphere_engine
+import visual_curator
 import config
 import os
 import json
@@ -34,6 +35,7 @@ db.init_db()
 music = music_orchestrator.MusicOrchestrator()
 world = world_engine.WorldEngine()
 atmosphere = atmosphere_engine.AtmosphereEngine()
+curator_visual = visual_curator.VisualCurator()
 
 # Mount the static directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -221,6 +223,8 @@ async def websocket_endpoint(websocket: WebSocket):
 
                     full_response = ""
                     await log_progress(websocket, "Generating story response...")
+                    stream_parser = parser.StreamParser()
+
                     async for chunk in llm.async_generate_story_segment(
                         prompt, 
                         context_facts=facts, 
@@ -233,6 +237,24 @@ async def websocket_endpoint(websocket: WebSocket):
                     ):
                         await websocket.send_text(json.dumps({"type": "story_chunk", "content": chunk}))
                         full_response += chunk
+                        
+                        # Real-time audio parsing
+                        completed_blocks = stream_parser.feed(chunk)
+                        for speaker, text in completed_blocks:
+                            voice_config = db.get_character_voice(speaker)
+                            audio_path = tts.generate_audio(text, speaker, voice_config=voice_config)
+                            if audio_path:
+                                audio_url = f"/audio/{os.path.basename(audio_path)}"
+                                await websocket.send_text(json.dumps({"type": "audio_event", "url": audio_url, "speaker": speaker}))
+
+                    # Final flush for any remaining text in buffer
+                    remaining_blocks = stream_parser.flush()
+                    for speaker, text in remaining_blocks:
+                        voice_config = db.get_character_voice(speaker)
+                        audio_path = tts.generate_audio(text, speaker, voice_config=voice_config)
+                        if audio_path:
+                            audio_url = f"/audio/{os.path.basename(audio_path)}"
+                            await websocket.send_text(json.dumps({"type": "audio_event", "url": audio_url, "speaker": speaker}))
 
                     db.log_history(user_input, full_response)
 
@@ -270,6 +292,11 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Atmosphere update
                     atmos_data = post_results[4]
                     await websocket.send_text(json.dumps({"type": "atmosphere_update", "content": atmos_data}))
+
+                    # Visual Stack curation
+                    involved_entities = [name for name in db.get_all_entities() if name.lower() in full_response.lower()]
+                    visual_stack = curator_visual.get_visual_stack(curr_loc_name, involved_entities, atmos_data)
+                    await websocket.send_text(json.dumps({"type": "visual_update", "content": visual_stack}))
 
                     # Ambiance loop selection
                     amb_filename = atmosphere.get_ambiance_filename(atmos_data.get('ambiance', 'silence'))
