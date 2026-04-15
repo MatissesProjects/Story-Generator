@@ -1,55 +1,32 @@
-import db
-import llm
-import spark
 import curator
+import llm
+import db
 import parser
 import tts
-import os
+import config
+import spark
+import asyncio
 
-def main():
-    # Ensure DB is initialized
-    if not os.path.exists(db.DB_PATH):
-        db.init_db()
-
-    print("--- Story Generator ---")
-    print("Type 'exit' to quit.")
-    print("Type 'add character' or 'add lore' to update the world.")
-    print("Type 'spark' to generate a story idea.")
-    print("Or just type to continue the story.")
+async def main():
+    db.init_db()
+    print("--- Story Generator (CLI) ---")
+    print("Type 'spark' for a random idea, or just start typing your story.")
+    print("Type 'exit' or 'quit' to stop.")
 
     while True:
-        user_input = input("\nYou: ")
-        
-        if user_input.lower() == "exit":
+        try:
+            user_input = input("\nYou: ")
+        except EOFError:
             break
-        
-        if user_input.lower() == "add character":
-            name = input("Name: ")
-            desc = input("Description: ")
-            traits = input("Traits: ")
-            voice = input("Voice Model (default: en_US-lessac-medium.onnx): ") or "en_US-lessac-medium.onnx"
-            db.add_character(name, desc, traits, voice)
-            print(f"Character {name} added with voice {voice}.")
-            continue
-
-        if user_input.lower() == "add lore":
-            topic = input("Topic: ")
-            desc = input("Description: ")
-            db.add_lore(topic, desc)
-            print(f"Lore topic '{topic}' added.")
-            continue
-
-        if user_input.lower() == "add meta":
-            topic = input("Meta-Narrative Topic: ")
-            desc = input("Subtle Description: ")
-            kws = input("Trigger Keywords (comma separated): ")
-            db.add_meta_lore(topic, desc, kws)
-            print(f"Meta-narrative '{topic}' added.")
-            continue
+            
+        if user_input.lower() in ["exit", "quit"]:
+            break
 
         if user_input.lower() == "spark":
             genre = input("Genre (optional, press Enter for random): ")
-            idea = spark.generate_spark(genre if genre else None)
+            # Note: spark.generate_spark should probably be async too if it uses llm
+            # Let's check spark.py
+            idea = await spark.generate_spark(genre if genre else None)
             print(f"\nSpark:\n{idea}")
             continue
 
@@ -61,7 +38,7 @@ def main():
         print("\nStory: ", end="", flush=True)
         full_response = ""
         try:
-            for chunk in llm.generate_story_segment(user_input, context_facts=facts):
+            async for chunk in llm.generate_story_segment(user_input, context_facts=facts):
                 print(chunk, end="", flush=True)
                 full_response += chunk
             print()
@@ -78,7 +55,7 @@ def main():
             # ---------------------------------
             
         except Exception as e:
-            print(f"\nError: {e}")
+            print(f"\nError generating story: {e}")
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

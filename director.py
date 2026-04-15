@@ -32,7 +32,7 @@ def evaluate_state(user_input, recent_history=None):
     
     return instruction
 
-def evaluate_quest_progress(history_text):
+async def evaluate_quest_progress(history_text):
     """
     Uses the LLM to check if any quest objectives were met in the recent history.
     Returns a list of (quest_id, objective_id, status) updates.
@@ -63,7 +63,7 @@ BE CONSERVATIVE. Only mark as completed if it clearly happened in the text.
 REPLY ONLY IN JSON.]
 """
     response = ""
-    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
+    async for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         response += chunk
         
     try:
@@ -79,7 +79,7 @@ REPLY ONLY IN JSON.]
         print(f"Director Error (evaluate_quest_progress): {e}. Raw: {response}")
         return []
 
-def evaluate_milestone_progress(history_text):
+async def evaluate_milestone_progress(history_text):
     """
     Checks if the current active arc milestone has been completed.
     """
@@ -109,7 +109,7 @@ Else, reply with JSON: {{"completed": false}}
 REPLY ONLY IN JSON.]
 """
     response = ""
-    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
+    async for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         response += chunk
         
     try:
@@ -147,7 +147,7 @@ def get_persona_blocks(user_input):
                 
     return persona_blocks
 
-def check_narrative_gaps(recent_history, active_threads):
+async def check_narrative_gaps(recent_history, active_threads):
     """
     Uses the LLM to analyze if the story has stalled or become repetitive.
     Returns (needs_research, suggested_theme)
@@ -171,7 +171,7 @@ If the story needs a "crazy new idea" or fresh lore to stay interesting, reply w
 REPLY ONLY IN JSON.]
 """
     response = ""
-    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
+    async for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         response += chunk
         
     try:
@@ -188,7 +188,7 @@ REPLY ONLY IN JSON.]
         print(f"Director Error (parsing JSON): {e}. Raw: {response}")
         return False, ""
 
-def identify_location(user_input, recent_history):
+async def identify_location(user_input, recent_history):
     """
     Uses the LLM to identify if the story has moved to a new location.
     Returns (location_name, description) or (None, None).
@@ -215,7 +215,7 @@ If the location is the same as before or unclear, reply with JSON: {"location": 
 REPLY ONLY IN JSON.]
 """
     response = ""
-    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
+    async for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         response += chunk
         
     try:

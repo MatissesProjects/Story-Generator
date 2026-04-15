@@ -4,7 +4,7 @@ import db
 import config
 import random
 
-def optimize_query(theme, context=""):
+async def optimize_query(theme, context=""):
     """
     Uses the LLM to transform a broad theme into a high-signal search query.
     """
@@ -20,10 +20,10 @@ Example Query: "obscure medieval laws regarding inheritance and ghosts"
 Provide ONLY the search query string. No quotes or extra text.]
 """
     response = ""
-    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
+    async for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         response += chunk
         
-    return optimized.strip().strip('"').strip("'")
+    return response.strip().strip('"').strip("'")
 
 def search_inspiration(theme_query):
     """
@@ -40,7 +40,7 @@ def search_inspiration(theme_query):
         
     return search_text
 
-def extract_narrative_hooks(search_results, current_context=""):
+async def extract_narrative_hooks(search_results, current_context=""):
     """
     Uses the LLM to extract crazy narrative ideas from search results.
     """
@@ -59,20 +59,20 @@ FORMAT EACH HOOK AS:
 """
     
     hooks = ""
-    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
+    async for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         hooks += chunk
         
     return hooks.strip()
 
-def perform_research_injection(theme, context=""):
+async def perform_research_injection(theme, context=""):
     """
     The full pipeline: Search -> Extract -> Save to Lore/Plots.
     """
-    optimized_query = optimize_query(theme, context)
+    optimized_query = await optimize_query(theme, context)
     print(f"Researcher: Optimized query: {optimized_query}")
     
     results = search_inspiration(optimized_query)
-    hooks = extract_narrative_hooks(results, context)
+    hooks = await extract_narrative_hooks(results, context)
     
     # Simple parsing of the hooks (look for [HOOK])
     hook_list = [h.strip() for h in hooks.split("[HOOK]:") if h.strip()]

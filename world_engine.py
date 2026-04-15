@@ -7,7 +7,7 @@ class WorldEngine:
     def __init__(self):
         self.grid_size = 100 # Arbitrary unit
 
-    def resolve_new_location(self, name, description, relative_to_name=None, direction=None):
+    async def resolve_new_location(self, name, description, relative_to_name=None, direction=None):
         """
         Determines where a new location should be placed on the 2D map.
         If relative_to_name is provided, it tries to place it in the specified direction.
@@ -48,12 +48,12 @@ class WorldEngine:
                 y = base['y'] + random.randint(-self.grid_size, self.grid_size)
 
         # Detect biome via LLM
-        biome = self.detect_biome(name, description)
+        biome = await self.detect_biome(name, description)
         
         loc_id = db.add_location(name, description, x, y, biome)
         return loc_id
 
-    def detect_biome(self, name, description):
+    async def detect_biome(self, name, description):
         """
         Uses the LLM to categorize the location into a biome type.
         """
@@ -67,7 +67,7 @@ DESCRIPTION: {description}
 REPLY ONLY WITH THE BIOME NAME.]
 """
         biome = ""
-        for chunk in llm.generate_story_segment(prompt):
+        async for chunk in llm.generate_story_segment(prompt):
             biome += chunk
         return biome.strip()
 
@@ -84,10 +84,14 @@ REPLY ONLY WITH THE BIOME NAME.]
         return True
 
 if __name__ == "__main__":
-    print("Testing World Engine...")
-    we = WorldEngine()
-    loc_id = we.resolve_new_location("The Dusty Tavern", "A creaky old building full of travelers.")
-    print(f"Created location {loc_id} at (0,0)")
+    import asyncio
+    async def test():
+        print("Testing World Engine...")
+        we = WorldEngine()
+        loc_id = await we.resolve_new_location("The Dusty Tavern", "A creaky old building full of travelers.")
+        print(f"Created location {loc_id} at (0,0)")
+        
+        loc_id2 = await we.resolve_new_location("The Whispering Woods", "A dark and scary forest.", "The Dusty Tavern", "North")
+        print(f"Created location {loc_id2} relative to Tavern.")
     
-    loc_id2 = we.resolve_new_location("The Whispering Woods", "A dark and scary forest.", "The Dusty Tavern", "North")
-    print(f"Created location {loc_id2} relative to Tavern.")
+    asyncio.run(test())

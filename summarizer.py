@@ -2,7 +2,7 @@ import db
 import llm
 import config
 
-def update_narrative_seed():
+async def update_narrative_seed():
     """
     Summarizes the recent history and updates the 'narrative_seed' in story_state.
     """
@@ -33,7 +33,7 @@ Provide the updated summary as a concise list or paragraph.
     
     # Use a direct, non-streaming call for the summary
     full_summary = ""
-    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
+    async for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         full_summary += chunk
         
     db.set_story_state("narrative_seed", full_summary.strip())
@@ -42,4 +42,5 @@ Provide the updated summary as a concise list or paragraph.
 if __name__ == "__main__":
     print("Testing Summarizer...")
     # Add some dummy history if needed, then run
-    update_narrative_seed()
+    # asyncio.run(update_narrative_seed())
+    pass

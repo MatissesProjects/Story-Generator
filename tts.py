@@ -39,7 +39,7 @@ def generate_audio(text, speaker_id, voice_model="en_US-lessac-medium.onnx"):
         if process.returncode == 0:
             return output_file
         else:
-            print(f"Piper error: {process.stderr.read()}")
+            print(f"Piper error: {process.stderr.read()}") # type: ignore
             return None
     except Exception as e:
         print(f"Error calling Piper: {e}")

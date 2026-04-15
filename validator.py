@@ -2,7 +2,7 @@ import llm
 import config
 import json
 
-def validate_action(user_input, context_facts, inventory=None, stats=None):
+async def validate_action(user_input, context_facts, inventory=None, stats=None):
     """
     Validates if the user's action is logically possible within the story's world context.
     Returns (is_valid, reason)
@@ -46,7 +46,7 @@ REPLY ONLY IN JSON.]
 
     # We want a non-streaming, fast response
     response_text = ""
-    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
+    async for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         response_text += chunk
         
     try:

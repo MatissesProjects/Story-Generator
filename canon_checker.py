@@ -1,8 +1,9 @@
 import db
 import llm
 import json
+import config
 
-def extract_claims(text):
+async def extract_claims(text):
     """
     Uses the LLM to extract factual world-building claims from a story segment.
     """
@@ -27,7 +28,7 @@ If no specific lore claims are made, return an empty list.
 REPLY ONLY IN JSON.]
 """
     response = ""
-    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
+    async for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         response += chunk
         
     try:
@@ -43,7 +44,7 @@ REPLY ONLY IN JSON.]
         print(f"CanonChecker Error (extract_claims): {e}. Raw: {response}")
         return []
 
-def check_for_contradictions(claims, context_lore):
+async def check_for_contradictions(claims, context_lore):
     """
     Compares extracted claims against existing lore to find contradictions.
     """
@@ -74,7 +75,7 @@ If there are no contradictions, return an empty list.
 REPLY ONLY IN JSON.]
 """
     response = ""
-    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
+    async for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         response += chunk
         
     try:

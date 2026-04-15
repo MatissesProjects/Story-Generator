@@ -1,20 +1,21 @@
 import db
 import llm
 import json
+import config
 
-def analyze_interaction(user_input, response_text, character_name):
+async def analyze_interaction(user_input, response_text, character_name):
     """
-    Uses the LLM to analyze the social impact of an interaction on a specific character.
-    Returns (delta_trust, delta_fear, delta_affection, event_description)
+    Uses the LLM to score the player's interaction with a specific character.
+    Returns (trust, fear, affection, description).
     """
     prompt = f"""
-[SYSTEM: You are the Social Analyst. Analyze the following interaction between the Player and {character_name}.
-Determine how this interaction affects {character_name}'s view of the player.
+[SYSTEM: You are the Social Layer Engine. Analyze the following interaction between the PLAYER and the character '{character_name}'.
+How did the player's input and the character's reaction affect their relationship?
 
-PLAYER ACTION/DIALOGUE:
+PLAYER INPUT:
 "{user_input}"
 
-STORY RESPONSE:
+AI RESPONSE:
 "{response_text}"
 
 SCORING RULES:
@@ -32,7 +33,7 @@ Reply ONLY with a JSON object:
 ]
 """
     response = ""
-    for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
+    async for chunk in llm.generate_story_segment(prompt, model=config.FAST_MODEL):
         response += chunk
         
     try:
@@ -53,7 +54,7 @@ Reply ONLY with a JSON object:
         print(f"SocialEngine Error (analyze_interaction): {e}. Raw: {response}")
         return 0, 0, 0, "Analysis failed."
 
-def update_social_state(user_input, response_text):
+async def update_social_state(user_input, response_text):
     """
     Identifies involved characters and updates their relationships with the player.
     """
@@ -67,14 +68,17 @@ def update_social_state(user_input, response_text):
                 char = char_results[0]
                 char_id = char['id']
                 
-                dt, df, da, desc = analyze_interaction(user_input, response_text, entity)
+                dt, df, da, desc = await analyze_interaction(user_input, response_text, entity)
                 if dt != 0 or df != 0 or da != 0:
                     db.update_relationship(0, char_id, dt, df, da, desc)
                     print(f"Social: Updated relationship with {entity}. Trust: {dt}, Fear: {df}, Affection: {da}")
 
 if __name__ == "__main__":
-    # Test
-    print("Testing Social Engine...")
-    db.init_db()
-    db.add_character("Elara", "A kind healer", "Empathetic, Observant")
-    update_social_state("I give Elara a rare medicinal herb I found.", "Elara smiles warmly. 'This will save many lives, thank you.'")
+    import asyncio
+    async def test():
+        print("Testing Social Engine...")
+        db.init_db()
+        db.add_character("Elara", "A kind healer", "Empathetic, Observant")
+        await update_social_state("I give Elara a rare medicinal herb I found.", "Elara smiles warmly. 'This will save many lives, thank you.'")
+    
+    asyncio.run(test())

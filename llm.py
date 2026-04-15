@@ -1,10 +1,10 @@
-import requests
+import httpx
 import json
 import config
 
 OLLAMA_URL = config.OLLAMA_URL
 
-def generate_story_segment(prompt, model=config.CREATIVE_MODEL, context_facts=None, director_instructions=None, persona_blocks=None, narrative_seed=None, mechanical_result=None, foreshadowing_payoff=None, pacing_directive=None):
+async def generate_story_segment(prompt, model=config.CREATIVE_MODEL, context_facts=None, director_instructions=None, persona_blocks=None, narrative_seed=None, mechanical_result=None, foreshadowing_payoff=None, pacing_directive=None):
     full_prompt = prompt
     
     # Build up system/context block
@@ -50,23 +50,26 @@ def generate_story_segment(prompt, model=config.CREATIVE_MODEL, context_facts=No
         "stream": True
     }
     
-    response = requests.post(OLLAMA_URL, json=payload, stream=True)
-    response.raise_for_status()
-    
-    for line in response.iter_lines():
-        if line:
-            chunk = json.loads(line)
-            if "response" in chunk:
-                yield chunk["response"]
-            if chunk.get("done"):
-                break
+    async with httpx.AsyncClient(timeout=300.0) as client:
+        async with client.stream("POST", OLLAMA_URL, json=payload) as response:
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if line:
+                    chunk = json.loads(line)
+                    if "response" in chunk:
+                        yield chunk["response"]
+                    if chunk.get("done"):
+                        break
 
 if __name__ == "__main__":
     # Simple test
-    print("Testing Ollama connection...")
-    try:
-        for chunk in generate_story_segment("Write a one-sentence story about a cat in a space suit."):
-            print(chunk, end="", flush=True)
-        print("\nTest complete.")
-    except Exception as e:
-        print(f"\nError: {e}")
+    import asyncio
+    async def test():
+        print("Testing Ollama connection...")
+        try:
+            async for chunk in generate_story_segment("Write a one-sentence story about a cat in a space suit."):
+                print(chunk, end="", flush=True)
+            print("\nTest complete.")
+        except Exception as e:
+            print(f"\nError: {e}")
+    asyncio.run(test())
