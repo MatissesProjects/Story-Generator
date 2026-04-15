@@ -171,3 +171,12 @@ CREATE TABLE IF NOT EXISTS interaction_log (
         stat_value TEXT NOT NULL,
         PRIMARY KEY (entity_type, entity_id, stat_name)
     );
+
+    CREATE TABLE IF NOT EXISTS simulation_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tick_number INTEGER NOT NULL,
+        event_type TEXT,
+        description TEXT,
+        location_id INTEGER,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    );

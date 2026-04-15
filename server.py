@@ -18,6 +18,7 @@ import dicemaster
 import social_engine
 import foreshadowing
 import canon_checker
+import simulation_manager
 import config
 import os
 import json
@@ -291,6 +292,15 @@ async def websocket_endpoint(websocket: WebSocket):
                     if db.get_history_count() % 10 == 0:
                         await summarizer.update_narrative_seed()
                         await websocket.send_text(json.dumps({"type": "info", "content": "Narrative summary updated."}))
+
+                    # Global Simulation Tick (Every 5 turns)
+                    if db.get_history_count() % 5 == 0:
+                        await log_progress(websocket, "Triggering global simulation tick...")
+                        sim_events = await simulation_manager.trigger_tick()
+                        if sim_events:
+                            # We don't necessarily show these to the user, 
+                            # but they are logged and will affect future context.
+                            print(f"Simulation tick completed with {len(sim_events)} events.")
 
                 await log_progress(websocket, "Turn complete.", "success")
 

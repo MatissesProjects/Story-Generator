@@ -53,6 +53,11 @@ def get_relevant_context(user_input, top_n=5):
                 matches.append((0.5, f"[META-NARRATIVE BLEED: The concept of '{meta['topic']}' is subtly affecting this world: {meta['description']}. Hint at this atmosphere or theme briefly, but do not make it the main focus of the scene.]"))
                 break 
 
+    # 6. Global Simulation Events - High Score (0.8)
+    sim_events = db.get_recent_sim_events(limit=3)
+    for event in sim_events:
+        matches.append((0.8, f"WORLD EVENT (Tick {event['tick_number']}): {event['description']}"))
+
     # Sort by score descending and take top N
     matches.sort(key=lambda x: x[0], reverse=True)
     

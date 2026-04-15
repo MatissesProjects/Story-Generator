@@ -121,6 +121,9 @@ def get_history_count():
     result = query_db("SELECT COUNT(*) as count FROM history", one=True)
     return result['count']
 
+def get_recent_sim_events(limit=3):
+    return query_db("SELECT * FROM simulation_history ORDER BY id DESC LIMIT ?", (limit,))
+
 def set_story_state(key, value):
     execute_db("INSERT OR REPLACE INTO story_state (key, value) VALUES (?, ?)", (key, value))
 
