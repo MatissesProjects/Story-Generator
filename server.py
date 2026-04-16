@@ -103,7 +103,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     if genre:
                         prompt = f"Generate a brief, compelling {genre} story premise."
                     else:
-                        prompt = random.choice(spark.SPARK_TEMPLATES)
+                        prompt = await spark.generate_spark()#random.choice(spark.SPARK_TEMPLATES)
 
                     await log_progress(websocket, f"Generating spark with prompt: {prompt}")
                     # Send an initial spark message type so the client knows what's coming
@@ -578,4 +578,11 @@ async def websocket_endpoint(websocket: WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host=config.GENERATOR_HOST, port=config.GENERATOR_PORT)
+    # Set generous ping timeouts for long LLM generation sessions
+    uvicorn.run(
+        app, 
+        host=config.GENERATOR_HOST, 
+        port=config.GENERATOR_PORT,
+        ws_ping_interval=300.0,
+        ws_ping_timeout=300.0
+    )

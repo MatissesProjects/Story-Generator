@@ -43,7 +43,8 @@ def _build_full_prompt(prompt, context_facts=None, director_instructions=None, p
 
     # Add Voice Guidance for character creation
     voice_guidance = """
-AVAILABLE VOICES:
+[VOICE MAPPING REFERENCE:
+The following voice IDs are available for the engine. When writing dialogue, ALWAYS use the character's NAME (e.g. [Elara]: ...), NOT the voice ID.
 - en_US-ryan-high (Narrator / Deep, Strong Male)
 - en_US-lessac-high (Clear, Expressive Female Lead)
 - en_US-joe-medium (Conversational, Upbeat Younger Male)
@@ -51,8 +52,7 @@ AVAILABLE VOICES:
 - en_GB-alan-medium (Authoritative, Mature British Male)
 - en_GB-jenny_dioco-medium (Polished, Steady British Female)
 - en_GB-alba-medium (Scottish Lilt / Regional Female)
-
-When describing new characters, you may subtly suggest their voice type or origins to match these available models.
+]
 """
     context_blocks.append(voice_guidance)
         

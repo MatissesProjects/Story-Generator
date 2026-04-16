@@ -103,7 +103,30 @@ def get_all_entities():
     return [c['name'] for c in chars] + [l['topic'] for l in lore_topics]
 
 def get_character_voice(name):
+    # 1. Try exact match
     result = query_db("SELECT voice_id, length_scale, noise_scale, noise_w FROM characters WHERE name = ?", (name,), one=True)
+    
+    # 2. Try partial match if no exact match
+    if not result:
+        result = query_db("SELECT voice_id, length_scale, noise_scale, noise_w FROM characters WHERE name LIKE ?", (f"%{name}%",), one=True)
+    
+    # 3. Check if name itself looks like a voice ID
+    if not result:
+        # Check if the name matches any of our known voice files
+        voice_files = [
+            "en_US-ryan-high", "en_US-lessac-high", "en_US-joe-medium", 
+            "en_US-amy-medium", "en_GB-alan-medium", "en_GB-jenny_dioco-medium", 
+            "en_GB-alba-medium", "en_US-lessac-medium"
+        ]
+        for vf in voice_files:
+            if vf.lower() in name.lower():
+                return {
+                    "voice_id": f"{vf}.onnx",
+                    "length_scale": 1.0,
+                    "noise_scale": 0.667,
+                    "noise_w": 0.8
+                }
+
     if result:
         return {
             "voice_id": result['voice_id'] or "en_US-lessac-medium.onnx",
@@ -111,6 +134,8 @@ def get_character_voice(name):
             "noise_scale": result['noise_scale'],
             "noise_w": result['noise_w']
         }
+    
+    # Fallback to Narrator
     return {
         "voice_id": "en_US-ryan-high.onnx",
         "length_scale": 1.0,

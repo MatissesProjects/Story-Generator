@@ -14,7 +14,7 @@ except ImportError:
         speaker_id: Optional[int] = None
         length_scale: Optional[float] = None
         noise_scale: Optional[float] = None
-        noise_w: Optional[float] = None
+        noise_w_scale: Optional[float] = None
 
 # Cache for loaded voices to avoid reloading from disk every time
 VOICE_CACHE = {}
@@ -58,7 +58,10 @@ def generate_audio(text, speaker_id, voice_config=None):
 
     output_file = os.path.join(output_dir, f"{speaker_id}_{hash(text) % 10000}.wav")
     
-    voice = get_voice(voice_config.get('voice_id', 'en_US-lessac-medium.onnx'))
+    voice_id = voice_config.get('voice_id', 'en_US-lessac-medium.onnx')
+    print(f"TTS: Generating audio for '{speaker_id}' using model '{voice_id}'")
+    
+    voice = get_voice(voice_id)
     if not voice:
         return None
 
@@ -66,7 +69,7 @@ def generate_audio(text, speaker_id, voice_config=None):
         syn_config = SynthesisConfig(
             length_scale=voice_config.get('length_scale', 1.0),
             noise_scale=voice_config.get('noise_scale', 0.667),
-            noise_w=voice_config.get('noise_w', 0.8)
+            noise_w_scale=voice_config.get('noise_w', 0.8)
         )
 
         with wave.open(output_file, "wb") as wav_file:

@@ -12,3 +12,5 @@ venv.bak/
 vector_db/
 voices/
 *db
+audio_output/
+.coverage
