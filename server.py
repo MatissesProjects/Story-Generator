@@ -274,6 +274,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     persona_blocks = director.get_persona_blocks(user_input, current_turn=turn_count)
                     narrative_seed = db.get_story_state("narrative_seed")
                     current_pacing = db.get_story_state("current_pacing") or "Exploration"
+                    curr_loc_name = db.get_story_state("current_location") or "Unknown"
 
                     # Foreshadowing check
                     foreshadow_note = ""
@@ -336,7 +337,6 @@ async def websocket_endpoint(websocket: WebSocket):
 
                     # --- PHASE 4: Post-Generation Tasks (Parallel) ---
                     await log_progress(websocket, "Finalizing turn processing...")
-                    curr_loc_name = db.get_story_state("current_location") or "Unknown"
                     
                     post_tasks = [
                         foreshadowing.extract_seeds(full_response, curr_loc_name),
