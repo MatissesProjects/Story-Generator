@@ -6,6 +6,7 @@ let isPlaying = false;
 let currentMusic = null;
 let currentAmbiance = null;
 let nextMusic = null;
+let lastNonLeitmotifUrl = null;
 
 // DOM Elements
 const historyContainer = document.getElementById('history-container');
@@ -353,7 +354,7 @@ function handleMessage(message) {
 
         case 'music_event':
             addLog("Music", `Mood: ${message.mood} - Playing: ${message.filename}`);
-            updateMusic(message.url);
+            updateMusic(message.url, message.is_leitmotif);
             break;
 
         case 'visual_update':
@@ -387,8 +388,12 @@ function handleMessage(message) {
     }
 }
 
-function updateMusic(url) {
+function updateMusic(url, isLeitmotif = false) {
     if (currentMusic && currentMusic.src.includes(url)) return;
+
+    if (!isLeitmotif) {
+        lastNonLeitmotifUrl = url;
+    }
 
     const newAudio = new Audio(url);
     newAudio.loop = true;
@@ -400,7 +405,8 @@ function updateMusic(url) {
 
     currentMusic = newAudio;
     currentMusic.play().then(() => {
-        fadeIn(currentMusic, isDucked ? DUCKED_MUSIC_VOL : NORMAL_MUSIC_VOL);
+        const targetVol = isDucked ? DUCKED_MUSIC_VOL : NORMAL_MUSIC_VOL;
+        fadeIn(currentMusic, targetVol);
     }).catch(e => console.warn("Music autoplay blocked:", e));
 }
 
@@ -427,30 +433,31 @@ function toggleKenBurns(el) {
 }
 
 function fadeIn(audio, targetVol = 0.5) {
-
     let vol = 0;
+    audio.volume = 0;
     const interval = setInterval(() => {
-        vol += 0.05;
-        if (vol >= 0.5) {
-            audio.volume = 0.5;
+        vol += 0.02;
+        if (vol >= targetVol) {
+            audio.volume = targetVol;
             clearInterval(interval);
         } else {
             audio.volume = vol;
         }
-    }, 200);
+    }, 100);
 }
 
 function fadeOut(audio) {
     let vol = audio.volume;
     const interval = setInterval(() => {
-        vol -= 0.05;
+        vol -= 0.02;
         if (vol <= 0) {
+            audio.volume = 0;
             audio.pause();
             clearInterval(interval);
         } else {
             audio.volume = vol;
         }
-    }, 200);
+    }, 100);
 }
 
 function renderCharacters() {

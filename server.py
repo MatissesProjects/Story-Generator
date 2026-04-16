@@ -287,13 +287,42 @@ async def websocket_endpoint(websocket: WebSocket):
 
                     # Music selection
                     if config.MUSIC_ENABLED:
-                        mood = post_results[3]
-                        if db.get_history_count() % 3 == 0 or plan['new_location']:
-                            track = music.select_track(mood)
-                            if track:
-                                file_path = track['file_path']
-                                url = f"/music_examples/{os.path.basename(file_path)}" if "musicExamples" in file_path else f"/gen_assets/{os.path.basename(file_path)}"
-                                await websocket.send_text(json.dumps({"type": "music_event", "url": url, "mood": mood, "filename": track['filename']}))
+                        # Priority 1: Leitmotif (Character Theme)
+                        leitmotif = music.get_leitmotif(full_response)
+                        if leitmotif:
+                            file_path = leitmotif['file_path']
+                            # Determine URL (Check if it's in music_examples or gen_assets)
+                            url = ""
+                            if "musicExamples" in file_path:
+                                url = f"/music_examples/{os.path.basename(file_path)}"
+                            elif "generated_assets" in file_path:
+                                url = f"/gen_assets/{os.path.basename(file_path)}"
+                            else:
+                                # Fallback/External
+                                url = f"/audio/{os.path.basename(file_path)}"
+                            
+                            await websocket.send_text(json.dumps({
+                                "type": "music_event", 
+                                "url": url, 
+                                "mood": f"Leitmotif: {leitmotif['character']}", 
+                                "filename": leitmotif['filename'],
+                                "is_leitmotif": True
+                            }))
+                        else:
+                            # Priority 2: Mood-based track
+                            mood = post_results[3]
+                            if db.get_history_count() % 3 == 0 or plan['new_location']:
+                                track = music.select_track(mood)
+                                if track:
+                                    file_path = track['file_path']
+                                    url = f"/music_examples/{os.path.basename(file_path)}" if "musicExamples" in file_path else f"/gen_assets/{os.path.basename(file_path)}"
+                                    await websocket.send_text(json.dumps({
+                                        "type": "music_event", 
+                                        "url": url, 
+                                        "mood": mood, 
+                                        "filename": track['filename'],
+                                        "is_leitmotif": False
+                                    }))
 
                     # Atmosphere update
                     atmos_data = post_results[4]

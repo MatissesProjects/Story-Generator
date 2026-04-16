@@ -13,6 +13,6 @@
 - [x] Implement "Reunion Event" logic in `social_engine.py` when a decayed character returns.
 
 ## Phase 3: Leitmotifs & Advanced Mixing
-- [ ] Add a `leitmotif_path` to the `characters` table in `db.py`.
-- [ ] Update `music_orchestrator.py` to allow character-specific theme overrides.
-- [ ] Update `static/app.js` to handle cross-fading between generic mood music and character leitmotifs.
+- [x] Add a `leitmotif_path` to the `characters` table in `db.py`.
+- [x] Update `music_orchestrator.py` to allow character-specific theme overrides.
+- [x] Update `static/app.js` to handle cross-fading between generic mood music and character leitmotifs.

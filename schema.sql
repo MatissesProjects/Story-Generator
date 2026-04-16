@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS characters (
     current_task TEXT,
     signature_tic TEXT,
     narrative_role TEXT DEFAULT 'NPC',
-    last_seen_turn INTEGER DEFAULT 0
+    last_seen_turn INTEGER DEFAULT 0,
+    leitmotif_path TEXT
 );
 
 CREATE TABLE IF NOT EXISTS lore (

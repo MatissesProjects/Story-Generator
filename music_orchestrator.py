@@ -97,6 +97,25 @@ REPLY ONLY WITH THE CATEGORY NAME.]
         import random
         return random.choice(possible_tracks)
 
+    def get_leitmotif(self, story_text):
+        """
+        Scans story text for characters and returns their leitmotif if it exists.
+        """
+        if not self.enabled:
+            return None
+            
+        all_chars = db.get_all_characters()
+        for char in all_chars:
+            if char['name'].lower() in story_text.lower():
+                if char['leitmotif_path']:
+                    # Build full path relative to config.AUDIO_SEQUENCER_PATH or absolute
+                    return {
+                        "filename": os.path.basename(char['leitmotif_path']),
+                        "file_path": char['leitmotif_path'],
+                        "character": char['name']
+                    }
+        return None
+
 if __name__ == "__main__":
     import asyncio
     async def test():

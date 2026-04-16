@@ -47,6 +47,10 @@ def init_db():
             conn.execute("ALTER TABLE characters ADD COLUMN narrative_role TEXT DEFAULT 'NPC'")
             conn.execute("ALTER TABLE characters ADD COLUMN last_seen_turn INTEGER DEFAULT 0")
         
+        if 'leitmotif_path' not in columns:
+            print("Migrating database: Adding 'leitmotif_path' to 'characters'")
+            conn.execute("ALTER TABLE characters ADD COLUMN leitmotif_path TEXT")
+        
         # Simple migration for 'relationships' table
         cursor = conn.execute("PRAGMA table_info(relationships)")
         columns = [column[1] for column in cursor.fetchall()]
@@ -107,13 +111,13 @@ def get_character_voice(name):
         "noise_w": 0.8
     }
 
-def add_character(name, description, traits, voice_id="en_US-lessac-medium.onnx", length_scale=1.0, noise_scale=0.667, noise_w=0.8, signature_tic=None, narrative_role='NPC'):
+def add_character(name, description, traits, voice_id="en_US-lessac-medium.onnx", length_scale=1.0, noise_scale=0.667, noise_w=0.8, signature_tic=None, narrative_role='NPC', leitmotif_path=None):
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.execute("""
             INSERT INTO characters 
-            (name, description, traits, voice_id, length_scale, noise_scale, noise_w, signature_tic, narrative_role) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (name, description, traits, voice_id, length_scale, noise_scale, noise_w, signature_tic, narrative_role))
+            (name, description, traits, voice_id, length_scale, noise_scale, noise_w, signature_tic, narrative_role, leitmotif_path) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (name, description, traits, voice_id, length_scale, noise_scale, noise_w, signature_tic, narrative_role, leitmotif_path))
         conn.commit()
         char_id = cur.lastrowid
         memory_engine.add_character_vector(name, description, traits, char_id)
