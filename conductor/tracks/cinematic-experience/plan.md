@@ -1,17 +1,18 @@
 # Cinematic Experience Implementation Plan
 
-## Phase 1: Literary Character Upgrades
-- [ ] Add `signature_tic` and `narrative_role` to the `characters` table in `schema.sql` and `db.py`.
-- [ ] Update the `add_character` logic to prompt the LLM for a recognizable tic.
-- [ ] Update `director.py` to track "turns since last seen" for characters.
-- [ ] Add logic: If an old character reappears, inject a Director Instruction: `Re-introduce [Character] using their signature trait: [Tic].`
+## Phase 1: Visual & Audio Polish (The YouTuber Approach)
+- [x] Add CSS `@keyframes` for "Ken Burns" (slow pan/zoom) to `static/style.css`.
+- [x] Update `static/app.js` to toggle Ken Burns animations on environment and portrait changes.
+- [x] Implement **Audio Ducking** in `static/app.js`: Music/Ambiance volume should dip when TTS is playing.
+- [x] Add visual punctuation triggers (flash, shake) to the frontend event handler.
 
-## Phase 2: Cinematic Audio Layering
-- [ ] Update `atmosphere_engine.py` to select layered audio: one base ambiance track, one mood music track.
-- [ ] Modify `static/app.js` to support multiple parallel audio elements (Voice, Music, Ambiance).
-- [ ] Implement Character Leitmotifs: Assign specific audio tracks or moods to major NPCs and trigger them when they enter a scene.
+## Phase 2: Character Anchors & Depth (The Literary Approach)
+- [ ] Add `signature_tic`, `narrative_role`, and `last_seen_turn` to `characters` table in `schema.sql`.
+- [ ] Update `db.py` character methods to handle these new fields.
+- [ ] Update `director.py` prompt logic to enforce character tics and detect "relevance decay."
+- [ ] Implement "Reunion Event" logic in `social_engine.py` when a decayed character returns.
 
-## Phase 3: Dynamic Visuals (Ken Burns & Impacts)
-- [ ] Add CSS animations for the "Ken Burns" effect to `style.css` (slow pan and zoom).
-- [ ] Update `static/app.js` to apply the Ken Burns class to `.environment-image` and `.portrait`.
-- [ ] Add visual punctuation classes (e.g., `.shake`, `.flash-red`) triggered by combat or high-tension events detected by the Director.
+## Phase 3: Leitmotifs & Advanced Mixing
+- [ ] Add a `leitmotif_path` to the `characters` table in `db.py`.
+- [ ] Update `music_orchestrator.py` to allow character-specific theme overrides.
+- [ ] Update `static/app.js` to handle cross-fading between generic mood music and character leitmotifs.

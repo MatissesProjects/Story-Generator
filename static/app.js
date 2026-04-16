@@ -42,6 +42,13 @@ let characters = [];
 let currentPosition = { x: 0, y: 0 };
 let currentLocationName = "";
 
+// Audio Ducking state
+let isDucked = false;
+const NORMAL_MUSIC_VOL = 0.5;
+const NORMAL_AMBIANCE_VOL = 0.3;
+const DUCKED_MUSIC_VOL = 0.15;
+const DUCKED_AMBIANCE_VOL = 0.1;
+
 function connect() {
     socket = new WebSocket(wsUrl);
 
@@ -340,6 +347,7 @@ function handleMessage(message) {
             locationNameEl.innerText = currentLocationName = message.location;
             if (message.url) {
                 backgroundVisualEl.style.backgroundImage = `url('${message.url}')`;
+                toggleKenBurns(backgroundVisualEl);
             }
             break;
 
@@ -385,18 +393,41 @@ function updateMusic(url) {
     const newAudio = new Audio(url);
     newAudio.loop = true;
     newAudio.volume = 0;
-    
+
     if (currentMusic) {
         fadeOut(currentMusic);
     }
 
     currentMusic = newAudio;
     currentMusic.play().then(() => {
-        fadeIn(currentMusic);
+        fadeIn(currentMusic, isDucked ? DUCKED_MUSIC_VOL : NORMAL_MUSIC_VOL);
     }).catch(e => console.warn("Music autoplay blocked:", e));
 }
 
-function fadeIn(audio) {
+function duckAudio() {
+    if (isDucked) return;
+    isDucked = true;
+    if (currentMusic) currentMusic.volume = DUCKED_MUSIC_VOL;
+    if (currentAmbiance) currentAmbiance.volume = DUCKED_AMBIANCE_VOL;
+}
+
+function unduckAudio() {
+    if (!isDucked) return;
+    isDucked = false;
+    if (currentMusic) currentMusic.volume = NORMAL_MUSIC_VOL;
+    if (currentAmbiance) currentAmbiance.volume = NORMAL_AMBIANCE_VOL;
+}
+
+function toggleKenBurns(el) {
+    el.classList.remove('ken-burns-in', 'ken-burns-out');
+    // Force reflow to restart animation
+    void el.offsetWidth;
+    const effect = Math.random() > 0.5 ? 'ken-burns-in' : 'ken-burns-out';
+    el.classList.add(effect);
+}
+
+function fadeIn(audio, targetVol = 0.5) {
+
     let vol = 0;
     const interval = setInterval(() => {
         vol += 0.05;
@@ -563,10 +594,12 @@ function queueAudio(url, speaker) {
 async function playNextAudio() {
     if (audioQueue.length === 0) {
         isPlaying = false;
+        unduckAudio();
         return;
     }
 
     isPlaying = true;
+    duckAudio();
     const { url, speaker } = audioQueue.shift();
     
     statusIndicator.innerText = `Speaking: ${speaker}...`;
@@ -651,10 +684,19 @@ function applyAtmosphere(atmos) {
     overlay.style.backgroundColor = atmos.tint || 'rgba(0,0,0,0)';
 
     // Apply Haptic (Screen Shake)
-    if (atmos.haptic && (atmos.haptic.toLowerCase().includes('rumble') || atmos.haptic.toLowerCase().includes('pulse') || atmos.haptic.toLowerCase().includes('shake'))) {
+    const haptic = (atmos.haptic || "").toLowerCase();
+    if (haptic.includes('rumble') || haptic.includes('pulse') || haptic.includes('shake')) {
         document.body.classList.add('shake');
         setTimeout(() => {
             document.body.classList.remove('shake');
+        }, 800);
+    }
+
+    // Apply Visual Punctuation (Flash Red)
+    if (haptic.includes('damage') || haptic.includes('impact') || (atmos.lighting && atmos.lighting.toLowerCase().includes('red'))) {
+        overlay.classList.add('flash-red');
+        setTimeout(() => {
+            overlay.classList.remove('flash-red');
         }, 800);
     }
 }
@@ -672,6 +714,11 @@ function updateVisualStack(stack) {
         if (url) {
             el.style.backgroundImage = `url('${url}')`;
             el.style.opacity = (key === 'texture' ? 0.4 : (key === 'overlay' ? 0.3 : 1.0));
+            
+            // Apply Ken Burns to environment and entity
+            if (key === 'environment' || key === 'entity') {
+                toggleKenBurns(el);
+            }
         } else {
             el.style.opacity = 0;
         }

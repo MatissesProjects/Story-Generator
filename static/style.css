@@ -543,3 +543,33 @@ form input, form textarea, select {
     animation: shake 0.5s;
     animation-iteration-count: 1; /* Trigger once per pulse */
 }
+
+/* Ken Burns Effects */
+@keyframes ken-burns-in {
+    0% { transform: scale(1) translate(0, 0); }
+    100% { transform: scale(1.15) translate(-2%, -1%); }
+}
+
+@keyframes ken-burns-out {
+    0% { transform: scale(1.15) translate(1%, 2%); }
+    100% { transform: scale(1) translate(0, 0); }
+}
+
+.ken-burns-in {
+    animation: ken-burns-in 45s ease-in-out infinite alternate;
+}
+
+.ken-burns-out {
+    animation: ken-burns-out 45s ease-in-out infinite alternate;
+}
+
+/* Visual Punctuation */
+@keyframes flash-red {
+    0% { background-color: rgba(255, 0, 0, 0); }
+    20% { background-color: rgba(255, 0, 0, 0.4); }
+    100% { background-color: rgba(255, 0, 0, 0); }
+}
+
+.flash-red {
+    animation: flash-red 0.8s ease-out;
+}
