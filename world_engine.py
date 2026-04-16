@@ -26,7 +26,7 @@ class WorldEngine:
             base_loc = db.get_location_by_name(relative_to_name)
             if base_loc:
                 bx, by = base_loc['x'], base_loc['y']
-                base_elevation = base_loc.get('elevation', 0)
+                base_elevation = base_loc['elevation'] if 'elevation' in base_loc.keys() else 0
                 
                 # Directional offsets
                 offset = self.grid_size
@@ -50,7 +50,7 @@ class WorldEngine:
                 base = all_locs[0]
                 x = base['x'] + random.randint(-self.grid_size, self.grid_size)
                 y = base['y'] + random.randint(-self.grid_size, self.grid_size)
-                base_elevation = base.get('elevation', 0)
+                base_elevation = base['elevation'] if 'elevation' in base.keys() else 0
 
         # Detect physical properties via LLM
         props = await self.detect_physical_properties(name, description, base_elevation)

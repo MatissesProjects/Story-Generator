@@ -18,13 +18,13 @@ async def test_database_isolation_again():
     threads = db.get_active_plot_threads()
     # Should be 0 if isolation works
     assert len(threads) == 0
-
 @pytest.mark.asyncio
 async def test_llm_mocking(mock_llm):
     """Verify that LLM mocking works correctly."""
     response = await llm.async_generate_full_response("Hello")
-    assert response == "Mocked response"
+    assert response == "Mocked response content."
     mock_llm['full'].assert_called_once()
+
 
     # Test streaming
     collected = ""

@@ -17,6 +17,6 @@
 - [x] Transition `validator.py` and `director.py` to "Fail-Closed" logic.
 
 ## Phase 4: Integration & Regression
-- [ ] Create a "Golden Turn" integration test that runs a full Turn 1 through Turn 5 sequence with mocked results.
-- [ ] Automate `canon_checker` and `foreshadowing` validation in the test suite.
-- [ ] Add a script to run all tests and generate a coverage report.
+- [x] Create a "Golden Turn" integration test that runs a full Turn 1 through Turn 5 sequence with mocked results.
+- [x] Automate `canon_checker` and `foreshadowing` validation in the test suite.
+- [x] Add a script to run all tests and generate a coverage report.

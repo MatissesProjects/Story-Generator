@@ -38,13 +38,17 @@ REPLY ONLY IN JSON.]
     # We want a non-streaming, fast response
     response_text = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         
-    result = utils.safe_parse_json(response_text)
-    if result:
-        # We use .get(..., False) for Fail-Closed if the key is missing
-        return result.get("is_valid", False), result.get("reason", "Logic check failed.")
-    
-    print(f"Validator Error: Failed to parse LLM response. Raw output: {response_text}")
-    return False, "The logic of that action is unclear to the engine. Please try describing it differently."
+    try:
+        result = utils.safe_parse_json(response_text)
+        if result:
+            # We use .get(..., False) for Fail-Closed if the key is missing
+            return result.get("is_valid", False), result.get("reason", "Logic check failed.")
+        
+        print(f"Validator Error: Failed to parse LLM response. Raw output: {response_text}")
+        return False, "The logic of that action is unclear to the engine. Please try describing it differently."
+    except Exception as e:
+        print(f"Validator Critical Error: {e}")
+        return False, "An unexpected error occurred during logic validation."
 
 if __name__ == "__main__":
     import asyncio
