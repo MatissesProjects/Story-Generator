@@ -12,7 +12,10 @@ CREATE TABLE IF NOT EXISTS characters (
     safety INTEGER DEFAULT 50,
     resources INTEGER DEFAULT 50,
     current_goal TEXT,
-    current_task TEXT
+    current_task TEXT,
+    signature_tic TEXT,
+    narrative_role TEXT DEFAULT 'NPC',
+    last_seen_turn INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS lore (

@@ -122,27 +122,40 @@ REPLY ONLY IN JSON.]
         print(f"Director Error (evaluate_milestone_progress): {e}. Raw: {response}")
         return False
 
-def get_persona_blocks(user_input):
+def get_persona_blocks(user_input, current_turn=0):
     """
-    Identifies characters mentioned in the input and retrieves their persona constraints
-    and relationship with the player.
+    Identifies characters mentioned in the input and retrieves their persona constraints,
+    relationships, roles, and signature tics.
     """
     entities = db.get_all_entities()
     persona_blocks = []
-    
+
     for entity in entities:
         if entity.lower() in user_input.lower():
             char_results = db.search_characters(entity)
             for char in char_results:
+                # Update last seen turn
+                db.update_character_last_seen(char['id'], current_turn)
+
                 # Get relationship with player (id 0)
                 rel = db.get_relationship(0, char['id'])
                 rel_str = f"RELATIONSHIP WITH PLAYER: Trust {rel['trust']}, Fear {rel['fear']}, Affection {rel['affection']}"
-                
-                # Format: [SPEAKER: {Name}; TRAITS: {Traits}; CURRENT_MOOD: {Mood}; HIDDEN_GOAL: {Goal}]
-                block = f"[SPEAKER: {char['name']}; TRAITS: {char['traits']}; DESCRIPTION: {char['description']}; {rel_str}]"
+
+                # Role and Tic
+                role_str = f"NARRATIVE ROLE: {char['narrative_role']}"
+                tic_str = f"SIGNATURE TIC (Anchor): {char['signature_tic'] or 'None'}"
+
+                # Check for "Reunion" (long absence)
+                reunion_note = ""
+                if current_turn - char['last_seen_turn'] > 15:
+                    reunion_note = f"\nREUNION EVENT: {char['name']} hasn't been seen for a long time. RE-INTRODUCE THEM using their SIGNATURE TIC prominently."
+
+                # Format: [SPEAKER: {Name}; ROLE: {Role}; TRAITS: {Traits}; DESCRIPTION: {Description}; TIC: {Tic}; {RelStr}]
+                block = f"[SPEAKER: {char['name']}; {role_str}; TRAITS: {char['traits']}; DESCRIPTION: {char['description']}; {tic_str}; {rel_str}]{reunion_note}"
                 persona_blocks.append(block)
-                
+
     return persona_blocks
+
 
 async def check_narrative_gaps(recent_history, active_threads):
     """
@@ -276,6 +289,29 @@ Instructions:
 3. Be dramatic and high-stakes.
 
 REPLY ONLY WITH THE EVENT DESCRIPTION.]
+"""
+    return await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
+
+async def generate_character_tic(name, description, traits):
+    """
+    Uses the LLM to generate a memorable physical or behavioral 'anchor' tic for a character.
+    """
+    prompt = f"""
+[SYSTEM: You are the Character Architect. Your goal is to create a single, memorable 'signature tic' or 'anchor' for a character.
+This should be a brief physical action, a specific scent, or a recurring behavioral quirk that makes them instantly recognizable.
+
+CHARACTER: {name}
+DESCRIPTION: {description}
+TRAITS: {traits}
+
+EXAMPLES:
+- "Always tugs at his left earlobe when lying."
+- "Smells faintly of scorched cinnamon and old parchment."
+- "Constantly polishes a small silver coin between her knuckles."
+- "Never looks people in the eye, instead staring at their throat."
+- "Taps a rhythmic code on any wooden surface nearby."
+
+REPLY ONLY WITH THE TIC DESCRIPTION (one sentence).]
 """
     return await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
 

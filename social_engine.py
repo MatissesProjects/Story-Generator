@@ -53,9 +53,10 @@ Reply ONLY with a JSON object:
         print(f"SocialEngine Error (analyze_interaction): {e}. Raw: {response}")
         return 0, 0, 0, "Analysis failed."
 
-async def update_social_state(user_input, response_text):
+async def update_social_state(user_input, response_text, current_turn=0):
     """
     Identifies involved characters and updates their relationships with the player.
+    Also updates the 'last_seen_turn' for these characters.
     """
     all_entities = db.get_all_entities()
     # Simple check: if a character name is in the response, analyze them
@@ -67,6 +68,9 @@ async def update_social_state(user_input, response_text):
             if char_results:
                 char = char_results[0]
                 char_id = char['id']
+                
+                # Update last seen
+                db.update_character_last_seen(char_id, current_turn)
                 
                 # We can't easily gather these here because update_relationship is synchronous DB call
                 # But we can gather the analysis results

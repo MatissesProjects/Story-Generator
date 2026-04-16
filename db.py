@@ -41,6 +41,12 @@ def init_db():
             conn.execute("ALTER TABLE characters ADD COLUMN current_goal TEXT")
             conn.execute("ALTER TABLE characters ADD COLUMN current_task TEXT")
         
+        if 'signature_tic' not in columns:
+            print("Migrating database: Adding cinematic columns to 'characters'")
+            conn.execute("ALTER TABLE characters ADD COLUMN signature_tic TEXT")
+            conn.execute("ALTER TABLE characters ADD COLUMN narrative_role TEXT DEFAULT 'NPC'")
+            conn.execute("ALTER TABLE characters ADD COLUMN last_seen_turn INTEGER DEFAULT 0")
+        
         # Simple migration for 'relationships' table
         cursor = conn.execute("PRAGMA table_info(relationships)")
         columns = [column[1] for column in cursor.fetchall()]
@@ -101,16 +107,19 @@ def get_character_voice(name):
         "noise_w": 0.8
     }
 
-def add_character(name, description, traits, voice_id="en_US-lessac-medium.onnx", length_scale=1.0, noise_scale=0.667, noise_w=0.8):
+def add_character(name, description, traits, voice_id="en_US-lessac-medium.onnx", length_scale=1.0, noise_scale=0.667, noise_w=0.8, signature_tic=None, narrative_role='NPC'):
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.execute("""
             INSERT INTO characters 
-            (name, description, traits, voice_id, length_scale, noise_scale, noise_w) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (name, description, traits, voice_id, length_scale, noise_scale, noise_w))
+            (name, description, traits, voice_id, length_scale, noise_scale, noise_w, signature_tic, narrative_role) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (name, description, traits, voice_id, length_scale, noise_scale, noise_w, signature_tic, narrative_role))
         conn.commit()
         char_id = cur.lastrowid
         memory_engine.add_character_vector(name, description, traits, char_id)
+
+def update_character_last_seen(char_id, turn_number):
+    execute_db("UPDATE characters SET last_seen_turn = ? WHERE id = ?", (turn_number, char_id))
 
 def add_lore(topic, description):
     with sqlite3.connect(DB_PATH) as conn:

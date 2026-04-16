@@ -7,10 +7,10 @@
 - [x] Add visual punctuation triggers (flash, shake) to the frontend event handler.
 
 ## Phase 2: Character Anchors & Depth (The Literary Approach)
-- [ ] Add `signature_tic`, `narrative_role`, and `last_seen_turn` to `characters` table in `schema.sql`.
-- [ ] Update `db.py` character methods to handle these new fields.
-- [ ] Update `director.py` prompt logic to enforce character tics and detect "relevance decay."
-- [ ] Implement "Reunion Event" logic in `social_engine.py` when a decayed character returns.
+- [x] Add `signature_tic`, `narrative_role`, and `last_seen_turn` to `characters` table in `schema.sql`.
+- [x] Update `db.py` character methods to handle these new fields.
+- [x] Update `director.py` prompt logic to enforce character tics and detect "relevance decay."
+- [x] Implement "Reunion Event" logic in `social_engine.py` when a decayed character returns.
 
 ## Phase 3: Leitmotifs & Advanced Mixing
 - [ ] Add a `leitmotif_path` to the `characters` table in `db.py`.

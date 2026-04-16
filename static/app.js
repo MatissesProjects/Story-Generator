@@ -479,8 +479,9 @@ function renderCharacters() {
         `;
 
         info.innerHTML = `
-            <h4>${char.name}</h4>
+            <h4>${char.name} <small>(${char.narrative_role})</small></h4>
             <p>${char.traits}</p>
+            <div class="char-tic"><em>"${char.signature_tic || '...'}"</em></div>
             ${goalHtml}
             ${metersHtml}
         `;

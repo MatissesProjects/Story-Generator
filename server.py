@@ -59,8 +59,7 @@ ambiance_path = os.path.join(config.AUDIO_SEQUENCER_PATH, "ambiance")
 if os.path.exists(ambiance_path):
     app.mount("/ambiance", StaticFiles(directory=ambiance_path), name="ambiance")
 
-# Mount the audio output directory
- so it can be accessed via HTTP
+# Mount the audio output directory so it can be accessed via HTTP
 if not os.path.exists(config.AUDIO_OUTPUT_DIR):
     os.makedirs(config.AUDIO_OUTPUT_DIR)
 app.mount("/audio", StaticFiles(directory=config.AUDIO_OUTPUT_DIR), name="audio")
@@ -206,8 +205,9 @@ async def websocket_endpoint(websocket: WebSocket):
                         await websocket.send_text(json.dumps({"type": "scene_update", "location": loc['name'], "url": env_url}))
 
                     # --- PHASE 3: Generation ---
+                    turn_count = db.get_history_count()
                     director_instructions = director.evaluate_state(user_input)
-                    persona_blocks = director.get_persona_blocks(user_input)
+                    persona_blocks = director.get_persona_blocks(user_input, current_turn=turn_count)
                     narrative_seed = db.get_story_state("narrative_seed")
                     current_pacing = db.get_story_state("current_pacing") or "Exploration"
 
@@ -265,7 +265,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     post_tasks = [
                         foreshadowing.extract_seeds(full_response, curr_loc_name),
                         canon_checker.extract_claims(full_response),
-                        social_engine.update_social_state(user_input, full_response),
+                        social_engine.update_social_state(user_input, full_response, current_turn=turn_count),
                         music.detect_mood(full_response),
                         atmosphere.detect_atmosphere(full_response, curr_loc_name)
                     ]
@@ -359,6 +359,13 @@ async def websocket_endpoint(websocket: WebSocket):
 
             elif message["type"] == "add_character":
                 char_data = message["content"]
+                
+                # Auto-generate tic if not provided
+                tic = char_data.get("signature_tic")
+                if not tic:
+                    await log_progress(websocket, f"Generating signature tic for {char_data['name']}...")
+                    tic = await director.generate_character_tic(char_data["name"], char_data["description"], char_data["traits"])
+
                 db.add_character(
                     char_data["name"], 
                     char_data["description"], 
@@ -366,10 +373,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     char_data.get("voice_id", "en_US-lessac-medium.onnx"),
                     char_data.get("length_scale", 1.0),
                     char_data.get("noise_scale", 0.667),
-                    char_data.get("noise_w", 0.8)
+                    char_data.get("noise_w", 0.8),
+                    signature_tic=tic,
+                    narrative_role=char_data.get("narrative_role", "NPC")
                 )
                 portrait_url = await vision.generate_portrait(char_data["name"], char_data["description"], char_data["traits"])
-                await websocket.send_text(json.dumps({"type": "info", "content": f"Character {char_data['name']} added with portrait."}))
+                await websocket.send_text(json.dumps({"type": "info", "content": f"Character {char_data['name']} added with portrait and tic: {tic}"}))
                 await websocket.send_text(json.dumps({"type": "portrait_update", "name": char_data["name"], "url": portrait_url}))
 
             elif message["type"] == "add_lore":
@@ -444,7 +453,9 @@ async def websocket_endpoint(websocket: WebSocket):
                         "safety": c['safety'],
                         "resources": c['resources'],
                         "current_goal": c['current_goal'],
-                        "current_task": c['current_task']
+                        "current_task": c['current_task'],
+                        "signature_tic": c['signature_tic'],
+                        "narrative_role": c['narrative_role']
                     })
 
                 quests = db.get_active_quests()
