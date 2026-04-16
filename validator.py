@@ -1,6 +1,7 @@
 import llm
 import config
 import json
+import utils
 
 async def validate_action(user_input, context_facts, inventory=None, stats=None):
     """
@@ -37,19 +38,13 @@ REPLY ONLY IN JSON.]
     # We want a non-streaming, fast response
     response_text = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         
-    try:
-        # Attempt to parse the JSON from the LLM output
-        clean_json = response_text.strip()
-        if "```json" in clean_json:
-            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-        elif "```" in clean_json:
-            clean_json = clean_json.split("```")[1].split("```")[0].strip()
-            
-        result = json.loads(clean_json)
-        return result.get("is_valid", True), result.get("reason", "")
-    except Exception as e:
-        print(f"Validator Error: {e}. Raw output: {response_text}")
-        return True, "" # Fail-safe: allow the action if parsing fails
+    result = utils.safe_parse_json(response_text)
+    if result:
+        # We use .get(..., False) for Fail-Closed if the key is missing
+        return result.get("is_valid", False), result.get("reason", "Logic check failed.")
+    
+    print(f"Validator Error: Failed to parse LLM response. Raw output: {response_text}")
+    return False, "The logic of that action is unclear to the engine. Please try describing it differently."
 
 if __name__ == "__main__":
     import asyncio

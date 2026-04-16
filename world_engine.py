@@ -3,6 +3,7 @@ import llm
 import json
 import random
 import config
+import utils
 
 class WorldEngine:
     def __init__(self):
@@ -11,6 +12,7 @@ class WorldEngine:
     async def resolve_new_location(self, name, description, relative_to_name=None, direction=None):
         """
         Determines where a new location should be placed on the 2D map and detects its physical properties.
+        Prevents spatial collisions by jittering if a spot is taken.
         """
         existing = db.get_location_by_name(name)
         if existing:
@@ -42,7 +44,7 @@ class WorldEngine:
                 dx, dy = directions.get(direction.lower() if direction else "", (random.randint(-offset, offset), random.randint(-offset, offset)))
                 x, y = bx + dx, by + dy
         else:
-            # If it's the first location, put it at 0,0
+            # If it's not the first location, put it relative to something existing
             all_locs = db.get_all_locations()
             if all_locs:
                 base = all_locs[0]
@@ -52,13 +54,24 @@ class WorldEngine:
 
         # Detect physical properties via LLM
         props = await self.detect_physical_properties(name, description, base_elevation)
-        
-        loc_id = db.add_location(
-            name, description, x, y, 
-            biome_type=props.get('biome', 'Plain'),
-            elevation=props.get('elevation', 0),
-            climate=props.get('climate', 'Temperate')
-        )
+
+        # SPATIAL COLLISION CHECK: Retry until a free spot is found
+        max_attempts = 10
+        loc_id = None
+        for attempt in range(max_attempts):
+            loc_id = db.add_location(
+                name, description, x, y, 
+                biome_type=props.get('biome', 'Plain'),
+                elevation=props.get('elevation', 0),
+                climate=props.get('climate', 'Temperate')
+            )
+            if loc_id:
+                break
+                
+            # Jitter and try again
+            x += random.randint(-10, 10)
+            y += random.randint(-10, 10)
+            
         return loc_id
 
     async def detect_physical_properties(self, name, description, base_elevation):
@@ -82,15 +95,10 @@ Reply ONLY with a JSON object:
 ]
 """
         response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
-        try:
-            clean_json = response.strip()
-            if "```json" in clean_json:
-                clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-            elif "```" in clean_json:
-                clean_json = clean_json.split("```")[1].split("```")[0].strip()
-            return json.loads(clean_json)
-        except Exception:
-            return {"biome": "Plain", "elevation": 0, "climate": "Temperate", "connectivity_score": 0.5}
+        result = utils.safe_parse_json(response)
+        if result:
+            return result
+        return {"biome": "Plain", "elevation": 0, "climate": "Temperate", "connectivity_score": 0.5}
 
     def move_entity(self, entity_type, entity_id, location_name):
         """

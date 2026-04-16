@@ -73,7 +73,8 @@ CREATE TABLE IF NOT EXISTS locations (
     elevation INTEGER DEFAULT 0,
     climate TEXT DEFAULT 'Temperate',
     region_id INTEGER,
-    FOREIGN KEY (region_id) REFERENCES regions(id)
+    FOREIGN KEY (region_id) REFERENCES regions(id),
+    UNIQUE(x, y)
 );
 
 CREATE TABLE IF NOT EXISTS paths (

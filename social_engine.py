@@ -3,6 +3,7 @@ import llm
 import json
 import asyncio
 import config
+import utils
 
 async def analyze_interaction(user_input, response_text, character_name):
     """
@@ -33,48 +34,43 @@ Reply ONLY with a JSON object:
 }}
 ]
 """
+    # We want a non-streaming, fast response
     response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
-        
-    try:
-        clean_json = response.strip()
-        if "```json" in clean_json:
-            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-        elif "```" in clean_json:
-            clean_json = clean_json.split("```")[1].split("```")[0].strip()
-            
-        result = json.loads(clean_json)
+
+    result = utils.safe_parse_json(response)
+    if result:
         return (
             result.get("trust", 0), 
             result.get("fear", 0), 
             result.get("affection", 0), 
             result.get("description", "Interaction analyzed.")
         )
-    except Exception as e:
-        print(f"SocialEngine Error (analyze_interaction): {e}. Raw: {response}")
-        return 0, 0, 0, "Analysis failed."
+
+    print(f"SocialEngine Error (analyze_interaction): Failed to parse LLM response. Raw: {response}")
+    return 0, 0, 0, "Analysis failed."
+
 
 async def update_social_state(user_input, response_text, current_turn=0):
     """
     Identifies involved characters and updates their relationships with the player.
     Also updates the 'last_seen_turn' for these characters.
     """
-    all_entities = db.get_all_entities()
-    # Simple check: if a character name is in the response, analyze them
+    character_names = [c['name'] for c in db.get_all_characters()]
+    involved_names = utils.extract_character_mentions(user_input + " " + response_text, character_names)
+    
     analysis_tasks = []
-    for entity in all_entities:
-        if entity.lower() in response_text.lower() or entity.lower() in user_input.lower():
-            # Get character ID
-            char_results = db.search_characters(entity)
-            if char_results:
-                char = char_results[0]
-                char_id = char['id']
-                
-                # Update last seen
-                db.update_character_last_seen(char_id, current_turn)
-                
-                # We can't easily gather these here because update_relationship is synchronous DB call
-                # But we can gather the analysis results
-                analysis_tasks.append((entity, char_id, analyze_interaction(user_input, response_text, entity)))
+    for name in involved_names:
+        # Get character ID
+        char_results = db.search_characters(name)
+        if char_results:
+            char = char_results[0]
+            char_id = char['id']
+            
+            # Update last seen
+            db.update_character_last_seen(char_id, current_turn)
+            
+            # Gather analysis tasks
+            analysis_tasks.append((name, char_id, analyze_interaction(user_input, response_text, name)))
 
     if analysis_tasks:
         entities, char_ids, tasks = zip(*analysis_tasks)

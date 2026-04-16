@@ -5,22 +5,17 @@ from world_engine import WorldEngine
 @pytest.mark.asyncio
 async def test_coordinate_collision(mock_llm):
     """
-    ADVERSARIAL: Verify if the system allows two distinct locations at the same (x, y).
+    ADVERSARIAL: Verify if the system prevents two distinct locations at the same (x, y).
     """
-    engine = WorldEngine()
-    
     # 1. Create first location
-    db.add_location("Town Square", "The heart of the city", 0, 0, "urban")
+    id1 = db.add_location("Town Square", "The heart of the city", 0, 0, "urban")
+    assert id1 is not None
     
     # 2. Attempt to create another location at the same coordinates
-    # This might happen if the LLM isn't aware of existing geometry
-    db.add_location("Secret Basement", "Hidden under the square", 0, 0, "dungeon")
+    # DB should now block this via UNIQUE constraint
+    id2 = db.add_location("Secret Basement", "Hidden under the square", 0, 0, "dungeon")
     
-    locations = db.get_all_locations()
-    # If the system doesn't prevent this, we'll have two locations at (0, 0)
-    # This is a 'weakness' in the current spatial integrity
-    coords = [(l['x'], l['y']) for l in locations]
-    assert len(coords) == len(set(coords)), "BUG CONFIRMED: Spatial collision! Two locations at (0, 0)"
+    assert id2 is None, "BUG CONFIRMED: Spatial collision! db.add_location allowed duplicate coords."
 
 @pytest.mark.asyncio
 async def test_orphaned_relative_location(mock_llm):

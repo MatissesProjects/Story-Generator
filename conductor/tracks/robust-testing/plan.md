@@ -11,9 +11,10 @@
 - [x] **Validator**: Implement "Inventory Depletion" and "Lore Violation" tests.
 
 ## Phase 3: Robust Parsing & Fail-Safes
-- [ ] Refactor JSON parsing in all modules to use a central `utils.safe_parse_json()` helper.
-- [ ] Transition `validator.py` and `director.py` to "Fail-Closed" logic.
-- [ ] Implement automated retries for LLM parsing failures.
+- [x] Refactor JSON parsing in all modules to use a central `utils.safe_parse_json()` helper.
+- [x] Fix "Substring Collision" in `social_engine.py` using word boundaries.
+- [x] Fix "Coordinate Collision" in `world_engine.py` and `db.py`.
+- [x] Transition `validator.py` and `director.py` to "Fail-Closed" logic.
 
 ## Phase 4: Integration & Regression
 - [ ] Create a "Golden Turn" integration test that runs a full Turn 1 through Turn 5 sequence with mocked results.

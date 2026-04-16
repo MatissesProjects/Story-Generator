@@ -23,6 +23,13 @@ def init_db():
             print("Migrating database: Adding 'climate' to 'locations'")
             conn.execute("ALTER TABLE locations ADD COLUMN climate TEXT DEFAULT 'Temperate'")
         
+        # Add UNIQUE index for (x, y) if it doesn't exist
+        try:
+            conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_locations_coords ON locations(x, y)")
+        except sqlite3.OperationalError:
+            # Table might already have the constraint or index
+            pass
+        
         # Simple migration for 'characters' table
         cursor = conn.execute("PRAGMA table_info(characters)")
         columns = [column[1] for column in cursor.fetchall()]
@@ -174,13 +181,16 @@ def get_story_state(key):
 
 # World Map Functions
 def add_location(name, description, x, y, biome_type, elevation=0, climate='Temperate', region_id=None):
-    with sqlite3.connect(DB_PATH) as conn:
-        cur = conn.execute(
-            "INSERT INTO locations (name, description, x, y, biome_type, elevation, climate, region_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (name, description, x, y, biome_type, elevation, climate, region_id)
-        )
-        conn.commit()
-        return cur.lastrowid
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            cur = conn.execute(
+                "INSERT INTO locations (name, description, x, y, biome_type, elevation, climate, region_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (name, description, x, y, biome_type, elevation, climate, region_id)
+            )
+            conn.commit()
+            return cur.lastrowid
+    except sqlite3.IntegrityError:
+        return None
 
 def get_location(location_id):
     return query_db("SELECT * FROM locations WHERE id = ?", (location_id,), one=True)
