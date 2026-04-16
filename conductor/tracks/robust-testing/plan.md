@@ -6,9 +6,9 @@
 - [x] Add `pytest` and `pytest-asyncio` to the project requirements.
 
 ## Phase 2: Adversarial Unit Tests
-- [ ] **Social Engine**: Implement the "Substring Collision" and "Multi-Character Betrayal" tests.
-- [ ] **World Engine**: Implement "Coordinate Collision" and "Orphaned Relative" tests.
-- [ ] **Validator**: Implement "Inventory Depletion" and "Lore Violation" tests.
+- [x] **Social Engine**: Implement the "Substring Collision" and "Multi-Character Betrayal" tests.
+- [x] **World Engine**: Implement "Coordinate Collision" and "Orphaned Relative" tests.
+- [x] **Validator**: Implement "Inventory Depletion" and "Lore Violation" tests.
 
 ## Phase 3: Robust Parsing & Fail-Safes
 - [ ] Refactor JSON parsing in all modules to use a central `utils.safe_parse_json()` helper.
