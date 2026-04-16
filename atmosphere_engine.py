@@ -44,6 +44,22 @@ class AtmosphereEngine:
             }
         }
 
+    def get_atmosphere_by_mood(self, mood):
+        """
+        Retrieves a predefined atmosphere from the registry based on a mood keyword.
+        """
+        # Mapping pacing/moods to registry keys
+        mapping = {
+            "Exploration": "Default",
+            "Introspective": "Ominous",
+            "Action-Packed": "Combat",
+            "Mystery-Focused": "Ominous",
+            "Dialogue-Heavy": "Tavern"
+        }
+        
+        key = mapping.get(mood, "Default")
+        return self.registry.get(key, self.registry["Default"])
+
     async def detect_atmosphere(self, story_text, current_location=None):
         """
         Uses the LLM to extract atmospheric cues and map them to structured codes.
