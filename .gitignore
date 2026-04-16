@@ -13,4 +13,7 @@ vector_db/
 voices/
 *db
 audio_output/
+environments/
+map_tiles/
+portraits/
 .coverage

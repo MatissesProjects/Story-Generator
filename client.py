@@ -6,6 +6,7 @@ import requests
 import os
 import pygame
 import argparse
+import vision
 
 async def receive_messages(websocket, generator_host, generator_port):
     try:
@@ -46,6 +47,9 @@ async def receive_messages(websocket, generator_host, generator_port):
                             print(f"\n[Playback Error]: {playback_error}")
                 except Exception as fetch_error:
                     print(f"\n[Audio Fetch Error]: {fetch_error}")
+            elif message["type"] == "vision_request":
+                print(f"\n[OFFLOAD]: Processing vision request: {message['request_type']} ({message['request_id']})")
+                await vision.handle_vision_request(websocket, message)
                     
     except Exception as e:
         print(f"Error receiving message: {e}")
@@ -65,6 +69,19 @@ async def main():
     
     async with websockets.connect(ws_url) as websocket:
         print(f"Connected to {ws_url}")
+        
+        # 1. Perform Handshake
+        handshake = {
+            "type": "handshake",
+            "content": {
+                "gpu": config.GPU_NAME,
+                "can_offload_vision": config.OFFLOAD_VISION,
+                "can_offload_tts": True # Piper is easy to run anywhere
+            }
+        }
+        await websocket.send(json.dumps(handshake))
+        print(f"Handshake sent: {config.GPU_NAME} (Offloading: {config.OFFLOAD_VISION})")
+
         print("Type your input or 'exit' to quit.")
         
         # Start background task for receiving

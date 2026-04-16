@@ -16,7 +16,15 @@ pipe = AutoPipelineForText2Image.from_pretrained(
     torch_dtype=torch_dtype, 
     variant="fp16" if device == "cuda" else None
 )
-pipe.to(device)
+
+if device == "cuda":
+    # More aggressive memory optimizations for running alongside large LLMs (26b)
+    # Sequential offload is slower but saves the most VRAM
+    pipe.enable_sequential_cpu_offload()
+    # Enable tiling for VAE
+    pipe.vae.enable_tiling()
+else:
+    pipe.to(device)
 
 if not os.path.exists(config.PORTRAITS_DIR):
     os.makedirs(config.PORTRAITS_DIR)
@@ -67,7 +75,13 @@ async def generate_portrait(name, description, traits):
     
     # Generate
     # SDXL Turbo is best at 1-4 steps
+    if device == "cuda":
+        torch.cuda.empty_cache()
+        
     image = pipe(prompt=final_prompt, num_inference_steps=4, guidance_scale=0.0).images[0]
+    
+    if device == "cuda":
+        torch.cuda.empty_cache()
     
     # Save
     image.save(output_path)
@@ -113,7 +127,13 @@ async def generate_environment(location_name, description):
     
     # Generate (landscape-ish if possible, though SDXL Turbo likes 512x512 or 1024x1024)
     # We'll stick to default for now to ensure speed and quality
+    if device == "cuda":
+        torch.cuda.empty_cache()
+
     image = pipe(prompt=final_prompt, num_inference_steps=4, guidance_scale=0.0).images[0]
+    
+    if device == "cuda":
+        torch.cuda.empty_cache()
     
     image.save(output_path)
     print(f"Vision Engine: Saved environment to {output_path}")
@@ -156,12 +176,43 @@ async def generate_map_tile(biome_type):
     print(f"Vision Engine: Final Tile Prompt: {final_prompt}")
     
     # Generate
+    if device == "cuda":
+        torch.cuda.empty_cache()
+
     image = pipe(prompt=final_prompt, num_inference_steps=4, guidance_scale=0.0).images[0]
+    
+    if device == "cuda":
+        torch.cuda.empty_cache()
     
     image.save(output_path)
     print(f"Vision Engine: Saved map tile to {output_path}")
     
     return f"/static/map_tiles/{safe_name}_tile.png"
+
+# Distributed Vision Support
+# This section is for when vision is run on the Runner PC (3070)
+async def handle_vision_request(websocket, message):
+    """
+    Processes a vision request received via WebSocket (for distributed mode).
+    """
+    req_type = message.get("request_type")
+    content = message.get("content")
+    request_id = message.get("request_id")
+    
+    url = None
+    if req_type == "portrait":
+        url = await generate_portrait(content['name'], content['description'], content['traits'])
+    elif req_type == "environment":
+        url = await generate_environment(content['name'], content['description'])
+    elif req_type == "map_tile":
+        url = await generate_map_tile(content['biome'])
+        
+    if url:
+        await websocket.send(json.dumps({
+            "type": "vision_complete",
+            "request_id": request_id,
+            "url": url
+        }))
 
 if __name__ == "__main__":
     # Test

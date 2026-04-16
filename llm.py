@@ -71,7 +71,10 @@ async def async_generate_story_segment(prompt, model=config.CREATIVE_MODEL, cont
     payload = {
         "model": model,
         "prompt": full_prompt,
-        "stream": True
+        "stream": True,
+        "options": {
+            "keep_alive": config.OLLAMA_KEEP_ALIVE
+        }
     }
 
     async with httpx.AsyncClient(timeout=300.0) as client:

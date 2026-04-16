@@ -2,6 +2,7 @@ const wsUrl = `ws://${window.location.host}/ws`;
 let socket;
 let currentStoryText = "";
 const audioQueue = [];
+const visualQueue = [];
 let isPlaying = false;
 let currentMusic = null;
 let currentAmbiance = null;
@@ -358,7 +359,12 @@ function handleMessage(message) {
             break;
 
         case 'visual_update':
-            updateVisualStack(message.content);
+            // Queue visuals to sync with audio segments
+            visualQueue.push(message.content);
+            // If nothing is playing, apply immediately
+            if (!isPlaying) {
+                updateVisualStack(message.content);
+            }
             break;
 
         case 'atmosphere_update':
@@ -610,6 +616,12 @@ async function playNextAudio() {
     duckAudio();
     const { url, speaker } = audioQueue.shift();
     
+    // Apply visual sync if available
+    if (visualQueue.length > 0) {
+        const nextVisuals = visualQueue.shift();
+        updateVisualStack(nextVisuals);
+    }
+    
     statusIndicator.innerText = `Speaking: ${speaker}...`;
     const audio = new Audio(url);
     
@@ -717,11 +729,23 @@ function updateVisualStack(stack) {
         'overlay': document.getElementById('layer-overlay')
     };
 
+    const isNarrator = stack.primary_entity === "Narrator";
+
     for (const [key, el] of Object.entries(layers)) {
         const url = stack[key];
         if (url) {
             el.style.backgroundImage = `url('${url}')`;
-            el.style.opacity = (key === 'texture' ? 0.4 : (key === 'overlay' ? 0.3 : 1.0));
+            
+            // Base opacity
+            let opacity = 1.0;
+            if (key === 'texture') opacity = 0.4;
+            if (key === 'overlay') opacity = 0.3;
+            
+            // Narrator logic: dim character portrait to show environment clearly
+            if (isNarrator && key === 'entity') opacity = 0.0; 
+            if (!isNarrator && key === 'environment') opacity = 0.7; // Dim env slightly when someone is talking
+
+            el.style.opacity = opacity;
             
             // Apply Ken Burns to environment and entity
             if (key === 'environment' || key === 'entity') {

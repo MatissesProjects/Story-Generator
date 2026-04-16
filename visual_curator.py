@@ -21,7 +21,7 @@ class VisualCurator:
             "None": None
         }
 
-    def get_visual_stack(self, current_location, involved_entities, atmosphere_data):
+    def get_visual_stack(self, current_location, involved_entities, atmosphere_data, primary_entity=None):
         """
         Determines the current state of all visual layers.
         """
@@ -29,7 +29,9 @@ class VisualCurator:
             "texture": self.textures.get("Default"),
             "environment": None,
             "entity": None,
-            "overlay": None
+            "overlay": None,
+            "involved_portraits": {},
+            "primary_entity": primary_entity
         }
 
         # 1. Environment Layer
@@ -39,14 +41,21 @@ class VisualCurator:
             if os.path.exists(env_path):
                 stack["environment"] = f"/static/environments/{safe_name}.png"
 
-        # 2. Entity Layer (Portrait of the primary character)
+        # 2. Entity Layer (Portrait mapping)
         if involved_entities:
-            # For now, just pick the first one detected
-            primary = involved_entities[0]
-            safe_name = "".join([c for c in primary if c.isalnum()]).lower()
-            port_path = os.path.join(config.PORTRAITS_DIR, f"{safe_name}.png")
-            if os.path.exists(port_path):
-                stack["entity"] = f"/static/portraits/{safe_name}.png"
+            for entity in involved_entities:
+                safe_name = "".join([c for c in entity if c.isalnum()]).lower()
+                port_path = os.path.join(config.PORTRAITS_DIR, f"{safe_name}.png")
+                if os.path.exists(port_path):
+                    stack["involved_portraits"][entity] = f"/static/portraits/{safe_name}.png"
+
+            # Set the primary visual entity
+            if primary_entity and primary_entity in stack["involved_portraits"]:
+                stack["entity"] = stack["involved_portraits"][primary_entity]
+            elif involved_entities:
+                # Fallback to first detected
+                first = involved_entities[0]
+                stack["entity"] = stack["involved_portraits"].get(first)
 
         # 3. Texture Layer (Based on mood/atmosphere)
         # Placeholder: Logic to map atmosphere/location to texture

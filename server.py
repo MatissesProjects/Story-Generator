@@ -26,6 +26,7 @@ import os
 import json
 import random
 import asyncio
+import uuid
 
 app = FastAPI()
 
@@ -83,13 +84,76 @@ async def log_progress(websocket: WebSocket, message: str, level: str = "info"):
     print(f"[{level.upper()}] {message}")
     await websocket.send_text(json.dumps({"type": "progress", "content": message, "level": level}))
 
+# Track connected client capabilities
+client_capabilities = {}
+pending_vision_requests = {}
+
+class VisionOrchestrator:
+    async def request_generation(self, websocket: WebSocket, client_id: str, request_type: str, content: dict):
+        """
+        Orchestrates image generation: local or offloaded to client.
+        """
+        capabilities = client_capabilities.get(client_id, {})
+        
+        # If client supports offloading and we want to offload
+        if capabilities.get("can_offload_vision"):
+            request_id = str(uuid.uuid4())
+            event = asyncio.Event()
+            pending_vision_requests[request_id] = {"event": event, "url": None}
+            
+            print(f"Vision: Offloading {request_type} to {client_id}")
+            await websocket.send_text(json.dumps({
+                "type": "vision_request",
+                "request_id": request_id,
+                "request_type": request_type,
+                "content": content
+            }))
+            
+            # Wait for completion (with timeout)
+            try:
+                await asyncio.wait_for(event.wait(), timeout=60.0)
+                url = pending_vision_requests[request_id]["url"]
+                del pending_vision_requests[request_id]
+                return url
+            except asyncio.TimeoutError:
+                print(f"Vision: Timeout offloading to {client_id}. Falling back to local.")
+                if request_id in pending_vision_requests:
+                    del pending_vision_requests[request_id]
+        
+        # Fallback to local generation on the 4090
+        if request_type == "portrait":
+            return await vision.generate_portrait(content['name'], content['description'], content['traits'])
+        elif request_type == "environment":
+            return await vision.generate_environment(content['name'], content['description'])
+        elif request_type == "map_tile":
+            return await vision.generate_map_tile(content['biome'])
+        return None
+
+vision_orchestrator = VisionOrchestrator()
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
+    client_id = f"{websocket.client.host}:{websocket.client.port}"
+    
     try:
         while True:
             data = await websocket.receive_text()
             message = json.loads(data)
+
+            if message["type"] == "handshake":
+                capabilities = message["content"]
+                client_capabilities[client_id] = capabilities
+                print(f"Handshake accepted from {client_id}: {capabilities['gpu']} (Offload Vision: {capabilities['can_offload_vision']})")
+                await websocket.send_text(json.dumps({"type": "info", "content": f"Handshake verified. Orchestrating for {capabilities['gpu']}."}))
+                continue
+
+            if message["type"] == "vision_complete":
+                rid = message.get("request_id")
+                if rid in pending_vision_requests:
+                    pending_vision_requests[rid]["url"] = message.get("url")
+                    pending_vision_requests[rid]["event"].set()
+                continue
 
             if message["type"] == "user_input":
                 user_input = message["content"]
@@ -201,7 +265,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         db.set_story_state("current_location", loc['name'])
                         world.move_entity("player", 0, loc['name'])
                         
-                        env_url = await vision.generate_environment(loc['name'], loc['desc'])
+                        env_url = await vision_orchestrator.request_generation(websocket, client_id, "environment", {"name": loc['name'], "description": loc['desc']})
                         await websocket.send_text(json.dumps({"type": "scene_update", "location": loc['name'], "url": env_url}))
 
                     # --- PHASE 3: Generation ---
@@ -238,7 +302,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         await websocket.send_text(json.dumps({"type": "story_chunk", "content": chunk}))
                         full_response += chunk
                         
-                        # Real-time audio parsing
+                        # Real-time audio and visual parsing
                         completed_blocks = stream_parser.feed(chunk)
                         for speaker, text in completed_blocks:
                             voice_config = db.get_character_voice(speaker)
@@ -246,6 +310,12 @@ async def websocket_endpoint(websocket: WebSocket):
                             if audio_path:
                                 audio_url = f"/audio/{os.path.basename(audio_path)}"
                                 await websocket.send_text(json.dumps({"type": "audio_event", "url": audio_url, "speaker": speaker}))
+                                
+                                # Send visual sync for the speaker
+                                current_entities = [name for name in db.get_all_entities() if name.lower() in full_response.lower()]
+                                current_atmos = atmosphere.get_atmosphere_by_mood(current_pacing) # Fallback atmosphere
+                                vstack = curator_visual.get_visual_stack(curr_loc_name, current_entities, current_atmos, primary_entity=speaker)
+                                await websocket.send_text(json.dumps({"type": "visual_update", "content": vstack}))
 
                     # Final flush for any remaining text in buffer
                     remaining_blocks = stream_parser.flush()
@@ -255,6 +325,12 @@ async def websocket_endpoint(websocket: WebSocket):
                         if audio_path:
                             audio_url = f"/audio/{os.path.basename(audio_path)}"
                             await websocket.send_text(json.dumps({"type": "audio_event", "url": audio_url, "speaker": speaker}))
+                            
+                            # Final visual sync
+                            current_entities = [name for name in db.get_all_entities() if name.lower() in full_response.lower()]
+                            current_atmos = atmosphere.get_atmosphere_by_mood(current_pacing)
+                            vstack = curator_visual.get_visual_stack(curr_loc_name, current_entities, current_atmos, primary_entity=speaker)
+                            await websocket.send_text(json.dumps({"type": "visual_update", "content": vstack}))
 
                     db.log_history(user_input, full_response)
 
@@ -406,7 +482,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     signature_tic=tic,
                     narrative_role=char_data.get("narrative_role", "NPC")
                 )
-                portrait_url = await vision.generate_portrait(char_data["name"], char_data["description"], char_data["traits"])
+                portrait_url = await vision_orchestrator.request_generation(websocket, client_id, "portrait", {"name": char_data['name'], "description": char_data['description'], "traits": char_data['traits']})
                 await websocket.send_text(json.dumps({"type": "info", "content": f"Character {char_data['name']} added with portrait and tic: {tic}"}))
                 await websocket.send_text(json.dumps({"type": "portrait_update", "name": char_data["name"], "url": portrait_url}))
 
@@ -538,7 +614,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 for l in locations:
                     ldict = dict(l)
                     if ldict['biome_type']:
-                        ldict['tile_url'] = await vision.generate_map_tile(ldict['biome_type'])
+                        ldict['tile_url'] = await vision_orchestrator.request_generation(websocket, client_id, "map_tile", {"biome": ldict['biome_type']})
                     loc_list.append(ldict)
 
                 path_list = [dict(p) for p in paths]

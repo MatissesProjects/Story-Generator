@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     OLLAMA_MODEL: str = Field(default="gemma4:26b", validation_alias="OLLAMA_MODEL") # Main creative model
     CREATIVE_MODEL: str = Field(default="gemma4:26b", validation_alias="CREATIVE_MODEL")
     FAST_MODEL: str = Field(default="gemma4:26b", validation_alias="FAST_MODEL") # Small model for logic/parsing
+    OLLAMA_KEEP_ALIVE: str = Field(default="5m", validation_alias="OLLAMA_KEEP_ALIVE") # How long to keep model in VRAM
+
+    # Distributed settings
+    GPU_NAME: str = Field(default="RTX 4090", validation_alias="GPU_NAME")
+    OFFLOAD_VISION: bool = Field(default=False, validation_alias="OFFLOAD_VISION")
 
     # TTS settings
     PIPER_EXE: str = Field(default="piper", validation_alias="PIPER_EXE")
@@ -61,6 +66,9 @@ OLLAMA_URL = _settings.OLLAMA_URL
 OLLAMA_MODEL = _settings.OLLAMA_MODEL
 CREATIVE_MODEL = _settings.CREATIVE_MODEL
 FAST_MODEL = _settings.FAST_MODEL
+OLLAMA_KEEP_ALIVE = _settings.OLLAMA_KEEP_ALIVE
+GPU_NAME = _settings.GPU_NAME
+OFFLOAD_VISION = _settings.OFFLOAD_VISION
 PIPER_EXE = _settings.PIPER_EXE
 MODELS_DIR = _settings.MODELS_DIR
 AUDIO_OUTPUT_DIR = _settings.AUDIO_OUTPUT_DIR

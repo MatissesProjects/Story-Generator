@@ -6,7 +6,7 @@
 | `spark-generator` | Implement a tool to jump-start narratives without a starting idea. | ✅ Completed | [Link](./tracks/spark-generator/index.md) |
 | `context-management` | Build the RAG-style context curator for prompt injection. | ✅ Completed | [Link](./tracks/context-management/index.md) |
 | `audio-polish` | Integrate Piper TTS for local character voices. | ✅ Completed | [Link](./tracks/audio-polish/index.md) |
-| `network-architecture` | Create a WebSocket server (Generator) and client (Player). | ✅ Completed | [Link](./tracks/network-architecture/index.md) |
+| `network-architecture` | Multi-PC orchestration and task offloading (4090/3070). | ✅ Completed | [Link](./tracks/network-architecture/index.md) |
 | `semantic-memory` | Implement Vector DB for semantic retrieval of world lore and events. | ✅ Completed | [Link](./tracks/semantic-memory/index.md) |
 | `narrative-orchestration` | Build the "Director Agent" and autonomous continuation logic. | ✅ Completed | [Link](./tracks/narrative-orchestration/index.md) |
 | `episodic-summarization` | Implement token-saving summarization for long-term memory. | ✅ Completed | [Link](./tracks/episodic-summarization/index.md) |

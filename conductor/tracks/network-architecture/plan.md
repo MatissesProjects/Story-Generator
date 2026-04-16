@@ -1,15 +1,16 @@
-# Network Architecture Plan
+# Network Orchestration Implementation Plan
 
-## Objective
-Build the WebSocket server and client infrastructure.
+## Phase 1: Handshake Implementation
+- [ ] Add `GPU_NAME` and `OFFLOAD_SUPPORT` to `config.py`.
+- [ ] Implement `send_handshake` in `client.py` on connection.
+- [ ] Implement `handle_handshake` in `server.py` to store client capabilities.
 
-## Implementation Steps
-1.  **FastAPI Server**: Refactor the main loop into a FastAPI application (`server.py`) with a WebSocket endpoint.
-2.  **Streaming Logic**: Modify the LLM and TTS pipelines to emit events (e.g., `{"type": "text", "content": "..."}`, `{"type": "audio_ready", "url": "..."}`) over the WebSocket connection.
-3.  **Client Application**: Build a lightweight client (`client.py` or HTML/JS) that connects to the server, displays incoming text, and fetches/plays audio when instructed.
-4.  **Network Testing**: Test the connection across two separate PCs on the local network.
+## Phase 2: Distributed Vision (3070 Offloading)
+- [ ] Create `vision_client_stub.py` on the Runner/Client side to listen for generation requests.
+- [ ] Modify `server.py` to check `client_capabilities` before calling `vision.generate_*`.
+- [ ] Implement WebSocket message `vision_request` -> `vision_complete`.
 
-## Verification
-- Verify successful WebSocket connection from the Player PC to the Generator PC.
-- Ensure text streams smoothly on the Player PC.
-- Confirm audio plays on the Player PC synchronized with the text.
+## Phase 3: Memory Hardening
+- [x] Add `enable_model_cpu_offload()` and `enable_vae_tiling()` to `vision.py`.
+- [ ] Add `torch.cuda.empty_cache()` hooks to heavy generation paths.
+- [ ] Implement optional `keep_alive: 0` for Ollama calls in `llm.py` during vision tasks.
