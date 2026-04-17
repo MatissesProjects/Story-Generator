@@ -54,6 +54,29 @@ async def main():
                 if audio_path:
                     tts.play_audio(audio_path)
             # ---------------------------------
+
+            # --- Periodic Maintenance (Summary & Plot Threads) ---
+            history_count = db.get_history_count()
+            if history_count % 3 == 0:
+                print("\n[Updating story state...]")
+                recent_history = db.get_recent_history(limit=10)
+                active_threads = db.get_active_plot_threads()
+                
+                # 1. Update Narrative Seed (Summary)
+                if history_count % 10 == 0:
+                    await summarizer.update_narrative_seed()
+                
+                # 2. Analyze Plot Threads
+                thread_updates = await director.analyze_plot_threads(recent_history, active_threads)
+                
+                for tid in thread_updates.get("resolved_ids", []):
+                    db.update_plot_thread_status(tid, "resolved")
+                    print(f"Plot Thread Resolved: {tid}")
+                    
+                for desc in thread_updates.get("new_threads", []):
+                    db.add_plot_thread(desc)
+                    print(f"New Plot Thread Discovered: {desc}")
+            # ----------------------------------------------------
             
         except Exception as e:
             print(f"\nError generating story: {e}")

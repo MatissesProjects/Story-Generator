@@ -315,9 +315,54 @@ REPLY ONLY WITH THE TIC DESCRIPTION (one sentence).]
 """
     return await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
 
+async def analyze_plot_threads(recent_history, active_threads):
+    """
+    Analyzes the story history and active threads to identify new threads or resolutions.
+    """
+    history_text = "\n".join([f"P: {h['user_input']}\nS: {h['assistant_response']}" for h in recent_history])
+    threads_json = json.dumps([{"id": t['id'], "description": t['description']} for t in active_threads])
+    
+    prompt = f"""
+[SYSTEM: You are the Plot Thread Analyzer. Your goal is to keep the story's active objectives up to date.
+Analyze the recent story history and the list of currently active plot threads.
+
+STORY HISTORY:
+{history_text}
+
+ACTIVE PLOT THREADS:
+{threads_json}
+
+Your task:
+1. Identify if any active plot threads have been RESOLVED or are no longer relevant.
+2. Identify if any NEW major plot threads or mysteries have emerged in the recent history.
+
+Reply ONLY with a JSON object:
+{{
+    "resolved_ids": [list of IDs of resolved threads],
+    "new_threads": [list of descriptions for NEWly discovered threads]
+}}
+
+BE CONSERVATIVE. Only add a new thread if it represents a significant goal or mystery.
+Only resolve a thread if it has reached a clear conclusion.
+
+REPLY ONLY IN JSON.]
+"""
+    response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
+    
+    try:
+        clean_json = response.strip()
+        if "```json" in clean_json:
+            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
+        elif "```" in clean_json:
+            clean_json = clean_json.split("```")[1].split("```")[0].strip()
+            
+        return json.loads(clean_json)
+    except Exception as e:
+        print(f"Director Error (analyze_plot_threads): {e}. Raw: {response}")
+        return {"resolved_ids": [], "new_threads": []}
+
 if __name__ == "__main__":
     # Test
     print("Testing Director Agent...")
     db.init_db()
-    db.add_plot_thread("The silver locket was stolen by a goblin.")
     print(evaluate_state("I walk into the cave."))

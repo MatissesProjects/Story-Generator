@@ -176,7 +176,10 @@ def get_all_meta_lore():
     return query_db("SELECT * FROM meta_lore")
 
 def get_active_plot_threads():
-    return query_db("SELECT description FROM plot_threads WHERE status = 'active'")
+    return query_db("SELECT id, description, status FROM plot_threads WHERE status = 'active'")
+
+def update_plot_thread_status(thread_id, status):
+    execute_db("UPDATE plot_threads SET status = ? WHERE id = ?", (status, thread_id))
 
 def add_plot_thread(description):
     execute_db("INSERT INTO plot_threads (description) VALUES (?)", (description,))

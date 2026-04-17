@@ -479,10 +479,28 @@ async def websocket_endpoint(websocket: WebSocket):
                         loc_id = loc_obj['id'] if loc_obj else None
                     db.commit_snapshot("default_session", user_input, full_response, narrative_seed, loc_id)
 
-                    # Long-term memory summary
-                    if db.get_history_count() % 10 == 0:
-                        await summarizer.update_narrative_seed()
-                        await websocket.send_text(json.dumps({"type": "info", "content": "Narrative summary updated."}))
+                    # Periodic Maintenance: Summary and Plot Thread Analysis
+                    if db.get_history_count() % 3 == 0:
+                        await log_progress(websocket, "Analyzing plot threads and updating summary...")
+                        
+                        # 1. Update Narrative Seed (Summary)
+                        if db.get_history_count() % 10 == 0:
+                            await summarizer.update_narrative_seed()
+                            await websocket.send_text(json.dumps({"type": "info", "content": "Narrative summary updated."}))
+                        
+                        # 2. Analyze Plot Threads
+                        thread_updates = await director.analyze_plot_threads(recent_history, active_threads)
+                        
+                        for tid in thread_updates.get("resolved_ids", []):
+                            db.update_plot_thread_status(tid, "resolved")
+                            await websocket.send_text(json.dumps({"type": "info", "content": f"Plot Thread Resolved: {tid}"}))
+                            
+                        for desc in thread_updates.get("new_threads", []):
+                            db.add_plot_thread(desc)
+                            await websocket.send_text(json.dumps({"type": "info", "content": f"New Plot Thread Discovered: {desc}"}))
+                        
+                        if thread_updates.get("resolved_ids") or thread_updates.get("new_threads"):
+                             await websocket.send_text(json.dumps({"type": "state_update_request"}))
 
                     # Global Simulation Tick (Every 5 turns)
                     if db.get_history_count() % 5 == 0:
