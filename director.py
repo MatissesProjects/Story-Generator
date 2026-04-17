@@ -213,7 +213,7 @@ NEW INPUT:
 "{user_input}"
 
 If the location has changed or is explicitly named for the first time, reply with JSON: {{
-    "location": "Name of Location", 
+    "location": "Name of Location (or suggest a creative name if it's unnamed but described)", 
     "description": "Brief atmospheric description",
     "relative_to": "Name of a previous location if known, else null",
     "direction": "north/south/east/west/etc if implied, else null"
@@ -236,6 +236,26 @@ REPLY ONLY IN JSON.]
     except Exception as e:
         print(f"Director Error (identify_location): {e}. Raw: {response}")
         return None, None, None, None
+
+async def generate_creative_name(category, context, theme=None):
+    """
+    Generates a highly creative name for a character, location, or artifact.
+    category: 'character', 'location', 'artifact', 'organization', 'spell'
+    """
+    theme_str = f"THEME: {theme}" if theme else ""
+    prompt = f"""
+[SYSTEM: You are the Creative Namer. Your goal is to generate a UNIQUE and EVOCATIVE name for a {category}.
+Avoid generic tropes. The name should feel like it belongs in a deep, rich world.
+
+CONTEXT:
+{context}
+
+{theme_str}
+
+Reply ONLY with the name (1-3 words).]
+"""
+    name = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
+    return name.strip().strip('"').strip("'")
 
 async def generate_action_plan(user_input, recent_history, active_threads, active_quests):
     """

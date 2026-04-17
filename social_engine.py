@@ -5,6 +5,7 @@ import asyncio
 import config
 import utils
 import vision
+import director
 
 async def analyze_interaction(user_input, response_text, character_name):
     """
@@ -56,6 +57,11 @@ async def register_new_character(name, context_text):
     Automatically adds a new character to the database with a fitting voice
     based on the story context.
     """
+    # If the name is a placeholder, generate a creative one
+    if name.lower() in ["stranger", "mysterious figure", "figure", "someone"]:
+        print(f"Social: Discovered placeholder '{name}', generating creative name...")
+        name = await director.generate_creative_name("character", context_text)
+        
     print(f"Social: Discovering new character: {name}")
     
     # Use LLM to get a quick description and traits

@@ -516,6 +516,15 @@ async def websocket_endpoint(websocket: WebSocket):
             elif message["type"] == "add_character":
                 char_data = message["content"]
                 
+                # Auto-generate name if placeholder or missing
+                name = char_data.get("name", "").strip()
+                if not name or name.lower() in ["stranger", "mysterious figure", "unknown"]:
+                    await log_progress(websocket, "Generating creative name for character...")
+                    recent_history = db.get_recent_history(limit=5)
+                    history_text = "\n".join([f"P: {h['user_input']}\nS: {h['assistant_response']}" for h in recent_history])
+                    name = await director.generate_creative_name("character", history_text, theme=char_data.get("traits"))
+                    char_data["name"] = name
+
                 # Auto-generate tic if not provided
                 tic = char_data.get("signature_tic")
                 if not tic:
@@ -536,6 +545,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 portrait_url = await vision_orchestrator.request_generation(websocket, client_id, "portrait", {"name": char_data['name'], "description": char_data['description'], "traits": char_data['traits']})
                 await websocket.send_text(json.dumps({"type": "info", "content": f"Character {char_data['name']} added with portrait and tic: {tic}"}))
                 await websocket.send_text(json.dumps({"type": "portrait_update", "name": char_data["name"], "url": portrait_url}))
+                await websocket.send_text(json.dumps({"type": "state_update_request"}))
+
+            elif message["type"] == "get_creative_name":
+                req = message["content"]
+                await log_progress(websocket, f"Generating creative name for {req['category']}...")
+                recent_history = db.get_recent_history(limit=5)
+                history_text = "\n".join([f"P: {h['user_input']}\nS: {h['assistant_response']}" for h in recent_history])
+                name = await director.generate_creative_name(req['category'], history_text, theme=req.get('theme'))
+                await websocket.send_text(json.dumps({"type": "creative_name", "category": req['category'], "name": name}))
 
             elif message["type"] == "add_lore":
                 lore_data = message["content"]
