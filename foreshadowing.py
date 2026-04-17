@@ -3,6 +3,7 @@ import llm
 import json
 import config
 import asyncio
+import utils
 
 async def extract_seeds(assistant_response: str, current_location: str = "Unknown"):
     """
@@ -31,22 +32,16 @@ Reply ONLY with a JSON object:
 If no good seeds are found, return {{"seeds": []}}. REPLY ONLY IN JSON.]
 """
     response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
-        
-    try:
-        clean_json = response.strip()
-        if "```json" in clean_json:
-            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-            
-        result = json.loads(clean_json)
+    result = utils.safe_parse_json(response)
+    
+    if result:
         seeds = result.get("seeds", [])
-        
         for s in seeds:
             # DB now accepts category and initializes stage=1 (Planted)
-            db.add_foreshadowed_element(s['name'], current_location, s['impact'])
-            print(f"🌱 Planted [{s['category']}]: '{s['name']}'")
-            
-    except Exception as e:
-        print(f"Foreshadowing Error: {e}")
+            db.add_foreshadowed_element(s.get('name', 'Unknown'), current_location, s.get('impact', 'Unknown'))
+            print(f"🌱 Planted [{s.get('category', 'General')}]: '{s.get('name', 'Unknown')}'")
+    else:
+        print(f"Foreshadowing Error: Failed to parse LLM response. Raw: {response}")
 
 
 async def check_for_payoff(recent_history):
@@ -100,32 +95,28 @@ Reply ONLY with a JSON object:
 ]"""
 
     response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
+    decision = utils.safe_parse_json(response)
     
-    try:
-        clean_json = response.strip()
-        if "```json" in clean_json:
-            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-            
-        decision = json.loads(clean_json)
-        
+    if decision:
         if decision.get("selected_seed_id") is not None:
             # Fetch full seed data from DB
             seed_id = decision["selected_seed_id"]
             seed_data = next((s for s in pending if s["id"] == seed_id), None)
             
             if seed_data:
+                action = decision.get('action_type', 'none')
+                reasoning = decision.get('reasoning', 'None')
                 instruction = (
-                    f"NARRATIVE {decision['action_type'].upper()}: Organically weave the '{seed_data['element_name']}' "
+                    f"NARRATIVE {action.upper()}: Organically weave the '{seed_data['element_name']}' "
                     f"(originally found in {seed_data['discovery_location']}) into the upcoming response. "
                     f"Context/Impact to consider: {seed_data['potential_impact']}. "
-                    f"Reasoning: {decision['reasoning']}"
+                    f"Reasoning: {reasoning}"
                 )
                 
                 # In a real app, you'd update the DB state here (e.g., stage 1 -> 2, or mark as resolved)
                 return seed_id, seed_data['element_name'], instruction
-
-    except Exception as e:
-        print(f"Payoff Evaluation Error: {e}")
+    else:
+        print(f"Payoff Evaluation Error: Failed to parse LLM response. Raw: {response}")
         
     return None
 
