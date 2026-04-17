@@ -380,31 +380,80 @@ h3 {
     padding: 2rem;
     overflow: hidden;
     position: relative;
+    justify-content: flex-end; /* Push dialogue to bottom */
 }
 
 #history-container {
     flex: 1;
     overflow-y: auto;
     padding-bottom: 2rem;
-    mask-image: linear-gradient(to top, black 90%, transparent 100%);
+    mask-image: linear-gradient(to top, black 80%, transparent 100%);
+    opacity: 0.6; /* Dim history to focus on current dialogue */
+    transition: opacity 0.5s;
 }
 
-.story-block {
-    margin-bottom: 1.5rem;
-    white-space: pre-wrap;
+#history-container:hover {
+    opacity: 1.0;
 }
 
-.user-block {
-    color: #888;
-    font-style: italic;
-    margin-bottom: 0.5rem;
+#vn-dialogue-box {
+    position: relative;
+    background: rgba(20, 20, 25, 0.85);
+    border: 2px solid var(--accent-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    min-height: 120px;
+    box-shadow: 0 0 30px rgba(0,0,0,0.5);
+    backdrop-filter: blur(10px);
+    margin-top: 1rem;
+    display: none; /* Shown when speaking */
+}
+
+#vn-name-tag {
+    position: absolute;
+    top: -25px;
+    left: 20px;
+    background: var(--accent-color);
+    color: white;
+    padding: 0.3rem 1.5rem;
+    font-weight: bold;
+    border-radius: 4px 4px 0 0;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 #current-chunk {
-    min-height: 1.6em;
-    font-size: 1.1rem;
-    margin-top: 1rem;
-    white-space: pre-wrap;
+    font-size: 1.2rem;
+    line-height: 1.5;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+}
+
+/* Camera States */
+.camera-zoom-in {
+    transform: scale(1.15) !important;
+}
+
+.camera-zoom-out {
+    transform: scale(1.0) !important;
+}
+
+.camera-pan-left {
+    transform: translateX(-5%) scale(1.1) !important;
+}
+
+.camera-pan-right {
+    transform: translateX(5%) scale(1.1) !important;
+}
+
+.camera-tilt-up {
+    transform: translateY(-5%) scale(1.1) !important;
+}
+
+/* Transition timing */
+.visual-layer, .char-slot {
+    transition: transform 3s ease-in-out, opacity 1s ease-in-out, filter 1s ease-in-out !important;
 }
 
 #status-indicator {

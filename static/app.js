@@ -217,6 +217,10 @@ function renderTimeline(data) {
             if (confirm(`Checkout Turn ${snap.turn_number}? This will reset the story to this point.`)) {
                 socket.send(jsonMsg("checkout_snapshot", { snapshot_id: snap.id }));
                 timelineOverlay.style.display = "none";
+                vnDialogueBox.style.display = "none";
+                vnNameTag.innerText = "Narrator";
+                currentStoryText = "";
+                currentChunkEl.innerText = "";
             }
         };
 
@@ -238,16 +242,22 @@ pacingSelector.onchange = () => {
     socket.send(jsonMsg("set_pacing", { pacing: pacingSelector.value }));
 };
 
+const vnDialogueBox = document.getElementById('vn-dialogue-box');
+const vnNameTag = document.getElementById('vn-name-tag');
+
 function handleMessage(message) {
     switch (message.type) {
         case 'story_chunk':
             currentStoryText += message.content;
             currentChunkEl.innerText = currentStoryText;
+            vnDialogueBox.style.display = "block";
             scrollStory();
             break;
         
         case 'audio_event':
             const audioUrl = `${window.location.protocol}//${window.location.host}${message.url}`;
+            vnNameTag.innerText = message.speaker;
+            vnDialogueBox.style.display = "block";
             queueAudio(audioUrl, message.speaker);
             break;
 
