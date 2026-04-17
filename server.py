@@ -75,6 +75,39 @@ if not os.path.exists(config.MAP_TILES_DIR):
     os.makedirs(config.MAP_TILES_DIR)
 app.mount("/map_tiles", StaticFiles(directory=config.MAP_TILES_DIR), name="map_tiles")
 
+@app.get("/asset/{asset_type}/{asset_name}")
+async def get_asset(asset_type: str, asset_name: str):
+    """
+    Returns an asset if it exists, otherwise triggers on-demand generation.
+    asset_type: 'portrait', 'environment', 'tile'
+    """
+    safe_name = "".join([c for c in asset_name if c.isalnum()]).lower()
+    
+    if asset_type == 'portrait':
+        path = os.path.join(config.PORTRAITS_DIR, f"{safe_name}.png")
+        if not os.path.exists(path):
+            # We need the character description/traits for generation
+            # If not in DB, we'll use defaults or fail gracefully
+            char = db.query_db("SELECT description, traits FROM characters WHERE name LIKE ?", (f"%{asset_name}%",), one=True)
+            if char:
+                await vision.generate_portrait(asset_name, char['description'], char['traits'])
+            else:
+                return {"error": "Character not found for on-demand generation"}
+        return FileResponse(path)
+
+    elif asset_type == 'environment':
+        path = os.path.join(config.ENVIRONMENTS_DIR, f"{safe_name}.png")
+        if not os.path.exists(path):
+            loc = db.query_db("SELECT description FROM locations WHERE name LIKE ?", (f"%{asset_name}%",), one=True)
+            if loc:
+                await vision.generate_environment(asset_name, loc['description'])
+            else:
+                # If we don't have it, we generate a generic one based on the name
+                await vision.generate_environment(asset_name, f"A cinematic scene of {asset_name}")
+        return FileResponse(path)
+
+    return {"error": "Invalid asset type"}
+
 @app.get("/")
 async def get():
     return FileResponse('static/index.html')
