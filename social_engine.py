@@ -93,8 +93,8 @@ Reply ONLY with JSON:
             data.get("traits", "Unknown"),
             voice_id=data.get("voice_id", "en_US-lessac-medium.onnx")
         )
-        # Generate a portrait in the background
-        asyncio.create_task(vision.generate_portrait(name, data.get("description", ""), data.get("traits", "")))
+        # We await this now so the image is ready for the upcoming visual stack update in the loop
+        await vision.generate_portrait(name, data.get("description", ""), data.get("traits", ""))
 
 async def discover_new_characters(response_text):
     """

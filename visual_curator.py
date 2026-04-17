@@ -39,7 +39,8 @@ class VisualCurator:
             safe_name = "".join([c for c in current_location if c.isalnum()]).lower()
             env_path = os.path.join(config.ENVIRONMENTS_DIR, f"{safe_name}.png")
             if os.path.exists(env_path):
-                stack["environment"] = f"/static/environments/{safe_name}.png"
+                # Mounted at /environments in server.py
+                stack["environment"] = f"/environments/{safe_name}.png"
 
         # 2. Entity Layer (Portrait mapping)
         if involved_entities:
@@ -47,15 +48,18 @@ class VisualCurator:
                 safe_name = "".join([c for c in entity if c.isalnum()]).lower()
                 port_path = os.path.join(config.PORTRAITS_DIR, f"{safe_name}.png")
                 if os.path.exists(port_path):
-                    stack["involved_portraits"][entity] = f"/static/portraits/{safe_name}.png"
+                    # Mounted at /portraits in server.py
+                    stack["involved_portraits"][entity] = f"/portraits/{safe_name}.png"
 
             # Set the primary visual entity
             if primary_entity and primary_entity in stack["involved_portraits"]:
                 stack["entity"] = stack["involved_portraits"][primary_entity]
             elif involved_entities:
-                # Fallback to first detected
-                first = involved_entities[0]
-                stack["entity"] = stack["involved_portraits"].get(first)
+                # Try to find any available portrait from the involved list
+                for ent in involved_entities:
+                    if ent in stack["involved_portraits"]:
+                        stack["entity"] = stack["involved_portraits"][ent]
+                        break
 
         # 3. Texture Layer (Based on mood/atmosphere)
         # Placeholder: Logic to map atmosphere/location to texture

@@ -241,6 +241,9 @@ async def websocket_endpoint(websocket: WebSocket):
                         continue
 
                     # --- PHASE 2: Execute Plan Updates ---
+                    # 1. Discover any new characters mentioned in the input or plan
+                    await social_engine.discover_new_characters(user_input)
+
                     for update in plan['quest_updates']:
                         db.update_objective_status(update['objective_id'], update['status'])
                         await websocket.send_text(json.dumps({"type": "info", "content": f"Objective update: {update['status']}"}))

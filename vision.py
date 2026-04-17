@@ -65,7 +65,7 @@ async def generate_portrait(name, description, traits):
     
     # Check if we already have it
     if os.path.exists(output_path):
-        return f"/static/portraits/{safe_name}.png"
+        return f"/portraits/{safe_name}.png"
 
     print(f"Vision Engine: Generating portrait for {name}...")
     
@@ -87,7 +87,7 @@ async def generate_portrait(name, description, traits):
     image.save(output_path)
     print(f"Vision Engine: Saved portrait to {output_path}")
     
-    return f"/static/portraits/{safe_name}.png"
+    return f"/portraits/{safe_name}.png"
 
 async def stylize_environment_prompt(location_name, description):
     """
@@ -118,7 +118,7 @@ async def generate_environment(location_name, description):
     
     # Check if we already have it
     if os.path.exists(output_path):
-        return f"/static/environments/{safe_name}.png"
+        return f"/environments/{safe_name}.png"
 
     print(f"Vision Engine: Generating environment for {location_name}...")
     
@@ -138,7 +138,7 @@ async def generate_environment(location_name, description):
     image.save(output_path)
     print(f"Vision Engine: Saved environment to {output_path}")
     
-    return f"/static/environments/{safe_name}.png"
+    return f"/environments/{safe_name}.png"
 
 async def stylize_map_tile_prompt(biome_type):
     """
