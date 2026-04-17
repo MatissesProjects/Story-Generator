@@ -22,7 +22,11 @@ VOICE_CACHE = {}
 def get_voice(voice_model="en_US-lessac-medium.onnx"):
     """
     Loads or retrieves a PiperVoice from the cache.
+    Automatically appends .onnx if missing.
     """
+    if not voice_model.endswith(".onnx"):
+        voice_model += ".onnx"
+        
     model_path = os.path.join(config.MODELS_DIR, voice_model)
     config_path = f"{model_path}.json"
 

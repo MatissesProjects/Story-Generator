@@ -144,6 +144,10 @@ def get_character_voice(name):
     }
 
 def add_character(name, description, traits, voice_id="en_US-lessac-medium.onnx", length_scale=1.0, noise_scale=0.667, noise_w=0.8, signature_tic=None, narrative_role='NPC', leitmotif_path=None):
+    # Ensure voice_id has extension
+    if voice_id and not voice_id.endswith(".onnx"):
+        voice_id += ".onnx"
+
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.execute("""
             INSERT INTO characters 
