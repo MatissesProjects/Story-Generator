@@ -591,10 +591,8 @@ function renderStats(stats) {
         statsListEl.appendChild(div);
     });
 }
-
     // End of stream detection (this is heuristic based on the current server logic)
     // In a real app, the server would send a 'stream_end' message.
-}
 
 function addLog(type, content) {
     const entry = document.createElement('div');
@@ -713,6 +711,15 @@ function applyAtmosphere(atmos) {
     // Apply Tint
     overlay.style.backgroundColor = atmos.tint || 'rgba(0,0,0,0)';
 
+    // Mood-based UI styling
+    const mood = (atmos.lighting || "").toLowerCase();
+    vnDialogueBox.classList.remove('mood-tension', 'mood-combat', 'mood-mystical', 'mood-mournful');
+    
+    if (mood.includes('tension') || mood.includes('yellow')) vnDialogueBox.classList.add('mood-tension');
+    else if (mood.includes('combat') || mood.includes('red')) vnDialogueBox.classList.add('mood-combat');
+    else if (mood.includes('purple') || mood.includes('mystic')) vnDialogueBox.classList.add('mood-mystical');
+    else if (mood.includes('blue') || mood.includes('mourn')) vnDialogueBox.classList.add('mood-mournful');
+
     // Apply Haptic (Screen Shake)
     const haptic = (atmos.haptic || "").toLowerCase();
     if (haptic.includes('rumble') || haptic.includes('pulse') || haptic.includes('shake')) {
@@ -720,6 +727,13 @@ function applyAtmosphere(atmos) {
         setTimeout(() => {
             document.body.classList.remove('shake');
         }, 800);
+    }
+
+    // Visual Beats (Glitches)
+    const visualStack = document.getElementById('visual-stack');
+    if (haptic.includes('glitch') || haptic.includes('anomaly')) {
+        visualStack.classList.add('glitch-active');
+        setTimeout(() => visualStack.classList.remove('glitch-active'), 500);
     }
 
     // Apply Visual Punctuation (Flash Red)

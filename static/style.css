@@ -421,6 +421,60 @@ h3 {
     font-size: 1rem;
     text-transform: uppercase;
     letter-spacing: 1px;
+    transition: background-color 1s;
+}
+
+/* Mood Themes for Dialogue Box */
+#vn-dialogue-box.mood-tension {
+    border-color: #facc15;
+    background: rgba(30, 25, 10, 0.9);
+    box-shadow: 0 0 20px rgba(250, 204, 21, 0.3);
+}
+#vn-dialogue-box.mood-tension #vn-name-tag { background-color: #facc15; color: #000; }
+
+#vn-dialogue-box.mood-combat {
+    border-color: #ff4444;
+    background: rgba(40, 10, 10, 0.9);
+    box-shadow: 0 0 30px rgba(255, 68, 68, 0.4);
+}
+#vn-dialogue-box.mood-combat #vn-name-tag { background-color: #ff4444; }
+
+#vn-dialogue-box.mood-mystical {
+    border-color: #a855f7;
+    background: rgba(20, 10, 40, 0.9);
+    box-shadow: 0 0 25px rgba(168, 85, 247, 0.4);
+}
+#vn-dialogue-box.mood-mystical #vn-name-tag { background-color: #a855f7; }
+
+#vn-dialogue-box.mood-mournful {
+    border-color: #64748b;
+    background: rgba(15, 23, 42, 0.9);
+    filter: grayscale(0.5);
+}
+#vn-dialogue-box.mood-mournful #vn-name-tag { background-color: #64748b; }
+
+/* Visual Beats (Glitches/Pulses) */
+@keyframes glitch-anim {
+    0% { transform: translate(0); clip-path: inset(0); }
+    20% { transform: translate(-2px, 2px); clip-path: inset(10% 0 30% 0); }
+    40% { transform: translate(2px, -2px); clip-path: inset(40% 0 10% 0); }
+    60% { transform: translate(-2px, 0); clip-path: inset(20% 0 50% 0); }
+    100% { transform: translate(0); clip-path: inset(0); }
+}
+
+.glitch-active {
+    animation: glitch-anim 0.3s infinite;
+    filter: hue-rotate(90deg) brightness(1.5);
+}
+
+@keyframes pulse-energy {
+    0% { box-shadow: 0 0 10px rgba(74, 144, 226, 0.3); }
+    50% { box-shadow: 0 0 40px rgba(74, 144, 226, 0.6); }
+    100% { box-shadow: 0 0 10px rgba(74, 144, 226, 0.3); }
+}
+
+.pulse-active {
+    animation: pulse-energy 2s infinite ease-in-out;
 }
 
 #current-chunk {
