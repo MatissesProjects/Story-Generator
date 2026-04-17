@@ -65,6 +65,8 @@ def mock_llm():
                 return '{"biome": "Plain", "elevation": 0, "climate": "Temperate", "connectivity_score": 0.5}'
             if "canon consistency" in p or "contradictions" in p:
                 return '{"contradictions": []}'
+            if "character architect" in p:
+                return '{"description": "A newly discovered figure.", "traits": "Mysterious, Unknown", "voice_id": "en_US-amy-medium.onnx"}'
             
             # Default for creative generation or unrecognized prompts
             return "Mocked response content."
