@@ -725,12 +725,18 @@ function updateVisualStack(stack) {
     const layers = {
         'texture': document.getElementById('layer-texture'),
         'environment': document.getElementById('layer-environment'),
-        'entity': document.getElementById('layer-entity'),
         'overlay': document.getElementById('layer-overlay')
     };
 
-    const isNarrator = stack.primary_entity === "Narrator";
+    const slots = {
+        'left': document.getElementById('slot-left'),
+        'center': document.getElementById('slot-center'),
+        'right': document.getElementById('slot-right')
+    };
 
+    const isNarrator = stack.primary === "Narrator";
+
+    // Update static layers
     for (const [key, el] of Object.entries(layers)) {
         const url = stack[key];
         if (url) {
@@ -741,18 +747,40 @@ function updateVisualStack(stack) {
             if (key === 'texture') opacity = 0.4;
             if (key === 'overlay') opacity = 0.3;
             
-            // Narrator logic: dim character portrait to show environment clearly
-            if (isNarrator && key === 'entity') opacity = 0.0; 
-            if (!isNarrator && key === 'environment') opacity = 0.7; // Dim env slightly when someone is talking
+            if (!isNarrator && key === 'environment') opacity = 0.5; // Dim env more when someone is talking
 
             el.style.opacity = opacity;
             
-            // Apply Ken Burns to environment and entity
-            if (key === 'environment' || key === 'entity') {
+            if (key === 'environment') {
                 toggleKenBurns(el);
             }
         } else {
             el.style.opacity = 0;
+        }
+    }
+
+    // Update character slots
+    for (const [key, el] of Object.entries(slots)) {
+        const url = stack.slots[key];
+        if (url) {
+            el.style.backgroundImage = `url('${url}')`;
+            el.classList.add('active');
+            
+            // Check if this slot contains the primary speaker
+            // URL is /asset/portrait/{safename}
+            const primarySafe = stack.primary ? stack.primary.toLowerCase().replace(' ', '') : "";
+            if (primarySafe && url.includes(primarySafe)) {
+                el.classList.add('speaking');
+                el.classList.remove('dimmed');
+                toggleKenBurns(el); // Focus on the speaker
+            } else {
+                el.classList.remove('speaking');
+                el.classList.add('dimmed');
+                el.classList.remove('ken-burns-in', 'ken-burns-out');
+            }
+        } else {
+            el.style.backgroundImage = 'none';
+            el.classList.remove('active', 'speaking', 'dimmed', 'ken-burns-in', 'ken-burns-out');
         }
     }
 }
