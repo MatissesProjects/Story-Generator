@@ -305,21 +305,28 @@ async def websocket_endpoint(websocket: WebSocket):
                         
                         # Real-time audio and visual parsing
                         completed_blocks = stream_parser.feed(chunk)
-                        for speaker, text in completed_blocks:
-                            voice_config = db.get_character_voice(speaker)
-                            audio_path = tts.generate_audio(text, speaker, voice_config=voice_config)
-                            if audio_path:
-                                audio_url = f"/audio/{os.path.basename(audio_path)}"
-                                await websocket.send_text(json.dumps({"type": "audio_event", "url": audio_url, "speaker": speaker}))
-                                
-                                # Send visual sync for the speaker
-                                current_entities = [name for name in db.get_all_entities() if name.lower() in full_response.lower()]
-                                current_atmos = atmosphere.get_atmosphere_by_mood(current_pacing) # Fallback atmosphere
-                                vstack = curator_visual.get_visual_stack(curr_loc_name, current_entities, current_atmos, primary_entity=speaker)
-                                await websocket.send_text(json.dumps({"type": "visual_update", "content": vstack}))
+                        if completed_blocks:
+                            # Pre-register any new characters found in this chunk
+                            await social_engine.discover_new_characters(full_response)
+                            
+                            for speaker, text in completed_blocks:
+                                voice_config = db.get_character_voice(speaker)
+                                audio_path = tts.generate_audio(text, speaker, voice_config=voice_config)
+                                if audio_path:
+                                    audio_url = f"/audio/{os.path.basename(audio_path)}"
+                                    await websocket.send_text(json.dumps({"type": "audio_event", "url": audio_url, "speaker": speaker}))
+                                    
+                                    # Send visual sync for the speaker
+                                    current_entities = [name for name in db.get_all_entities() if name.lower() in full_response.lower()]
+                                    current_atmos = atmosphere.get_atmosphere_by_mood(current_pacing) # Fallback atmosphere
+                                    vstack = curator_visual.get_visual_stack(curr_loc_name, current_entities, current_atmos, primary_entity=speaker)
+                                    await websocket.send_text(json.dumps({"type": "visual_update", "content": vstack}))
 
                     # Final flush for any remaining text in buffer
                     remaining_blocks = stream_parser.flush()
+                    if remaining_blocks:
+                        await social_engine.discover_new_characters(full_response)
+                        
                     for speaker, text in remaining_blocks:
                         voice_config = db.get_character_voice(speaker)
                         audio_path = tts.generate_audio(text, speaker, voice_config=voice_config)

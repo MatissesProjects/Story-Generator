@@ -4,6 +4,7 @@ import json
 import asyncio
 import config
 import utils
+import vision
 
 async def analyze_interaction(user_input, response_text, character_name):
     """
@@ -50,11 +51,72 @@ Reply ONLY with a JSON object:
     return 0, 0, 0, "Analysis failed."
 
 
+async def register_new_character(name, context_text):
+    """
+    Automatically adds a new character to the database with a fitting voice
+    based on the story context.
+    """
+    print(f"Social: Discovering new character: {name}")
+    
+    # Use LLM to get a quick description and traits
+    prompt = f"""
+[SYSTEM: You are the Character Architect. A new character named '{name}' has appeared in the story.
+Based on this context, provide a brief description and their likely voice type.
+
+CONTEXT:
+{context_text}
+
+AVAILABLE VOICES:
+- en_US-ryan-high (Narrator / Deep, Strong Male)
+- en_US-lessac-high (Clear, Expressive Female Lead)
+- en_US-joe-medium (Conversational, Upbeat Younger Male)
+- en_US-amy-medium (Energetic Younger Female)
+- en_GB-alan-medium (Authoritative, Mature British Male)
+- en_GB-jenny_dioco-medium (Polished, Steady British Female)
+- en_GB-alba-medium (Scottish Lilt / Regional Female)
+
+Reply ONLY with JSON:
+{{
+    "description": "Short bio",
+    "traits": "Comma separated traits",
+    "voice_id": "the_filename.onnx"
+}}
+]
+"""
+    response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
+    data = utils.safe_parse_json(response)
+    
+    if data:
+        db.add_character(
+            name, 
+            data.get("description", "A mysterious figure."), 
+            data.get("traits", "Unknown"),
+            voice_id=data.get("voice_id", "en_US-lessac-medium.onnx")
+        )
+        # Generate a portrait in the background
+        asyncio.create_task(vision.generate_portrait(name, data.get("description", ""), data.get("traits", "")))
+
+async def discover_new_characters(response_text):
+    """
+    Scans the response for new character names and registers them in the DB.
+    """
+    known_chars = [c['name'] for c in db.get_all_characters()]
+    
+    # Extract potential names using capitalized words preceding colons
+    import re
+    potential_names = re.findall(r'\[?([A-Z][a-z]+(?: [A-Z][a-z]+)*)\]?:', response_text)
+    
+    for name in potential_names:
+        if name.lower() not in [k.lower() for k in known_chars] and name.lower() != "narrator":
+            await register_new_character(name, response_text)
+            known_chars.append(name) # Prevent double registration in same turn
+
 async def update_social_state(user_input, response_text, current_turn=0):
     """
     Identifies involved characters and updates their relationships with the player.
     Also updates the 'last_seen_turn' for these characters.
     """
+    # Now proceed with standard relationship updates only
     character_names = [c['name'] for c in db.get_all_characters()]
     involved_names = utils.extract_character_mentions(user_input + " " + response_text, character_names)
     

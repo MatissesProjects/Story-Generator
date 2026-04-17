@@ -248,7 +248,7 @@ def commit_snapshot(session_id, user_input, response, seed, location_id, branch_
     Saves a new turn as a snapshot and updates the story head.
     """
     head = get_story_head(session_id)
-    parent_id = head['current_snapshot_id'] if head else None
+    parent_id = head['id'] if head else None
     turn_number = (head['turn_number'] + 1) if head else 1
     
     with sqlite3.connect(DB_PATH) as conn:
