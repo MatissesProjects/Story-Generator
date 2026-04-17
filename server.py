@@ -447,9 +447,9 @@ async def websocket_endpoint(websocket: WebSocket):
                     atmos_data = post_results[4]
                     await websocket.send_text(json.dumps({"type": "atmosphere_update", "content": atmos_data}))
 
-                    # Visual Stack curation
-                    involved_entities = [name for name in db.get_all_entities() if name.lower() in full_response.lower()]
-                    visual_stack = curator_visual.get_visual_stack(curr_loc_name, involved_entities, atmos_data)
+                    # Final Visual Stack curation (sync with end of text)
+                    current_entities = [name for name in db.get_all_entities() if name.lower() in full_response.lower()]
+                    visual_stack = curator_visual.get_visual_stack(curr_loc_name, current_entities, atmos_data)
                     await websocket.send_text(json.dumps({"type": "visual_update", "content": visual_stack}))
 
                     # Ambiance loop selection
@@ -478,16 +478,6 @@ async def websocket_endpoint(websocket: WebSocket):
                         loc_obj = db.get_location_by_name(curr_loc_name)
                         loc_id = loc_obj['id'] if loc_obj else None
                     db.commit_snapshot("default_session", user_input, full_response, narrative_seed, loc_id)
-
-                    # Dialogue Audio Synthesis
-                    dialogue_lines = parser.parse_dialogue(full_response)
-                    for speaker, text in dialogue_lines:
-                        voice_config = db.get_character_voice(speaker)
-                        
-                        audio_path = tts.generate_audio(text, speaker, voice_config=voice_config)
-                        if audio_path:
-                            audio_url = f"/audio/{os.path.basename(audio_path)}"
-                            await websocket.send_text(json.dumps({"type": "audio_event", "url": audio_url, "speaker": speaker}))
 
                     # Long-term memory summary
                     if db.get_history_count() % 10 == 0:

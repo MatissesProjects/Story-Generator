@@ -732,6 +732,7 @@ function applyAtmosphere(atmos) {
 }
 
 function updateVisualStack(stack) {
+    console.log("Visual: Updating stack:", stack);
     const layers = {
         'texture': document.getElementById('layer-texture'),
         'environment': document.getElementById('layer-environment'),
