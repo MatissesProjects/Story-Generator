@@ -28,6 +28,7 @@ const inventoryListEl = document.getElementById('inventory-list');
 const statsListEl = document.getElementById('stats-list');
 const locationNameEl = document.getElementById('current-location-name');
 const backgroundVisualEl = document.getElementById('background-visual');
+const resetBtn = document.getElementById('reset-btn');
 const sparkBtn = document.getElementById('spark-btn');
 const mapBtn = document.getElementById('map-btn');
 const mapOverlay = document.getElementById('map-overlay');
@@ -76,6 +77,16 @@ function connect() {
 }
 
 // Map logic
+resetBtn.onclick = () => {
+    if (confirm("Are you sure you want to start a new story? This will wipe the current story history, characters, and world state.")) {
+        socket.send(jsonMsg("reset_story", {}));
+        vnDialogueBox.style.display = "none";
+        currentStoryText = "";
+        currentChunkEl.innerText = "";
+        historyContainer.innerHTML = "";
+    }
+};
+
 mapBtn.onclick = () => {
     mapOverlay.style.display = "block";
     socket.send(jsonMsg("get_map", {}));
@@ -291,7 +302,7 @@ function handleMessage(message) {
         case 'state_update_request':
             socket.send(jsonMsg("get_state", {}));
             // Clear current chat history visually to show we've switched
-            historyContainer.innerHTML = "<em>Narrative checkout complete. Current state loaded.</em>";
+            historyContainer.innerHTML = "<em>Narrative switch complete.</em>";
             currentStoryText = "";
             currentChunkEl.innerText = "";
             break;

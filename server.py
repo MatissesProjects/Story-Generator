@@ -716,6 +716,13 @@ async def websocket_endpoint(websocket: WebSocket):
                 await websocket.send_text(json.dumps({"type": "info", "content": f"Stat '{stat['name']}' set to {stat['value']}."}))
                 await websocket.send_text(json.dumps({"type": "state_update_request"}))
 
+            elif message["type"] == "reset_story":
+                await log_progress(websocket, "Resetting story database...")
+                db.clear_all_data()
+                curator_visual.entity_cache = {}
+                await websocket.send_text(json.dumps({"type": "info", "content": "Story database cleared. Starting fresh."}))
+                await websocket.send_text(json.dumps({"type": "state_update_request"}))
+
             elif message["type"] == "get_map":
                 locations = db.get_all_locations()
                 paths = db.get_all_paths()

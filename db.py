@@ -81,6 +81,26 @@ def execute_db(query, args=()):
         conn.execute(query, args)
         conn.commit()
 
+def clear_all_data():
+    tables = [
+        "characters", "lore", "plot_threads", "timeline", "meta_lore", 
+        "history", "story_state", "regions", "locations", "paths", 
+        "entity_positions", "snapshots", "story_heads", "quests", 
+        "quest_objectives", "relationships", "interaction_log", 
+        "foreshadowed_elements", "inventory", "entity_stats", 
+        "simulation_history"
+    ]
+    with sqlite3.connect(DB_PATH) as conn:
+        for table in tables:
+            try:
+                conn.execute(f"DELETE FROM {table}")
+            except sqlite3.OperationalError:
+                # Table might not exist yet
+                pass
+        conn.commit()
+    # Re-initialize just in case some defaults are needed
+    init_db()
+
 def search_characters(name_fragment):
     return query_db("SELECT * FROM characters WHERE name LIKE ?", (f"%{name_fragment}%",))
 
