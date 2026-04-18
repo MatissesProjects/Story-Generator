@@ -34,13 +34,27 @@ def parse_dialogue(text):
     Returns a list of (speaker, content) tuples.
     """
     # Pattern to match [Name]: "text" or Name: "text" or [Name]: text
-    pattern = r'(?:\[?([A-Za-z0-9 ]+)\]?:\s*(.+))'
+    # Support for characters like - and _ in names
+    pattern = r'(?:\[?([A-Za-z0-9 _-]+)\]?:\s*(.+))'
+    
+    # Filter out system tags
+    ignored_tags = ["Script", "System", "Director", "Logic", "Objective", "Status", "Sequence Update"]
     
     matches = re.findall(pattern, text)
     if not matches:
+        # Check if the text itself should be ignored (e.g. metadata)
+        if any(text.strip().startswith(f"[{tag}]") for tag in ignored_tags) or text.strip() == "***":
+            return []
         return [("Narrator", text.strip())]
     
-    return [(speaker.strip(), content.strip()) for speaker, content in matches]
+    results = []
+    for speaker, content in matches:
+        speaker = speaker.strip()
+        if speaker in ignored_tags:
+            continue
+        results.append((speaker, content.strip()))
+    
+    return results
 
 class StreamParser:
     """
@@ -51,7 +65,8 @@ class StreamParser:
         self.buffer = ""
         self.processed_index = 0
         # Matches [Speaker]: Text until a newline or next speaker tag
-        self.tag_pattern = re.compile(r'\[?([A-Za-z0-9 ]+)\]?:\s*(.*?)(?=\n|\[?[A-Za-z0-9 ]+\]?:|$)', re.DOTALL)
+        self.tag_pattern = re.compile(r'\[?([A-Za-z0-9 _-]+)\]?:\s*(.*?)(?=\n|\[?[A-Za-z0-9 _-]+\]?:|$)', re.DOTALL)
+        self.ignored_tags = ["Script", "System", "Director", "Logic", "Objective", "Status", "Sequence Update"]
 
     def feed(self, chunk):
         self.buffer += chunk
@@ -64,14 +79,21 @@ class StreamParser:
         if len(lines) > 1:
             for i in range(len(lines) - 1):
                 line = lines[i].strip()
-                if not line: continue
+                if not line or line == "***": continue
                 
                 # Check for tag
                 match = self.tag_pattern.match(line)
                 if match:
                     speaker, content = match.groups()
-                    completed_blocks.append((speaker.strip(), content.strip()))
+                    speaker = speaker.strip()
+                    if speaker in self.ignored_tags:
+                        continue
+                    completed_blocks.append((speaker, content.strip()))
                 else:
+                    # Check for system blocks without colon
+                    if any(line.startswith(f"[{tag}]") for tag in self.ignored_tags):
+                        continue
+                        
                     # Assume narrator if no tag
                     completed_blocks.append(("Narrator", line))
             

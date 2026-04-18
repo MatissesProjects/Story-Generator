@@ -256,6 +256,17 @@ function handleMessage(message) {
         
         case 'audio_event':
             const audioUrl = `${window.location.protocol}//${window.location.host}${message.url}`;
+            
+            // Move current text to history before starting new speaker block
+            if (currentStoryText) {
+                const block = document.createElement('div');
+                block.className = 'story-block';
+                block.innerText = currentStoryText;
+                historyContainer.appendChild(block);
+                currentStoryText = "";
+                currentChunkEl.innerText = "";
+            }
+            
             vnNameTag.innerText = message.speaker;
             vnDialogueBox.style.display = "block";
             queueAudio(audioUrl, message.speaker);

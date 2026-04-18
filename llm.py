@@ -41,21 +41,6 @@ def _build_full_prompt(prompt, context_facts=None, director_instructions=None, p
         instr = pacing_instructions.get(pacing_directive, "")
         context_blocks.append(f"PACING: {pacing_directive}. {instr}")
 
-    # Add Voice Guidance for character creation
-    voice_guidance = """
-[VOICE MAPPING REFERENCE:
-The following voice IDs are available for the engine. When writing dialogue, ALWAYS use the character's NAME (e.g. [Elara]: ...), NOT the voice ID.
-- en_US-ryan-high (Narrator / Deep, Strong Male)
-- en_US-lessac-high (Clear, Expressive Female Lead)
-- en_US-joe-medium (Conversational, Upbeat Younger Male)
-- en_US-amy-medium (Energetic Younger Female)
-- en_GB-alan-medium (Authoritative, Mature British Male)
-- en_GB-jenny_dioco-medium (Polished, Steady British Female)
-- en_GB-alba-medium (Scottish Lilt / Regional Female)
-]
-"""
-    context_blocks.append(voice_guidance)
-        
     if context_blocks:
         full_context = "\n\n".join(context_blocks)
         full_prompt = f"[SYSTEM: {full_context}]\n\n{prompt}"

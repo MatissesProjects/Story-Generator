@@ -403,6 +403,8 @@ h3 {
     border-radius: 8px;
     padding: 1.5rem;
     min-height: 120px;
+    max-height: 30vh;
+    overflow-y: auto;
     box-shadow: 0 0 30px rgba(0,0,0,0.5);
     backdrop-filter: blur(10px);
     margin-top: 1rem;
