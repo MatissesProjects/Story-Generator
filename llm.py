@@ -77,7 +77,7 @@ async def async_generate_story_segment(prompt, model=config.CREATIVE_MODEL, cont
         }
     }
 
-    async with httpx.AsyncClient(timeout=300.0) as client:
+    async with httpx.AsyncClient(timeout=config.OLLAMA_TIMEOUT) as client:
         async with client.stream("POST", OLLAMA_URL, json=payload) as response:
             response.raise_for_status()
             async for line in response.aiter_lines():

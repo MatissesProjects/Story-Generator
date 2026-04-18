@@ -251,21 +251,47 @@ async def websocket_endpoint(websocket: WebSocket):
                     if val_task: tasks_to_gather.append(val_task)
                     if dice_task: tasks_to_gather.append(dice_task)
                     
-                    gathered_results = await asyncio.gather(*tasks_to_gather)
+                    gathered_results = await asyncio.gather(*tasks_to_gather, return_exceptions=True)
                     
+                    # 1. Action Plan
                     plan = gathered_results[0]
+                    if isinstance(plan, Exception):
+                        print(f"Director Error: {plan}")
+                        await websocket.send_text(json.dumps({"type": "debug", "content": f"Director failed: {plan}"}))
+                        # Fallback empty plan
+                        plan = {
+                            "needs_research": False,
+                            "research_theme": "",
+                            "quest_updates": [],
+                            "milestone_completed": False,
+                            "new_location": None
+                        }
+                    
                     idx = 1
+                    
+                    # 2. Validation
                     validation_result = (True, "")
                     if val_task:
-                        validation_result = gathered_results[idx]
+                        val_res = gathered_results[idx]
+                        if isinstance(val_res, Exception):
+                            print(f"Validator Error: {val_res}")
+                            # If validator fails, assume valid but log it
+                            validation_result = (True, "")
+                        else:
+                            validation_result = val_res
                         idx += 1
                     
+                    # 3. DiceMaster
                     mechanical_result = ""
                     if dice_task:
-                        success, roll, dc, sides, reason = gathered_results[idx]
-                        res_str = "SUCCESS" if success else "FAILURE"
-                        mechanical_result = f"MECHANICAL RESULT: {res_str} (Rolled {roll} vs DC {dc} on a D{sides}). Narrate the outcome accordingly."
-                        await websocket.send_text(json.dumps({"type": "debug", "content": f"DiceMaster: {mechanical_result} - {reason}"}))
+                        dice_res = gathered_results[idx]
+                        if isinstance(dice_res, Exception):
+                            print(f"DiceMaster Error: {dice_res}")
+                        elif isinstance(dice_res, tuple) and len(dice_res) == 5:
+                            success, roll, dc, sides, reason = dice_res
+                            res_str = "SUCCESS" if success else "FAILURE"
+                            mechanical_result = f"MECHANICAL RESULT: {res_str} (Rolled {roll} vs DC {dc} on a D{sides}). Narrate the outcome accordingly."
+                            await websocket.send_text(json.dumps({"type": "debug", "content": f"DiceMaster: {mechanical_result} - {reason}"}))
                         idx += 1
 
                     # Logic Validation Check
@@ -314,11 +340,15 @@ async def websocket_endpoint(websocket: WebSocket):
 
                     # Foreshadowing check
                     foreshadow_note = ""
-                    payoff = await foreshadowing.check_for_payoff(recent_history)
-                    if payoff:
-                        payoff_id, element_name, foreshadow_note = payoff
-                        db.resolve_foreshadowing(payoff_id)
-                        await websocket.send_text(json.dumps({"type": "info", "content": f"Foreshadowing payoff: {element_name}"}))
+                    try:
+                        payoff = await foreshadowing.check_for_payoff(recent_history)
+                        if payoff:
+                            payoff_id, element_name, foreshadow_note = payoff
+                            db.resolve_foreshadowing(payoff_id)
+                            await websocket.send_text(json.dumps({"type": "info", "content": f"Foreshadowing payoff: {element_name}"}))
+                    except Exception as e:
+                        print(f"Error in foreshadowing payoff check: {e}")
+                        await websocket.send_text(json.dumps({"type": "debug", "content": f"Foreshadowing check failed: {e}"}))
 
                     await websocket.send_text(json.dumps({"type": "debug", "content": f"Intent: {intent}, Using context: {len(facts)} facts, Director: {director_instructions is not None}, Personas: {len(persona_blocks)}, Seed: {narrative_seed is not None}"}))
 
@@ -389,20 +419,30 @@ async def websocket_endpoint(websocket: WebSocket):
                         atmosphere.detect_atmosphere(full_response, curr_loc_name)
                     ]
                     
-                    post_results = await asyncio.gather(*post_tasks)
+                    post_results = await asyncio.gather(*post_tasks, return_exceptions=True)
                     
+                    # Log any exceptions from post-tasks
+                    for i, res in enumerate(post_results):
+                        if isinstance(res, Exception):
+                            task_name = ["Seeds", "Claims", "Social", "Music", "Atmos"][i]
+                            print(f"Post-task '{task_name}' failed: {res}")
+                            await websocket.send_text(json.dumps({"type": "debug", "content": f"Post-task '{task_name}' failed: {res}"}))
+
                     # Canon consistency check
-                    claims = post_results[1]
+                    claims = post_results[1] if not isinstance(post_results[1], Exception) else None
                     if claims:
-                        contradictions = await canon_checker.check_for_contradictions(claims, facts)
-                        if contradictions:
-                            for c in contradictions:
-                                resolution = await canon_checker.resolve_contradiction(c, facts)
-                                if resolution:
-                                    msg = f"Canon Alert: {c['violation']} -> Resolved via {resolution['resolution_type']}"
-                                    await websocket.send_text(json.dumps({"type": "info", "content": msg}))
-                                else:
-                                    await websocket.send_text(json.dumps({"type": "info", "content": f"Canon Warning: {c['violation']}"}))
+                        try:
+                            contradictions = await canon_checker.check_for_contradictions(claims, facts)
+                            if contradictions:
+                                for c in contradictions:
+                                    resolution = await canon_checker.resolve_contradiction(c, facts)
+                                    if resolution:
+                                        msg = f"Canon Alert: {c['violation']} -> Resolved via {resolution['resolution_type']}"
+                                        await websocket.send_text(json.dumps({"type": "info", "content": msg}))
+                                    else:
+                                        await websocket.send_text(json.dumps({"type": "info", "content": f"Canon Warning: {c['violation']}"}))
+                        except Exception as e:
+                            print(f"Error in canon contradiction check: {e}")
 
                     # Music selection
                     if config.MUSIC_ENABLED:
@@ -611,7 +651,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     loc_path = os.path.join(config.ENVIRONMENTS_DIR, f"{safe_name}.png")
                     loc_url = f"/static/environments/{safe_name}.png" if os.path.exists(loc_path) else None
 
-                chars = db.query_db("SELECT name, description, traits, social, ambition, safety, resources, current_goal, current_task FROM characters")
+                chars = db.query_db("SELECT id, name, description, traits, social, ambition, safety, resources, current_goal, current_task, signature_tic, narrative_role FROM characters")
                 char_list = []
                 for c in chars:
                     safe_name = "".join([char for char in c['name'] if char.isalnum()]).lower()

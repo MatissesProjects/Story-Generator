@@ -275,13 +275,20 @@ async def generate_action_plan(user_input, recent_history, active_threads, activ
         check_narrative_gaps(recent_history, active_threads),
         evaluate_quest_progress(user_input), 
         evaluate_milestone_progress(user_input),
-        identify_location(user_input, recent_history)
+        identify_location(user_input, recent_history),
+        return_exceptions=True
     )
     
-    plan["needs_research"], plan["research_theme"] = results[0]
-    plan["quest_updates"] = results[1]
-    plan["milestone_completed"] = results[2]
-    loc_name, loc_desc, rel_to, direction = results[3]
+    # Process results with fallbacks for exceptions
+    gaps_result = results[0] if not isinstance(results[0], Exception) else (False, "")
+    quests_result = results[1] if not isinstance(results[1], Exception) else []
+    milestone_result = results[2] if not isinstance(results[2], Exception) else False
+    location_result = results[3] if not isinstance(results[3], Exception) else (None, None, None, None)
+
+    plan["needs_research"], plan["research_theme"] = gaps_result
+    plan["quest_updates"] = quests_result
+    plan["milestone_completed"] = milestone_result
+    loc_name, loc_desc, rel_to, direction = location_result
     if loc_name:
         plan["new_location"] = {"name": loc_name, "desc": loc_desc, "rel_to": rel_to, "direction": direction}
         

@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     CREATIVE_MODEL: str = Field(default="gemma4:26b", validation_alias="CREATIVE_MODEL")
     FAST_MODEL: str = Field(default="gemma4:26b", validation_alias="FAST_MODEL") # Small model for logic/parsing
     OLLAMA_KEEP_ALIVE: str = Field(default="5m", validation_alias="OLLAMA_KEEP_ALIVE") # How long to keep model in VRAM
+    OLLAMA_TIMEOUT: float = Field(default=600.0, validation_alias="OLLAMA_TIMEOUT")
 
     # Distributed settings
     GPU_NAME: str = Field(default="RTX 4090", validation_alias="GPU_NAME")
@@ -67,6 +68,7 @@ OLLAMA_MODEL = _settings.OLLAMA_MODEL
 CREATIVE_MODEL = _settings.CREATIVE_MODEL
 FAST_MODEL = _settings.FAST_MODEL
 OLLAMA_KEEP_ALIVE = _settings.OLLAMA_KEEP_ALIVE
+OLLAMA_TIMEOUT = _settings.OLLAMA_TIMEOUT
 GPU_NAME = _settings.GPU_NAME
 OFFLOAD_VISION = _settings.OFFLOAD_VISION
 PIPER_EXE = _settings.PIPER_EXE
