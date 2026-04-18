@@ -334,7 +334,7 @@ TRAITS: {traits}
 EXAMPLES:
 - "Always tugs at his left earlobe when lying."
 - "Smells faintly of scorched cinnamon and old parchment."
-- "Constantly polishes a small silver coin between her knuckles."
+- "Constantly polishes a small bronze coin between her knuckles."
 - "Never looks people in the eye, instead staring at their throat."
 - "Taps a rhythmic code on any wooden surface nearby."
 

@@ -49,7 +49,7 @@ TRAITS: {traits}
 FORMAT: Provide a single comma-separated list of descriptive keywords. Focus on: lighting, art style (e.g., hyperrealistic digital painting), specific clothing, facial features, and a clear background.
 Avoid: "and", "the", "a", complete sentences.
 
-Example: "Hyperrealistic digital portrait, battle-worn knight, scarred face, glowing blue eyes, ornate silver armor, dark forest background, cinematic lighting, 8k resolution"
+Example: "Hyperrealistic digital portrait, battle-worn knight, scarred face, glowing blue eyes, ornate obsidian armor, dark forest background, cinematic lighting, 8k resolution"
 
 Provide ONLY the prompt string.]
 """

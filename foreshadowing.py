@@ -22,12 +22,13 @@ Categorize the seed as: 'Item', 'Character', 'Lore', or 'Environment'.
 Reply ONLY with a JSON object:
 {{
     "seeds": [
-        {{
-            "name": "Strange Silver Coin",
-            "impact": "Could be a key to a specific vault.",
+        {
+            "name": "Faded Map Fragment",
+            "impact": "Could lead to a hidden mountain pass.",
             "category": "Item"
-        }}
+        }
     ]
+
 }}
 If no good seeds are found, return {{"seeds": []}}. REPLY ONLY IN JSON.]
 """
@@ -131,7 +132,7 @@ async def main():
     
     # 2. Evaluate an unrelated scene (LLM should ideally reject this in reality)
     print("\nEvaluating action scene...")
-    instruction = await evaluate_context_for_payoff("The goblin swings his rusty sword at your head as the tavern erupts into a brawl!")
+    instruction = await evaluate_context_for_payoff("A massive stone golem rises from the desert sands, blocking your path!")
     if instruction:
         print(f"🔥 Triggered: {instruction[2]}")
     else:
