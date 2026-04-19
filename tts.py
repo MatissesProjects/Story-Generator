@@ -45,7 +45,13 @@ def generate_audio(text, speaker_id, voice_config=None):
     Generates a WAV file for the given text using the piper-tts Python API.
     voice_config: dict with {voice_id, length_scale, noise_scale, noise_w}
     """
-    if not text.strip():
+    # Clean text: remove characters that Piper often lacks phonemes for
+    # Specifically, combining marks like U+0329 (̩)
+    text = text.replace('\u0329', '')
+    # Remove any other common problematic characters if needed
+    text = text.strip()
+
+    if not text:
         return None
 
     if voice_config is None:
