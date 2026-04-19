@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     PORTRAITS_DIR: str = Field(default="static/portraits", validation_alias="PORTRAITS_DIR")
     ENVIRONMENTS_DIR: str = Field(default="static/environments", validation_alias="ENVIRONMENTS_DIR")
     MAP_TILES_DIR: str = Field(default="static/map_tiles", validation_alias="MAP_TILES_DIR")
+    IMAGE_CACHE_ENABLED: bool = Field(default=True, validation_alias="IMAGE_CACHE_ENABLED")
 
     # Music settings
     AUDIO_SEQUENCER_PATH: str = Field(default="/home/matisse/GitHub/AudioSequencer", validation_alias="AUDIO_SEQUENCER_PATH")
@@ -80,6 +81,7 @@ VISION_MODEL = _settings.VISION_MODEL
 PORTRAITS_DIR = _settings.PORTRAITS_DIR
 ENVIRONMENTS_DIR = _settings.ENVIRONMENTS_DIR
 MAP_TILES_DIR = _settings.MAP_TILES_DIR
+IMAGE_CACHE_ENABLED = _settings.IMAGE_CACHE_ENABLED
 AUDIO_SEQUENCER_PATH = _settings.AUDIO_SEQUENCER_PATH
 MUSIC_DB_PATH = _settings.MUSIC_DB_PATH
 MUSIC_ENABLED = _settings.MUSIC_ENABLED
