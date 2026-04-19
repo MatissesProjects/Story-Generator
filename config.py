@@ -40,6 +40,8 @@ class Settings(BaseSettings):
         "British Female": "en_GB-jenny_dioco-medium.onnx",
         "Scottish Female": "en_GB-alba-medium.onnx"
     }
+    MALE_VOICES: list = ["en_US-joe-medium.onnx", "en_GB-alan-medium.onnx"]
+    FEMALE_VOICES: list = ["en_US-lessac-high.onnx", "en_US-lessac-medium.onnx", "en_US-amy-medium.onnx", "en_GB-jenny_dioco-medium.onnx", "en_GB-alba-medium.onnx"]
 
     # Vector DB settings
     VECTOR_DB_PATH: str = Field(default="vector_db", validation_alias="VECTOR_DB_PATH")
@@ -92,6 +94,8 @@ AUDIO_OUTPUT_DIR = _settings.AUDIO_OUTPUT_DIR
 DEFAULT_VOICE = _settings.DEFAULT_VOICE
 NARRATOR_VOICE = _settings.NARRATOR_VOICE
 VOICE_PROFILES = _settings.VOICE_PROFILES
+MALE_VOICES = _settings.MALE_VOICES
+FEMALE_VOICES = _settings.FEMALE_VOICES
 VECTOR_DB_PATH = _settings.VECTOR_DB_PATH
 EMBEDDING_MODEL = _settings.EMBEDDING_MODEL
 VISION_MODEL = _settings.VISION_MODEL

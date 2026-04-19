@@ -3,6 +3,7 @@ import os
 import memory_engine
 import config
 import json
+import random
 
 DB_PATH = "story_memory.db"
 
@@ -152,8 +153,22 @@ def get_character_voice(name):
     }
 
 def add_character(name, description, traits, voice_id=None, length_scale=1.0, noise_scale=0.667, noise_w=0.8, signature_tic=None, narrative_role='NPC', leitmotif_path=None):
-    if voice_id is None:
-        voice_id = config.DEFAULT_VOICE
+    if voice_id is None or voice_id == config.DEFAULT_VOICE:
+        # Simple heuristic to infer gender
+        text_to_check = f" {name} {description} {traits} ".lower()
+        male_keywords = [" he ", " him ", " his ", " man ", " boy ", " male ", " king ", " prince ", " lord "]
+        female_keywords = [" she ", " her ", " hers ", " woman ", " girl ", " female ", " queen ", " princess ", " lady "]
+        
+        is_male = any(kw in text_to_check for kw in male_keywords)
+        is_female = any(kw in text_to_check for kw in female_keywords)
+        
+        if is_female and not is_male:
+            voice_id = random.choice(config.FEMALE_VOICES)
+        elif is_male and not is_female:
+            voice_id = random.choice(config.MALE_VOICES)
+        else:
+            # Fallback to completely random if ambiguous
+            voice_id = random.choice(config.MALE_VOICES + config.FEMALE_VOICES)
         
     # Ensure voice_id has extension
     if voice_id and not voice_id.endswith(".onnx"):
