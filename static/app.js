@@ -785,17 +785,66 @@ addPlotThreadForm.onsubmit = (e) => {
     addPlotThreadForm.reset();
 };
 
+function triggerVisualEffect(type) {
+    const effectsLayer = document.getElementById('effects-layer');
+    if (!effectsLayer) return;
+
+    if (type === 'fog') {
+        if (!document.querySelector('.effect-fog')) {
+            const fog = document.createElement('div');
+            fog.className = 'effect-fog';
+            effectsLayer.appendChild(fog);
+        }
+    } else if (type === 'streak') {
+        const streak = document.createElement('div');
+        streak.className = 'effect-streak';
+        streak.style.left = Math.random() * 80 + 10 + '%';
+        streak.style.top = Math.random() * 20 + '%';
+        effectsLayer.appendChild(streak);
+        setTimeout(() => streak.remove(), 1000);
+    } else if (type === 'pulse') {
+        const pulse = document.createElement('div');
+        pulse.className = 'effect-pulse';
+        effectsLayer.appendChild(pulse);
+        setTimeout(() => pulse.remove(), 2000);
+    } else if (type === 'embers') {
+        if (!document.querySelector('.effect-ember')) {
+            for (let i = 0; i < 20; i++) {
+                createEmber(effectsLayer);
+            }
+        }
+    } else if (type === 'clear') {
+        effectsLayer.innerHTML = "";
+    }
+}
+
+function createEmber(parent) {
+    const ember = document.createElement('div');
+    ember.className = 'effect-ember';
+    ember.style.left = Math.random() * 100 + '%';
+    ember.style.top = Math.random() * 100 + '%';
+    ember.style.setProperty('--dx', (Math.random() * 200 - 100) + 'px');
+    ember.style.setProperty('--dy', (Math.random() * -200 - 50) + 'px');
+    ember.style.animationDelay = Math.random() * 5 + 's';
+    parent.appendChild(ember);
+}
+
 function applyAtmosphere(atmos) {
     const overlay = document.getElementById('atmosphere-overlay');
-    if (!overlay) return;
+    const effectsLayer = document.getElementById('effects-layer');
+    if (!overlay || !effectsLayer) return;
 
     // Apply Tint with safety check
     let tint = atmos.tint || 'rgba(0,0,0,0)';
     if (!tint.includes('rgba')) {
-        // If LLM sent rgb(), convert to rgba with safe alpha
         tint = tint.replace('rgb', 'rgba').replace(')', ', 0.15)');
     }
     overlay.style.backgroundColor = tint;
+
+    // Apply Visual Effects
+    if (atmos.visual_effect) {
+        triggerVisualEffect(atmos.visual_effect);
+    }
 
     // Mood-based UI styling
     const mood = (atmos.lighting || "").toLowerCase();

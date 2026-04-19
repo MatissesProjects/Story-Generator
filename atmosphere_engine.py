@@ -12,35 +12,40 @@ class AtmosphereEngine:
                 "weather": "clear",
                 "haptic": "none",
                 "tint": "rgba(0,0,0,0)",
-                "ambiance": "silence"
+                "ambiance": "silence",
+                "visual_effect": None
             },
             "Ominous": {
                 "lighting": "dim_cold",
                 "weather": "misty",
                 "haptic": "subtle_vibration",
                 "tint": "rgba(0, 20, 40, 0.2)",
-                "ambiance": "wind_howl"
+                "ambiance": "wind_howl",
+                "visual_effect": "fog"
             },
             "Combat": {
                 "lighting": "strobe_red",
                 "weather": "unchanged",
                 "haptic": "heavy_pulses",
                 "tint": "rgba(100, 0, 0, 0.1)",
-                "ambiance": "battle_drums"
+                "ambiance": "battle_drums",
+                "visual_effect": "pulse"
             },
             "Mystical": {
                 "lighting": "glowing_purple",
                 "weather": "sparkles",
                 "haptic": "none",
                 "tint": "rgba(80, 0, 100, 0.15)",
-                "ambiance": "ethereal_hum"
+                "ambiance": "ethereal_hum",
+                "visual_effect": "embers"
             },
             "Tavern": {
                 "lighting": "warm_orange",
                 "weather": "indoor",
                 "haptic": "none",
                 "tint": "rgba(100, 50, 0, 0.1)",
-                "ambiance": "tavern_crowd"
+                "ambiance": "tavern_crowd",
+                "visual_effect": None
             }
         }
 
@@ -80,7 +85,10 @@ Instructions:
    - MUST be an RGBA string.
    - The alpha channel (A) MUST be between 0.05 and 0.25. NEVER higher.
    - Example: "rgba(0, 0, 50, 0.15)" for a cold night.
-5. Identify the best Ambiance Loop (e.g., Wind, Rain, Crowd, Silence).
+5. Identify any special Visual Effects.
+   - Values: 'fog', 'streak', 'pulse', 'embers', or null.
+   - Use 'streak' or 'pulse' for sudden disturbances/impacts.
+6. Identify the best Ambiance Loop (e.g., Wind, Rain, Crowd, Silence).
 
 Reply ONLY with a JSON object.
 ]
@@ -112,6 +120,7 @@ Reply ONLY with a JSON object.
                 "weather": data.get("weather", "clear"),
                 "haptic": data.get("haptic", "none"),
                 "tint": tint,
+                "visual_effect": data.get("visual_effect"),
                 "ambiance": data.get("ambiance", "silence")
             }
         except Exception as e:

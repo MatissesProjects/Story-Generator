@@ -749,7 +749,7 @@ form input, form textarea, select {
     font-style: italic;
 }
 
-/* Atmosphere Overlay */
+/* Atmosphere Overlay & Effects */
 #atmosphere-overlay {
     position: fixed;
     top: 0;
@@ -759,6 +759,90 @@ form input, form textarea, select {
     pointer-events: none; /* Let clicks pass through */
     z-index: 1000;
     transition: background-color 2s ease-in-out;
+    overflow: hidden;
+}
+
+#effects-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* Fog Effect */
+.effect-fog {
+    background: url('/static/textures/fog_cloud.png'); /* Fallback to a procedural gradient if not found */
+    background-repeat: repeat-x;
+    opacity: 0.3;
+    width: 200%;
+    height: 100%;
+    position: absolute;
+    animation: move-fog 60s linear infinite;
+    filter: blur(20px);
+}
+
+@keyframes move-fog {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+
+/* Shooting Streak Effect */
+.effect-streak {
+    position: absolute;
+    width: 2px;
+    height: 150px;
+    background: linear-gradient(to bottom, transparent, #fff, transparent);
+    opacity: 0.8;
+    filter: blur(1px);
+    transform: rotate(45deg);
+    top: -200px;
+    left: 50%;
+    animation: streak-fly 0.8s ease-in forwards;
+}
+
+@keyframes streak-fly {
+    0% { transform: translate(0, 0) rotate(45deg); opacity: 0; }
+    20% { opacity: 1; }
+    100% { transform: translate(800px, 800px) rotate(45deg); opacity: 0; }
+}
+
+/* Pulse Disturbance */
+.effect-pulse {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: pulse-out 2s cubic-bezier(0, 0.5, 0.5, 1) forwards;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+}
+
+@keyframes pulse-out {
+    0% { width: 0; height: 0; opacity: 0.8; border-width: 10px; }
+    100% { width: 150vw; height: 150vw; opacity: 0; border-width: 0px; }
+}
+
+/* Floating Embers */
+.effect-ember {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: #ff6b35;
+    border-radius: 50%;
+    filter: blur(1px);
+    box-shadow: 0 0 5px #ff6b35;
+    animation: ember-float 5s linear infinite;
+}
+
+@keyframes ember-float {
+    0% { transform: translate(0, 0) scale(1); opacity: 0; }
+    20% { opacity: 0.8; }
+    80% { opacity: 0.8; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
 }
 
 /* Screen Shake */
