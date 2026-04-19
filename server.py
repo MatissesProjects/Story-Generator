@@ -356,6 +356,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     await log_progress(websocket, "Generating story response...")
                     stream_parser = parser.StreamParser()
 
+                    chunk_count = 0
                     async for chunk in llm.async_generate_story_segment(
                         prompt, 
                         context_facts=facts, 
@@ -368,11 +369,16 @@ async def websocket_endpoint(websocket: WebSocket):
                     ):
                         await websocket.send_text(json.dumps({"type": "story_chunk", "content": chunk}))
                         full_response += chunk
+                        chunk_count += 1
+                        
+                        # Proactive discovery: scan for characters every 10 chunks to start image generation early
+                        if chunk_count % 10 == 0:
+                            await social_engine.discover_new_characters(full_response)
                         
                         # Real-time audio and visual parsing
                         completed_blocks = stream_parser.feed(chunk)
                         if completed_blocks:
-                            # Pre-register any new characters found in this chunk
+                            # Also check on completed blocks for immediate registration
                             await social_engine.discover_new_characters(full_response)
                             
                             for speaker, text in completed_blocks:

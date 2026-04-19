@@ -403,6 +403,10 @@ function handleMessage(message) {
         case 'visual_update':
             // Queue visuals to sync with audio segments
             visualQueue.push(message.content);
+            
+            // Preload visuals to trigger server-side generation early
+            preloadVisuals(message.content);
+
             // If nothing is playing, apply immediately
             if (!isPlaying) {
                 updateVisualStack(message.content);
@@ -829,6 +833,22 @@ function applyAtmosphere(atmos) {
         setTimeout(() => {
             overlay.classList.remove('flash-red');
         }, 800);
+    }
+}
+
+function preloadVisuals(stack) {
+    if (!stack) return;
+    
+    // Warm up environment
+    if (stack.environment) {
+        new Image().src = stack.environment;
+    }
+    
+    // Warm up character slots
+    if (stack.slots) {
+        Object.values(stack.slots).forEach(url => {
+            if (url) new Image().src = url;
+        });
     }
 }
 

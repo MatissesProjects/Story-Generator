@@ -99,8 +99,8 @@ Reply ONLY with JSON:
             data.get("traits", "Unknown"),
             voice_id=data.get("voice_id", "en_US-lessac-medium.onnx")
         )
-        # We await this now so the image is ready for the upcoming visual stack update in the loop
-        await vision.generate_portrait(name, data.get("description", ""), data.get("traits", ""))
+        # Trigger generation in background - do NOT await, so the story keeps streaming
+        asyncio.create_task(vision.generate_portrait(name, data.get("description", ""), data.get("traits", "")))
 
 async def discover_new_characters(response_text):
     """
