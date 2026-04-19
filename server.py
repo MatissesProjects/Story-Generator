@@ -196,18 +196,19 @@ async def websocket_endpoint(websocket: WebSocket):
                 intent = parser.detect_intent(user_input)
 
                 if intent == 'SPARK':
-                    genre = message.get("genre")
-                    if genre:
-                        prompt = f"Generate a brief, compelling {genre} story premise."
-                    else:
-                        prompt = await spark.generate_spark()#random.choice(spark.SPARK_TEMPLATES)
-
-                    await log_progress(websocket, f"Generating spark with prompt: {prompt}")
-                    # Send an initial spark message type so the client knows what's coming
+                    await log_progress(websocket, "Conjuring a new story spark...")
+                    
+                    # Notify client that a spark is starting
                     await websocket.send_text(json.dumps({"type": "spark", "content": ""}))
+
+                    genre = message.get("genre")
+                    matrix = spark.PromptMatrix()
+                    prompt = matrix.build_prompt(genre=genre)
 
                     async for chunk in llm.async_generate_story_segment(prompt, model=config.FAST_MODEL):
                         await websocket.send_text(json.dumps({"type": "story_chunk", "content": chunk}))
+                    
+                    await log_progress(websocket, "Spark conjured.", "success")
                 else:
                     # Modify prompt for continuation
                     if intent in ['CONTINUE', 'EMPTY']:
