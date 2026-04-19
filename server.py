@@ -696,6 +696,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         portrait_path = os.path.join(config.PORTRAITS_DIR, f"{safe_name}.png")
                         url = f"/static/portraits/{safe_name}.png" if os.path.exists(portrait_path) else None
                     
+                    rel = db.get_relationship(0, c['id'])
                     char_list.append({
                         "name": c['name'],
                         "description": c['description'],
@@ -708,7 +709,12 @@ async def websocket_endpoint(websocket: WebSocket):
                         "current_goal": c['current_goal'],
                         "current_task": c['current_task'],
                         "signature_tic": c['signature_tic'],
-                        "narrative_role": c['narrative_role']
+                        "narrative_role": c['narrative_role'],
+                        "relationship": {
+                            "trust": rel['trust'],
+                            "fear": rel['fear'],
+                            "affection": rel['affection']
+                        }
                     })
 
                 quests = db.get_active_quests()
@@ -717,23 +723,12 @@ async def websocket_endpoint(websocket: WebSocket):
                 inventory = db.get_inventory("player", 0)
                 stats = db.get_entity_stats("player", 0)
 
-                relationships = []
-                for c in chars:
-                    rel = db.get_relationship(0, c['id'])
-                    relationships.append({
-                        "other_name": c['name'],
-                        "trust": rel['trust'],
-                        "fear": rel['fear'],
-                        "affection": rel['affection']
-                    })
-
                 await websocket.send_text(json.dumps({
                     "type": "state_update", 
                     "seed": seed, 
                     "threads": [t['description'] for t in threads],
                     "characters": char_list,
                     "quests": [dict(q) for q in quests],
-                    "relationships": relationships,
                     "location": curr_loc_name,
                     "location_image": loc_url,
                     "pacing": curr_pacing,

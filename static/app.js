@@ -519,35 +519,35 @@ function renderCharacters() {
         card.className = 'char-card';
         card.onclick = () => showCharDetail(char);
         
-        const img = document.createElement('img');
-        img.className = 'char-portrait';
-        img.src = char.portrait || '/static/placeholder-portrait.png'; 
+        const portraitUrl = char.portrait || '/static/placeholder-portrait.png';
         
-        const info = document.createElement('div');
-        info.className = 'char-info';
+        // Use relationship data if available
+        const rel = char.relationship || { trust: 0, fear: 0, affection: 0 };
         
         // Agency indicators
-        const goalHtml = char.current_task ? `<div class="char-task"><strong>Current Activity:</strong> ${char.current_task}</div>` : "";
+        const goalHtml = char.current_task ? `<div class="char-task"><strong>Doing:</strong> ${char.current_task}</div>` : "";
         
         const metersHtml = `
             <div class="char-meters">
-                <div class="meter-row" title="Social">🤝 <div class="meter-bar"><div class="meter-fill" style="width: ${char.social}%"></div></div></div>
-                <div class="meter-row" title="Ambition">🏆 <div class="meter-bar"><div class="meter-fill" style="width: ${char.ambition}%"></div></div></div>
-                <div class="meter-row" title="Safety">🛡️ <div class="meter-bar"><div class="meter-fill" style="width: ${char.safety}%"></div></div></div>
-                <div class="meter-row" title="Resources">💰 <div class="meter-bar"><div class="meter-fill" style="width: ${char.resources}%"></div></div></div>
+                <div class="meter-row relationship" title="Trust: ${rel.trust}">🤝 <div class="meter-bar"><div class="meter-fill trust" style="width: ${Math.min(100, Math.max(0, rel.trust * 5 + 50))}%"></div></div></div>
+                <div class="meter-row relationship" title="Fear: ${rel.fear}">😨 <div class="meter-bar"><div class="meter-fill fear" style="width: ${Math.min(100, Math.max(0, rel.fear * 5 + 50))}%"></div></div></div>
+                <div class="meter-row relationship" title="Affection: ${rel.affection}">❤️ <div class="meter-bar"><div class="meter-fill affection" style="width: ${Math.min(100, Math.max(0, rel.affection * 5 + 50))}%"></div></div></div>
             </div>
         `;
 
-        info.innerHTML = `
-            <h4>${char.name} <small>(${char.narrative_role})</small></h4>
-            <p>${char.traits}</p>
-            <div class="char-tic"><em>"${char.signature_tic || '...'}"</em></div>
-            ${goalHtml}
-            ${metersHtml}
+        card.innerHTML = `
+            <div class="char-portrait-frame">
+                <img class="char-portrait" src="${portraitUrl}">
+            </div>
+            <div class="char-info">
+                <h4>${char.name}</h4>
+                <div class="char-role">${char.narrative_role}</div>
+                <div class="char-tic"><em>"${char.signature_tic || '...'}"</em></div>
+                ${goalHtml}
+                ${metersHtml}
+            </div>
         `;
         
-        card.appendChild(img);
-        card.appendChild(info);
         characterListEl.appendChild(card);
     });
 }
@@ -558,10 +558,17 @@ function showCharDetail(char) {
 }
 
 function renderCharacterDetail(char) {
+    const rel = char.relationship || { trust: 0, fear: 0, affection: 0 };
     return `
         <div class="char-detail-grid">
             <div class="char-detail-left">
                 <img class="char-detail-portrait" src="${char.portrait || '/static/placeholder-portrait.png'}" alt="${char.name}">
+                <div class="char-detail-relationship">
+                    <h3>Social Standing</h3>
+                    <div class="stat-box">🤝 Trust: ${rel.trust}</div>
+                    <div class="stat-box">😨 Fear: ${rel.fear}</div>
+                    <div class="stat-box">❤️ Affection: ${rel.affection}</div>
+                </div>
             </div>
             <div class="char-detail-info">
                 <h2>${char.name} <small>(${char.narrative_role})</small></h2>
@@ -622,23 +629,6 @@ function renderQuests(quests) {
             </ul>
         `;
         questListEl.appendChild(item);
-    });
-}
-
-function renderSocialStanding(relationships) {
-    socialListEl.innerHTML = "";
-    relationships.forEach(rel => {
-        const item = document.createElement('div');
-        item.className = 'social-item';
-        item.innerHTML = `
-            <h4>${rel.other_name}</h4>
-            <div class="social-stats">
-                <span>🤝 <span class="stat-val">${rel.trust}</span></span>
-                <span>😨 <span class="stat-val">${rel.fear}</span></span>
-                <span>❤️ <span class="stat-val">${rel.affection}</span></span>
-            </div>
-        `;
-        socialListEl.appendChild(item);
     });
 }
 
