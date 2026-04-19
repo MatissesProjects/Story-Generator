@@ -79,7 +79,8 @@ Instructions:
 4. Identify the best Visual Tint color (RGBA).
 5. Identify the best Ambiance Loop (e.g., Wind, Rain, Crowd, Silence).
 
-Reply ONLY with a JSON object:
+Reply ONLY with a JSON object.
+EXAMPLE STRUCTURE (Do not use these specific values):
 {{
     "lighting": "string",
     "weather": "string",

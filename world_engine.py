@@ -85,12 +85,13 @@ LOCATION: {name}
 DESCRIPTION: {description}
 NEARBY ELEVATION: {base_elevation}
 
-Reply ONLY with a JSON object:
+Reply ONLY with a JSON object.
+EXAMPLE STRUCTURE (Do not use these specific values):
 {{
-    "biome": "Forest/Mountain/Plain/Desert/Tundra/Swamp/Ocean/Urban/Underground/Space",
-    "elevation": -100 to 1000 (relative to sea level 0),
-    "climate": "Arctic/Temperate/Tropical/Arid/Volcanic/Void",
-    "connectivity_score": 0.0 to 1.0 (How easy is it to travel through?)
+    "biome": "Forest",
+    "elevation": 100,
+    "climate": "Temperate",
+    "connectivity_score": 0.5
 }}
 ]
 """

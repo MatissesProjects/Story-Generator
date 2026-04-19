@@ -72,17 +72,18 @@ This event should be interesting, narrative-driven, and potentially affect futur
 
 {loc_context}
 
-EXAMPLES:
+EXAMPLES (Do not use these specific values):
 - "A heavy storm has washed out the bridge near The Dusty Tavern."
 - "Rumors of a gold strike are drawing prospectors to the Peak of Doom."
 - "The local magistrate in the Silver City has passed a new tax on magic."
 
-Reply ONLY with a JSON object:
+Reply ONLY with a JSON object.
+EXAMPLE STRUCTURE (Do not use these specific values):
 {{
-    "type": "Environmental/Political/Social/Economic",
+    "type": "Environmental",
     "description": "Short description of the event",
-    "location_name": "Name of location if applicable, else null",
-    "impact_level": 1 to 5
+    "location_name": "Name of location",
+    "impact_level": 1
 }}
 ]
 """
