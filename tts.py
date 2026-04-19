@@ -1,6 +1,7 @@
 import os
 import wave
 import config
+import unicodedata
 from piper import PiperVoice
 from dataclasses import dataclass
 from typing import Optional
@@ -18,6 +19,19 @@ except ImportError:
 
 # Cache for loaded voices to avoid reloading from disk every time
 VOICE_CACHE = {}
+
+def clean_text_for_tts(text: str) -> str:
+    """
+    Cleans text for TTS by removing problematic characters, specifically combining marks
+    that Piper might not have phonemes for.
+    """
+    # Normalize to decomposed form to separate combining marks
+    text = unicodedata.normalize('NFKD', text)
+    # Remove non-spacing marks (category 'Mn')
+    text = "".join([c for c in text if unicodedata.category(c) != 'Mn'])
+    # Replace common problematic characters
+    text = text.replace('\u0329', '')
+    return text.strip()
 
 def get_voice(voice_model="en_US-lessac-medium.onnx"):
     """
@@ -45,11 +59,7 @@ def generate_audio(text, speaker_id, voice_config=None):
     Generates a WAV file for the given text using the piper-tts Python API.
     voice_config: dict with {voice_id, length_scale, noise_scale, noise_w}
     """
-    # Clean text: remove characters that Piper often lacks phonemes for
-    # Specifically, combining marks like U+0329 (̩)
-    text = text.replace('\u0329', '')
-    # Remove any other common problematic characters if needed
-    text = text.strip()
+    text = clean_text_for_tts(text)
 
     if not text:
         return None
