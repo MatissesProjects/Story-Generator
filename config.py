@@ -26,6 +26,20 @@ class Settings(BaseSettings):
     PIPER_EXE: str = Field(default="piper", validation_alias="PIPER_EXE")
     MODELS_DIR: str = Field(default="voices", validation_alias="MODELS_DIR")
     AUDIO_OUTPUT_DIR: str = Field(default="audio_output", validation_alias="AUDIO_OUTPUT_DIR")
+    
+    # Unified Voice Registry
+    DEFAULT_VOICE: str = "en_US-lessac-medium.onnx"
+    NARRATOR_VOICE: str = "en_US-ryan-high.onnx"
+    VOICE_PROFILES: dict = {
+        "Deep Male": "en_US-ryan-high.onnx",
+        "Melodic Female": "en_US-lessac-high.onnx",
+        "Natural Female": "en_US-lessac-medium.onnx",
+        "Upbeat Male": "en_US-joe-medium.onnx",
+        "Energetic Female": "en_US-amy-medium.onnx",
+        "British Male": "en_GB-alan-medium.onnx",
+        "British Female": "en_GB-jenny_dioco-medium.onnx",
+        "Scottish Female": "en_GB-alba-medium.onnx"
+    }
 
     # Vector DB settings
     VECTOR_DB_PATH: str = Field(default="vector_db", validation_alias="VECTOR_DB_PATH")
@@ -75,6 +89,9 @@ OFFLOAD_VISION = _settings.OFFLOAD_VISION
 PIPER_EXE = _settings.PIPER_EXE
 MODELS_DIR = _settings.MODELS_DIR
 AUDIO_OUTPUT_DIR = _settings.AUDIO_OUTPUT_DIR
+DEFAULT_VOICE = _settings.DEFAULT_VOICE
+NARRATOR_VOICE = _settings.NARRATOR_VOICE
+VOICE_PROFILES = _settings.VOICE_PROFILES
 VECTOR_DB_PATH = _settings.VECTOR_DB_PATH
 EMBEDDING_MODEL = _settings.EMBEDDING_MODEL
 VISION_MODEL = _settings.VISION_MODEL

@@ -599,7 +599,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     char_data["name"], 
                     char_data["description"], 
                     char_data["traits"], 
-                    char_data.get("voice_id", "en_US-lessac-medium.onnx"),
+                    char_data.get("voice_id", config.DEFAULT_VOICE),
                     char_data.get("length_scale", 1.0),
                     char_data.get("noise_scale", 0.667),
                     char_data.get("noise_w", 0.8),

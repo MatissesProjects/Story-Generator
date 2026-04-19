@@ -33,14 +33,17 @@ def clean_text_for_tts(text: str) -> str:
     text = text.replace('\u0329', '')
     return text.strip()
 
-def get_voice(voice_model="en_US-lessac-medium.onnx"):
+def get_voice(voice_model=None):
     """
     Loads or retrieves a PiperVoice from the cache.
     Automatically appends .onnx if missing.
     """
+    if voice_model is None:
+        voice_model = config.DEFAULT_VOICE
+
     if not voice_model.endswith(".onnx"):
         voice_model += ".onnx"
-        
+
     model_path = os.path.join(config.MODELS_DIR, voice_model)
     config_path = f"{model_path}.json"
 
@@ -48,10 +51,10 @@ def get_voice(voice_model="en_US-lessac-medium.onnx"):
         if not os.path.exists(model_path):
             print(f"ERROR: Voice model '{model_path}' not found.")
             return None
-        
+
         print(f"TTS: Loading voice model {voice_model}...")
         VOICE_CACHE[model_path] = PiperVoice.load(model_path, config_path=config_path)
-    
+
     return VOICE_CACHE[model_path]
 
 def generate_audio(text, speaker_id, voice_config=None):
@@ -66,7 +69,7 @@ def generate_audio(text, speaker_id, voice_config=None):
 
     if voice_config is None:
         voice_config = {
-            "voice_id": "en_US-lessac-medium.onnx",
+            "voice_id": config.DEFAULT_VOICE,
             "length_scale": 1.0,
             "noise_scale": 0.667,
             "noise_w": 0.8
@@ -77,10 +80,9 @@ def generate_audio(text, speaker_id, voice_config=None):
         os.makedirs(output_dir)
 
     output_file = os.path.join(output_dir, f"{speaker_id}_{hash(text) % 10000}.wav")
-    
-    voice_id = voice_config.get('voice_id', 'en_US-lessac-medium.onnx')
-    print(f"TTS: Generating audio for '{speaker_id}' using model '{voice_id}'")
-    
+
+    voice_id = voice_config.get('voice_id', config.DEFAULT_VOICE)
+    print(f"TTS: Generating audio for '{speaker_id}' using model '{voice_id}'")    
     voice = get_voice(voice_id)
     if not voice:
         return None
@@ -126,7 +128,7 @@ if __name__ == "__main__":
     # Quick test
     print("Testing Piper TTS Python API integration with modifications...")
     test_config = {
-        "voice_id": "en_US-lessac-medium.onnx",
+        "voice_id": config.DEFAULT_VOICE,
         "length_scale": 1.5, # Slower
         "noise_scale": 0.8,
         "noise_w": 1.0

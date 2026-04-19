@@ -68,27 +68,27 @@ async def register_new_character(name, context_text):
     # Use LLM to get a quick description and traits
     prompt = f"""
 [SYSTEM: You are the Character Architect. A new character named '{name}' has appeared in the story.
-Based on this context, provide a brief description and their likely voice type.
+Based on this context, provide a brief description and their likely voice profile.
 
 CONTEXT:
 {context_text}
 
-AVAILABLE VOICES:
-- en_US-ryan-high (Deep, authoritative male / Good for older men or stern figures)
-- en_US-lessac-high (Clear, melodic female / Good for young women or heroic leads)
-- en_US-lessac-medium (Natural, balanced female / Good for commoners or narrators)
-- en_US-joe-medium (Friendly, upbeat male / Good for young men or rogues)
-- en_US-amy-medium (Energetic, high-pitched female / Good for children or excitable characters)
-- en_GB-alan-medium (Sophisticated British male / Good for scholars or villains)
-- en_GB-jenny_dioco-medium (Calm British female / Good for nobility or wise figures)
-- en_GB-alba-medium (Scottish accent female / Good for hearty or rough characters)
+AVAILABLE VOICE PROFILES:
+- "Deep Male": Authoritative, deep, older.
+- "Melodic Female": Clear, expressive, younger.
+- "Natural Female": Balanced, steady, common.
+- "Upbeat Male": Friendly, conversational, younger.
+- "Energetic Female": High-pitched, fast-paced, child or excitable.
+- "British Male": Sophisticated, mature, scholarly.
+- "British Female": Calm, noble, wise.
+- "Scottish Female": Hearty, rough, regional.
 
 Reply ONLY with a JSON object.
 EXAMPLE STRUCTURE (Do not use these specific values):
 {{
     "description": "Short bio",
     "traits": "Comma separated traits",
-    "voice_id": "en_US-joe-medium.onnx"
+    "voice_profile": "Deep Male"
 }}
 ]
 """
@@ -96,12 +96,17 @@ EXAMPLE STRUCTURE (Do not use these specific values):
     data = utils.safe_parse_json(response)
     
     if data:
+        profile = data.get("voice_profile", "Natural Female")
+        # Robust mapping from AI-friendly profile names to filenames
+        v_id = config.VOICE_PROFILES.get(profile, config.DEFAULT_VOICE)
+        
         db.add_character(
             name, 
             data.get("description", "A mysterious figure."), 
             data.get("traits", "Unknown"),
-            voice_id=data.get("voice_id", "en_US-ryan-high.onnx")
+            voice_id=v_id
         )
+        print(f"Social: Registered new character '{name}' with profile '{profile}' -> voice {v_id}")
         # Trigger generation in background - do NOT await, so the story keeps streaming
         asyncio.create_task(vision.generate_portrait(name, data.get("description", ""), data.get("traits", "")))
 
