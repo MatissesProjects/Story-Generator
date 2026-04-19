@@ -81,30 +81,33 @@ async def get_asset(asset_type: str, asset_name: str):
     Returns an asset if it exists, otherwise triggers on-demand generation.
     asset_type: 'portrait', 'environment', 'tile'
     """
-    safe_name = "".join([c for c in asset_name if c.isalnum()]).lower()
-    
+    # Prefer cached path from curator if available
+    if asset_name in curator_visual.entity_cache:
+        cached_url = curator_visual.entity_cache[asset_name]
+        # url is like /static/portraits/name_hash.png
+        cached_path = cached_url.lstrip('/')
+        if os.path.exists(cached_path):
+            return FileResponse(cached_path)
+
     if asset_type == 'portrait':
-        path = os.path.join(config.PORTRAITS_DIR, f"{safe_name}.png")
-        if not os.path.exists(path):
-            # We need the character description/traits for generation
-            # If not in DB, we'll use defaults or fail gracefully
-            char = db.query_db("SELECT description, traits FROM characters WHERE name LIKE ?", (f"%{asset_name}%",), one=True)
-            if char:
-                await vision.generate_portrait(asset_name, char['description'], char['traits'])
-            else:
-                return {"error": "Character not found for on-demand generation"}
-        return FileResponse(path)
+        # Fallback to DB to find character for on-demand generation
+        char = db.query_db("SELECT description, traits FROM characters WHERE name LIKE ?", (f"%{asset_name}%",), one=True)
+        if char:
+            url = await vision.generate_portrait(asset_name, char['description'], char['traits'])
+            curator_visual.entity_cache[asset_name] = url
+            return FileResponse(url.lstrip('/'))
+        else:
+            return {"error": "Character not found for on-demand generation"}
 
     elif asset_type == 'environment':
-        path = os.path.join(config.ENVIRONMENTS_DIR, f"{safe_name}.png")
-        if not os.path.exists(path):
-            loc = db.query_db("SELECT description FROM locations WHERE name LIKE ?", (f"%{asset_name}%",), one=True)
-            if loc:
-                await vision.generate_environment(asset_name, loc['description'])
-            else:
-                # If we don't have it, we generate a generic one based on the name
-                await vision.generate_environment(asset_name, f"A cinematic scene of {asset_name}")
-        return FileResponse(path)
+        loc = db.query_db("SELECT description FROM locations WHERE name LIKE ?", (f"%{asset_name}%",), one=True)
+        if loc:
+            url = await vision.generate_environment(asset_name, loc['description'])
+        else:
+            # If we don't have it, we generate a generic one based on the name
+            url = await vision.generate_environment(asset_name, f"A cinematic scene of {asset_name}")
+        curator_visual.entity_cache[asset_name] = url
+        return FileResponse(url.lstrip('/'))
 
     return {"error": "Invalid asset type"}
 
@@ -132,10 +135,11 @@ class VisionOrchestrator:
         if capabilities.get("can_offload_vision"):
             request_id = str(uuid.uuid4())
             event = asyncio.Event()
-            pending_vision_requests[request_id] = {"event": event, "url": None}
-            
-            print(f"Vision: Offloading {request_type} to {client_id}")
-            await websocket.send_text(json.dumps({
+
+            name_key = content.get('name') or content.get('location_name') or content.get('biome')
+            pending_vision_requests[request_id] = {"event": event, "url": None, "name_key": name_key}
+
+            print(f"Vision: Offloading {request_type} to {client_id}")            await websocket.send_text(json.dumps({
                 "type": "vision_request",
                 "request_id": request_id,
                 "request_type": request_type,
@@ -155,12 +159,19 @@ class VisionOrchestrator:
         
         # Fallback to local generation on the 4090
         if request_type == "portrait":
-            return await vision.generate_portrait(content['name'], content['description'], content['traits'])
+            url = await vision.generate_portrait(content['name'], content['description'], content['traits'])
         elif request_type == "environment":
-            return await vision.generate_environment(content['name'], content['description'])
+            url = await vision.generate_environment(content['name'], content['description'])
         elif request_type == "map_tile":
-            return await vision.generate_map_tile(content['biome'])
-        return None
+            url = await vision.generate_map_tile(content['biome'])
+
+        # Store in cache for consistent retrieval
+        if url:
+            name_key = content.get('name') or content.get('location_name') or content.get('biome')
+            if name_key:
+                curator_visual.entity_cache[name_key] = url
+
+        return url
 
 vision_orchestrator = VisionOrchestrator()
 
@@ -183,8 +194,13 @@ async def websocket_endpoint(websocket: WebSocket):
 
             if message["type"] == "vision_complete":
                 rid = message.get("request_id")
+                url = message.get("url")
                 if rid in pending_vision_requests:
-                    pending_vision_requests[rid]["url"] = message.get("url")
+                    pending_vision_requests[rid]["url"] = url
+                    # Also try to update entity_cache if we can find the name
+                    name_key = pending_vision_requests[rid].get("name_key")
+                    if name_key:
+                        curator_visual.entity_cache[name_key] = url
                     pending_vision_requests[rid]["event"].set()
                 continue
 
@@ -589,6 +605,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     narrative_role=char_data.get("narrative_role", "NPC")
                 )
                 portrait_url = await vision_orchestrator.request_generation(websocket, client_id, "portrait", {"name": char_data['name'], "description": char_data['description'], "traits": char_data['traits']})
+                curator_visual.entity_cache[char_data['name']] = portrait_url
                 await websocket.send_text(json.dumps({"type": "info", "content": f"Character {char_data['name']} added with portrait and tic: {tic}"}))
                 await websocket.send_text(json.dumps({"type": "portrait_update", "name": char_data["name"], "url": portrait_url}))
                 await websocket.send_text(json.dumps({"type": "state_update_request"}))
@@ -654,21 +671,29 @@ async def websocket_endpoint(websocket: WebSocket):
             elif message["type"] == "get_state":
                 seed = db.get_story_state("narrative_seed")
                 threads = db.get_active_plot_threads()
-                curr_loc = db.get_story_state("current_location")
+                curr_loc_name = db.get_story_state("current_location")
                 curr_pacing = db.get_story_state("current_pacing") or "Exploration"
 
                 loc_url = None
-                if curr_loc:
-                    safe_name = "".join([char for char in curr_loc if char.isalnum()]).lower()
-                    loc_path = os.path.join(config.ENVIRONMENTS_DIR, f"{safe_name}.png")
-                    loc_url = f"/static/environments/{safe_name}.png" if os.path.exists(loc_path) else None
+                if curr_loc_name:
+                    if curr_loc_name in curator_visual.entity_cache:
+                        loc_url = curator_visual.entity_cache[curr_loc_name]
+                    else:
+                        safe_name = "".join([char for char in curr_loc_name if char.isalnum()]).lower()
+                        loc_path = os.path.join(config.ENVIRONMENTS_DIR, f"{safe_name}.png")
+                        loc_url = f"/static/environments/{safe_name}.png" if os.path.exists(loc_path) else None
 
                 chars = db.query_db("SELECT id, name, description, traits, social, ambition, safety, resources, current_goal, current_task, signature_tic, narrative_role FROM characters")
                 char_list = []
                 for c in chars:
-                    safe_name = "".join([char for char in c['name'] if char.isalnum()]).lower()
-                    portrait_path = os.path.join(config.PORTRAITS_DIR, f"{safe_name}.png")
-                    url = f"/static/portraits/{safe_name}.png" if os.path.exists(portrait_path) else None
+                    url = None
+                    if c['name'] in curator_visual.entity_cache:
+                        url = curator_visual.entity_cache[c['name']]
+                    else:
+                        safe_name = "".join([char for char in c['name'] if char.isalnum()]).lower()
+                        portrait_path = os.path.join(config.PORTRAITS_DIR, f"{safe_name}.png")
+                        url = f"/static/portraits/{safe_name}.png" if os.path.exists(portrait_path) else None
+                    
                     char_list.append({
                         "name": c['name'],
                         "description": c['description'],
