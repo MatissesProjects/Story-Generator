@@ -139,7 +139,8 @@ class VisionOrchestrator:
             name_key = content.get('name') or content.get('location_name') or content.get('biome')
             pending_vision_requests[request_id] = {"event": event, "url": None, "name_key": name_key}
 
-            print(f"Vision: Offloading {request_type} to {client_id}")            await websocket.send_text(json.dumps({
+            print(f"Vision: Offloading {request_type} to {client_id}")            
+            await websocket.send_text(json.dumps({
                 "type": "vision_request",
                 "request_id": request_id,
                 "request_type": request_type,
@@ -733,7 +734,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     "characters": char_list,
                     "quests": [dict(q) for q in quests],
                     "relationships": relationships,
-                    "location": curr_loc,
+                    "location": curr_loc_name,
                     "location_image": loc_url,
                     "pacing": curr_pacing,
                     "active_arc": active_arc,
