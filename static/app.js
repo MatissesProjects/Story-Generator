@@ -799,8 +799,13 @@ function applyAtmosphere(atmos) {
     const overlay = document.getElementById('atmosphere-overlay');
     if (!overlay) return;
 
-    // Apply Tint
-    overlay.style.backgroundColor = atmos.tint || 'rgba(0,0,0,0)';
+    // Apply Tint with safety check
+    let tint = atmos.tint || 'rgba(0,0,0,0)';
+    if (!tint.includes('rgba')) {
+        // If LLM sent rgb(), convert to rgba with safe alpha
+        tint = tint.replace('rgb', 'rgba').replace(')', ', 0.15)');
+    }
+    overlay.style.backgroundColor = tint;
 
     // Mood-based UI styling
     const mood = (atmos.lighting || "").toLowerCase();

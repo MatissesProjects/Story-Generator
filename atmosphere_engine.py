@@ -76,18 +76,13 @@ Instructions:
 1. Identify the dominant Lighting (e.g., Dim, Bright, Flickering, Red, Cold).
 2. Identify the Weather (e.g., Rain, Storm, Mist, Clear, Indoor).
 3. Identify any Haptic/Vibration cues (e.g., Rumble, Pulse, None).
-4. Identify the best Visual Tint color (RGBA).
+4. Identify the best Visual Tint color. 
+   - MUST be an RGBA string.
+   - The alpha channel (A) MUST be between 0.05 and 0.25. NEVER higher.
+   - Example: "rgba(0, 0, 50, 0.15)" for a cold night.
 5. Identify the best Ambiance Loop (e.g., Wind, Rain, Crowd, Silence).
 
 Reply ONLY with a JSON object.
-EXAMPLE STRUCTURE (Do not use these specific values):
-{{
-    "lighting": "string",
-    "weather": "string",
-    "haptic": "string",
-    "tint": "rgba string",
-    "ambiance": "string"
-}}
 ]
 """
         response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
@@ -99,12 +94,24 @@ EXAMPLE STRUCTURE (Do not use these specific values):
                 clean_json = clean_json.split("```")[1].split("```")[0].strip()
             
             data = json.loads(clean_json)
+            
+            # Sanitize tint to ensure alpha is low
+            tint = data.get("tint", "rgba(0,0,0,0)")
+            if "rgb" in tint and "," in tint:
+                # Force alpha if LLM returned rgb or high alpha rgba
+                parts = tint.replace("rgba(", "").replace("rgb(", "").replace(")", "").split(",")
+                r = parts[0].strip()
+                g = parts[1].strip()
+                b = parts[2].strip()
+                # Always force a safe alpha
+                tint = f"rgba({r}, {g}, {b}, 0.15)"
+
             # Basic validation/defaults
             return {
                 "lighting": data.get("lighting", "neutral"),
                 "weather": data.get("weather", "clear"),
                 "haptic": data.get("haptic", "none"),
-                "tint": data.get("tint", "rgba(0,0,0,0)"),
+                "tint": tint,
                 "ambiance": data.get("ambiance", "silence")
             }
         except Exception as e:
