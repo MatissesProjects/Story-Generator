@@ -4,6 +4,9 @@ import config
 
 class VisualCurator:
     def __init__(self):
+        # Cache for mapping character/location names to their specific hashed asset URLs
+        self.entity_cache = {}
+
         # Mood-based texture registry (generic assets)
         self.textures = {
             "Cyberpunk": "/static/textures/grid_flow.gif",
@@ -39,9 +42,13 @@ class VisualCurator:
 
         # 1. Environment Layer
         if current_location:
-            safe_name = "".join([c for c in current_location if c.isalnum()]).lower()
-            # Use on-demand asset endpoint
-            stack["environment"] = f"/asset/environment/{safe_name}"
+            # Prefer cached URL if available
+            if current_location in self.entity_cache:
+                stack["environment"] = self.entity_cache[current_location]
+            else:
+                safe_name = "".join([c for c in current_location if c.isalnum()]).lower()
+                # Use on-demand asset endpoint as fallback
+                stack["environment"] = f"/asset/environment/{safe_name}"
 
         # 2. Character Staging (Slots)
         if involved_entities:
@@ -50,8 +57,11 @@ class VisualCurator:
 
             # Primary speaker goes in Center
             if primary_entity and primary_entity in involved_entities:
-                safe_primary = "".join([c for c in primary_entity if c.isalnum()]).lower()
-                stack["slots"]["center"] = f"/asset/portrait/{safe_primary}"
+                if primary_entity in self.entity_cache:
+                    stack["slots"]["center"] = self.entity_cache[primary_entity]
+                else:
+                    safe_primary = "".join([c for c in primary_entity if c.isalnum()]).lower()
+                    stack["slots"]["center"] = f"/asset/portrait/{safe_primary}"
                 assigned.append(primary_entity)
                 available_slots.remove("center")
 
@@ -59,8 +69,11 @@ class VisualCurator:
             for entity in involved_entities:
                 if entity not in assigned and available_slots:
                     slot = available_slots.pop(0)
-                    safe_name = "".join([c for c in entity if c.isalnum()]).lower()
-                    stack["slots"][slot] = f"/asset/portrait/{safe_name}"
+                    if entity in self.entity_cache:
+                        stack["slots"][slot] = self.entity_cache[entity]
+                    else:
+                        safe_name = "".join([c for c in entity if c.isalnum()]).lower()
+                        stack["slots"][slot] = f"/asset/portrait/{safe_name}"
                     assigned.append(entity)
 
         # 3. Texture Layer (Based on mood/atmosphere)

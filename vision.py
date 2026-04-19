@@ -2,6 +2,7 @@ import torch
 from diffusers import AutoPipelineForText2Image
 import config
 import os
+import hashlib
 from PIL import Image
 import llm
 
@@ -61,11 +62,15 @@ async def generate_portrait(name, description, traits):
     Returns the URL path of the generated image.
     """
     safe_name = "".join([c for c in name if c.isalnum()]).lower()
-    output_path = os.path.join(config.PORTRAITS_DIR, f"{safe_name}.png")
+    # Create a hash of the description and traits to ensure unique portraits 
+    # for different characters with the same name.
+    desc_hash = hashlib.md5(f"{description}{traits}".encode()).hexdigest()[:8]
+    filename = f"{safe_name}_{desc_hash}.png"
+    output_path = os.path.join(config.PORTRAITS_DIR, filename)
     
-    # Check if we already have it
-    if os.path.exists(output_path):
-        return f"/portraits/{safe_name}.png"
+    # Check if we already have it (if caching is enabled)
+    if config.IMAGE_CACHE_ENABLED and os.path.exists(output_path):
+        return f"/static/portraits/{filename}"
 
     print(f"Vision Engine: Generating portrait for {name}...")
     
@@ -87,7 +92,7 @@ async def generate_portrait(name, description, traits):
     image.save(output_path)
     print(f"Vision Engine: Saved portrait to {output_path}")
     
-    return f"/portraits/{safe_name}.png"
+    return f"/static/portraits/{filename}"
 
 async def stylize_environment_prompt(location_name, description):
     """
@@ -114,11 +119,13 @@ async def generate_environment(location_name, description):
     Returns the URL path.
     """
     safe_name = "".join([c for c in location_name if c.isalnum()]).lower()
-    output_path = os.path.join(config.ENVIRONMENTS_DIR, f"{safe_name}.png")
+    desc_hash = hashlib.md5(f"{description}".encode()).hexdigest()[:8]
+    filename = f"{safe_name}_{desc_hash}.png"
+    output_path = os.path.join(config.ENVIRONMENTS_DIR, filename)
     
-    # Check if we already have it
-    if os.path.exists(output_path):
-        return f"/environments/{safe_name}.png"
+    # Check if we already have it (if caching is enabled)
+    if config.IMAGE_CACHE_ENABLED and os.path.exists(output_path):
+        return f"/static/environments/{filename}"
 
     print(f"Vision Engine: Generating environment for {location_name}...")
     
@@ -138,7 +145,7 @@ async def generate_environment(location_name, description):
     image.save(output_path)
     print(f"Vision Engine: Saved environment to {output_path}")
     
-    return f"/environments/{safe_name}.png"
+    return f"/static/environments/{filename}"
 
 async def stylize_map_tile_prompt(biome_type):
     """
@@ -165,9 +172,9 @@ async def generate_map_tile(biome_type):
     """
     safe_name = "".join([c for c in biome_type if c.isalnum()]).lower()
     output_path = os.path.join(config.MAP_TILES_DIR, f"{safe_name}_tile.png")
-    
-    # Check if we already have it
-    if os.path.exists(output_path):
+
+    # Check if we already have it (if caching is enabled)
+    if config.IMAGE_CACHE_ENABLED and os.path.exists(output_path):
         return f"/static/map_tiles/{safe_name}_tile.png"
 
     print(f"Vision Engine: Generating map tile for {biome_type}...")
