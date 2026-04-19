@@ -629,7 +629,10 @@ async def websocket_endpoint(websocket: WebSocket):
                 await websocket.send_text(json.dumps({"type": "info", "content": "Objective added."}))
 
             elif message["type"] == "load_arc":
-                filename = message["filename"]
+                filename = message.get("content", {}).get("filename") or message.get("filename")
+                if not filename:
+                    await websocket.send_text(json.dumps({"type": "error", "content": "No filename provided for load_arc"}))
+                    continue
                 filepath = os.path.join("static", "arcs", filename)
                 if os.path.exists(filepath):
                     with open(filepath, "r") as f:
@@ -641,9 +644,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     await websocket.send_text(json.dumps({"type": "info", "content": f"Arc file {filename} not found."}))
 
             elif message["type"] == "set_pacing":
-                pacing = message["pacing"]
-                db.set_story_state("current_pacing", pacing)
-                await websocket.send_text(json.dumps({"type": "info", "content": f"Pacing set to {pacing}."}))
+                pacing = message.get("content", {}).get("pacing") or message.get("pacing")
+                if pacing:
+                    db.set_story_state("current_pacing", pacing)
+                    await websocket.send_text(json.dumps({"type": "info", "content": f"Pacing set to {pacing}."}))
+                else:
+                    await websocket.send_text(json.dumps({"type": "error", "content": "No pacing value provided"}))
 
             elif message["type"] == "get_state":
                 seed = db.get_story_state("narrative_seed")
@@ -755,7 +761,10 @@ async def websocket_endpoint(websocket: WebSocket):
                 }))
 
             elif message["type"] == "checkout_snapshot":
-                snap_id = message["snapshot_id"]
+                snap_id = message.get("content", {}).get("snapshot_id") or message.get("snapshot_id")
+                if not snap_id:
+                    await websocket.send_text(json.dumps({"type": "error", "content": "No snapshot_id provided"}))
+                    continue
                 snap = db.query_db("SELECT * FROM snapshots WHERE id = ?", (snap_id,), one=True)
                 if snap:
                     db.execute_db(
