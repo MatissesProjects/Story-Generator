@@ -30,14 +30,16 @@ body {
 }
 
 #visual-stack {
-    position: absolute;
-    top: 0;
-    left: 0;
+    position: relative;
     width: 100%;
-    height: 100%;
-    z-index: -1;
+    height: 45vh;
+    z-index: 1;
     overflow: hidden;
     background-color: #000;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
 }
 
 .visual-layer {
@@ -57,24 +59,25 @@ body {
 }
 
 #layer-environment {
-    filter: brightness(0.4);
+    filter: brightness(0.6);
 }
 
 #vn-staging {
     display: flex;
     justify-content: space-around;
     align-items: flex-end;
-    padding-bottom: 5vh;
+    padding-bottom: 0;
+    z-index: 2;
 }
 
 .char-slot {
-    width: 30vw;
-    height: 80vh;
+    width: 33%;
+    height: 90%;
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center bottom;
     transition: transform 0.5s ease-out, opacity 0.8s ease-in-out, filter 0.5s;
-    filter: drop-shadow(0 0 20px rgba(0,0,0,0.8));
+    filter: drop-shadow(0 0 15px rgba(0,0,0,0.8));
     opacity: 0;
 }
 
@@ -180,6 +183,55 @@ h3 {
     background: #333;
     padding: 0.5rem;
     border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.2s;
+}
+
+.char-card:hover {
+    background: #444;
+    transform: translateX(5px);
+    border-left: 3px solid var(--accent-color);
+}
+
+/* Character Modal Content */
+.char-detail-grid {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 2rem;
+}
+
+.char-detail-portrait {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 3px solid var(--accent-color);
+}
+
+.char-detail-info h2 {
+    color: var(--accent-color);
+    margin-bottom: 0.5rem;
+}
+
+.char-detail-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.stat-box {
+    background: rgba(0,0,0,0.3);
+    padding: 0.8rem;
+    border-radius: 4px;
+}
+
+.stat-box label {
+    display: block;
+    font-size: 0.7rem;
+    color: #888;
+    text-transform: uppercase;
+    margin-bottom: 0.3rem;
 }
 
 .char-portrait {

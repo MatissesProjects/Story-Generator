@@ -37,6 +37,9 @@ const mapCanvas = document.getElementById('map-canvas');
 const timelineBtn = document.getElementById('timeline-btn');
 const timelineOverlay = document.getElementById('timeline-overlay');
 const closeTimeline = document.getElementById('close-timeline');
+const charModal = document.getElementById('char-modal');
+const closeChar = document.getElementById('close-char');
+const charDetailContent = document.getElementById('char-detail-content');
 const timelineContainer = document.getElementById('timeline-container');
 const addCharForm = document.getElementById('add-char-form');
 const addPlotThreadForm = document.getElementById('add-plot-thread-form');
@@ -96,9 +99,16 @@ closeMap.onclick = () => {
     mapOverlay.style.display = "none";
 };
 
+closeChar.onclick = () => {
+    charModal.style.display = "none";
+};
+
 window.onclick = (event) => {
     if (event.target == mapOverlay) {
         mapOverlay.style.display = "none";
+    }
+    if (event.target == charModal) {
+        charModal.style.display = "none";
     }
 };
 
@@ -503,6 +513,7 @@ function renderCharacters() {
     characters.forEach(char => {
         const card = document.createElement('div');
         card.className = 'char-card';
+        card.onclick = () => showCharDetail(char);
         
         const img = document.createElement('img');
         img.className = 'char-portrait';
@@ -535,6 +546,60 @@ function renderCharacters() {
         card.appendChild(info);
         characterListEl.appendChild(card);
     });
+}
+
+function showCharDetail(char) {
+    charDetailContent.innerHTML = renderCharacterDetail(char);
+    charModal.style.display = "block";
+}
+
+function renderCharacterDetail(char) {
+    return `
+        <div class="char-detail-grid">
+            <div class="char-detail-left">
+                <img class="char-detail-portrait" src="${char.portrait || '/static/placeholder-portrait.png'}" alt="${char.name}">
+            </div>
+            <div class="char-detail-info">
+                <h2>${char.name} <small>(${char.narrative_role})</small></h2>
+                <p class="char-detail-traits"><strong>Traits:</strong> ${char.traits}</p>
+                <div class="char-detail-bio">
+                    <h3>Description</h3>
+                    <p>${char.description}</p>
+                </div>
+                <div class="char-detail-bio">
+                    <h3>Signature Tic</h3>
+                    <p><em>"${char.signature_tic || 'None identified yet.'}"</em></p>
+                </div>
+                <div class="char-detail-stats">
+                    <div class="stat-box">
+                        <label>Social</label>
+                        <div class="meter-bar"><div class="meter-fill" style="width: ${char.social}%"></div></div>
+                        <span>${char.social}/100</span>
+                    </div>
+                    <div class="stat-box">
+                        <label>Ambition</label>
+                        <div class="meter-bar"><div class="meter-fill" style="width: ${char.ambition}%"></div></div>
+                        <span>${char.ambition}/100</span>
+                    </div>
+                    <div class="stat-box">
+                        <label>Safety</label>
+                        <div class="meter-bar"><div class="meter-fill" style="width: ${char.safety}%"></div></div>
+                        <span>${char.safety}/100</span>
+                    </div>
+                    <div class="stat-box">
+                        <label>Resources</label>
+                        <div class="meter-bar"><div class="meter-fill" style="width: ${char.resources}%"></div></div>
+                        <span>${char.resources}/100</span>
+                    </div>
+                </div>
+                <div class="char-detail-bio" style="margin-top: 1.5rem;">
+                    <h3>Current Status</h3>
+                    <p><strong>Goal:</strong> ${char.current_goal || 'Searching for purpose...'}</p>
+                    <p><strong>Task:</strong> ${char.current_task || 'Idle'}</p>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 function renderQuests(quests) {

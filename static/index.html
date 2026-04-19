@@ -8,22 +8,19 @@
 </head>
 <body>
     <div id="atmosphere-overlay"></div>
-    <div id="visual-stack">
-        <div id="layer-texture" class="visual-layer"></div>
-        <div id="layer-environment" class="visual-layer"></div>
-        <div id="vn-staging" class="visual-layer">
-            <div id="slot-left" class="char-slot"></div>
-            <div id="slot-center" class="char-slot"></div>
-            <div id="slot-right" class="char-slot"></div>
-        </div>
-        <div id="layer-overlay" class="visual-layer"></div>
-    </div>
     <div id="app">
         <div id="map-overlay" class="modal">
             <div class="modal-content">
                 <span id="close-map" class="close">&times;</span>
                 <h2>World Map</h2>
                 <canvas id="map-canvas"></canvas>
+            </div>
+        </div>
+
+        <div id="char-modal" class="modal">
+            <div class="modal-content" style="width: 50%; height: auto; min-height: 400px;">
+                <span id="close-char" class="close">&times;</span>
+                <div id="char-detail-content"></div>
             </div>
         </div>
         <header>
@@ -105,6 +102,16 @@
             </section>
 
             <section id="story-area">
+                <div id="visual-stack">
+                    <div id="layer-texture" class="visual-layer"></div>
+                    <div id="layer-environment" class="visual-layer"></div>
+                    <div id="vn-staging" class="visual-layer">
+                        <div id="slot-left" class="char-slot"></div>
+                        <div id="slot-center" class="char-slot"></div>
+                        <div id="slot-right" class="char-slot"></div>
+                    </div>
+                    <div id="layer-overlay" class="visual-layer"></div>
+                </div>
                 <div id="history-container"></div>
                 <div id="vn-dialogue-box">
                     <div id="vn-name-tag">Narrator</div>
