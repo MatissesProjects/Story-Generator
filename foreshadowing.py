@@ -19,14 +19,15 @@ LOCATION: {current_location}
 
 Categorize the seed as: 'Item', 'Character', 'Lore', or 'Environment'.
 
-Reply ONLY with a JSON object:
+Reply ONLY with a JSON object. 
+EXAMPLE STRUCTURE (Do not use these specific values):
 {{
     "seeds": [
-        {
+        {{
             "name": "Faded Map Fragment",
             "impact": "Could lead to a hidden mountain pass.",
             "category": "Item"
-        }
+        }}
     ]
 
 }}
@@ -72,28 +73,29 @@ async def evaluate_context_for_payoff(current_scene_context: str):
     seed_menu = [{"id": s["id"], "name": s["element_name"]} for s in pending]
 
     prompt = f"""
-[SYSTEM: You are the Narrative Weaver. Evaluate the CURRENT SCENE against a list of PENDING SEEDS.
-Your goal is to decide if any of the seeds naturally fit into the current scene for a callback or payoff.
+    [SYSTEM: You are the Narrative Weaver. Evaluate the CURRENT SCENE against a list of PENDING SEEDS.
+    Your goal is to decide if any of the seeds naturally fit into the current scene for a callback or payoff.
 
-CURRENT SCENE:
-"{current_scene_context}"
+    CURRENT SCENE:
+    "{current_scene_context}"
 
-PENDING SEEDS:
-{json.dumps(seed_menu, indent=2)}
+    PENDING SEEDS:
+    {json.dumps(seed_menu, indent=2)}
 
-Decide if ONE seed is a perfect fit. If so, choose an action:
-- "escalate": Bring the seed up again to raise mystery/tension without fully explaining it.
-- "payoff": Reveal the true nature or impact of the seed.
+    Decide if ONE seed is a perfect fit. If so, choose an action:
+    - "escalate": Bring the seed up again to raise mystery/tension without fully explaining it.
+    - "payoff": Reveal the true nature or impact of the seed.
 
-If no seeds fit naturally, return null for selected_seed_id.
+    If no seeds fit naturally, return null for selected_seed_id.
 
-Reply ONLY with a JSON object:
-{{
-    "selected_seed_id": 12,
-    "reasoning": "The characters are entering a dark cave, a perfect time for the glowing moss (Environment) to return.",
-    "action_type": "escalate" 
-}}
-]"""
+    Reply ONLY with a JSON object.
+    EXAMPLE STRUCTURE (Do not use these specific values):
+    {{
+        "selected_seed_id": 12,
+        "reasoning": "The characters are entering a dark cave, a perfect time for the glowing moss (Environment) to return.",
+        "action_type": "escalate" 
+    }}
+    ]"""
 
     response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
     decision = utils.safe_parse_json(response)

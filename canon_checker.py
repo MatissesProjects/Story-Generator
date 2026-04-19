@@ -13,14 +13,14 @@ async def extract_claims(text):
 STORY SEGMENT:
 "{text}"
 
-Reply ONLY with a JSON object containing a list of claims:
+Reply ONLY with a JSON object containing a list of claims.
+EXAMPLE STRUCTURE (Do not use these specific values):
 {{
-    "claims": [
-        "The city of Aethelgard was built on a floating island.",
-        "The King has a secret twin brother."
-    ]
+"claims": [
+    "The city of Aethelgard was built on a floating island.",
+    "The King has a secret twin brother."
+]
 }}
-
 If no specific lore claims are made, return an empty list.
 REPLY ONLY IN JSON.]
 """
@@ -64,7 +64,8 @@ Decide how to resolve this. Choose one of the following approaches:
 2. "World Change": Something in the world has fundamentally changed to make the new claim true. (Generate a new lore entry explaining the shift).
 3. "Retcon": The old canon was actually a misconception, and the new claim is the true reality. (Replace the old canon).
 
-Reply ONLY with a JSON object:
+Reply ONLY with a JSON object.
+EXAMPLE STRUCTURE (Do not use these specific values):
 {{
     "resolution_type": "Unreliable Narrator" | "World Change" | "Retcon",
     "explanation": "A brief explanation of why this happened.",
@@ -116,7 +117,8 @@ EXISTING LORE:
 NEW CLAIMS:
 {claims_text}
 
-Reply ONLY with a JSON object:
+Reply ONLY with a JSON object.
+EXAMPLE STRUCTURE (Do not use these specific values):
 {{
     "contradictions": [
         {{

@@ -27,7 +27,8 @@ SCORING RULES:
 - Fear: Does the player seem dangerous, powerful, or threatening? (-5 to +5)
 - Affection: Does the player seem kind, likable, or charming? (-5 to +5)
 
-Reply ONLY with a JSON object:
+Reply ONLY with a JSON object.
+EXAMPLE STRUCTURE (Do not use these specific values):
 {{
     "trust": 2,
     "fear": 0,
@@ -81,7 +82,8 @@ AVAILABLE VOICES:
 - en_GB-jenny_dioco-medium (Polished, Steady British Female)
 - en_GB-alba-medium (Scottish Lilt / Regional Female)
 
-Reply ONLY with JSON:
+Reply ONLY with a JSON object.
+EXAMPLE STRUCTURE (Do not use these specific values):
 {{
     "description": "Short bio",
     "traits": "Comma separated traits",
