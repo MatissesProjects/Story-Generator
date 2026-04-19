@@ -5,6 +5,7 @@ import os
 import hashlib
 from PIL import Image
 import llm
+import re
 
 # Initialize the pipeline
 # We'll use SDXL Turbo for speed, or falling back to CPU if no GPU is found
@@ -35,6 +36,15 @@ if not os.path.exists(config.ENVIRONMENTS_DIR):
 
 if not os.path.exists(config.MAP_TILES_DIR):
     os.makedirs(config.MAP_TILES_DIR)
+
+def clean_vision_prompt(prompt: str) -> str:
+    """Removes LLM speaker tags like [Narrator]: from the prompt before sending to Stable Diffusion."""
+    cleaned = re.sub(r'^\[.*?\]:\s*', '', prompt).strip()
+    if cleaned.startswith('"') and cleaned.endswith('"'):
+        cleaned = cleaned[1:-1]
+    elif cleaned.startswith("'") and cleaned.endswith("'"):
+        cleaned = cleaned[1:-1]
+    return cleaned.strip()
 
 async def stylize_prompt(character_name, description, traits):
     """
@@ -75,7 +85,9 @@ async def generate_portrait(name, description, traits):
     print(f"Vision Engine: Generating portrait for {name}...")
     
     # Get a good prompt
-    final_prompt = await stylize_prompt(name, description, traits)
+    raw_prompt = await stylize_prompt(name, description, traits)
+    print(f"Vision Engine: Raw Prompt: {raw_prompt}")
+    final_prompt = clean_vision_prompt(raw_prompt)
     print(f"Vision Engine: Final Prompt: {final_prompt}")
     
     # Generate
@@ -129,7 +141,8 @@ async def generate_environment(location_name, description):
 
     print(f"Vision Engine: Generating environment for {location_name}...")
     
-    final_prompt = await stylize_environment_prompt(location_name, description)
+    raw_prompt = await stylize_environment_prompt(location_name, description)
+    final_prompt = clean_vision_prompt(raw_prompt)
     print(f"Vision Engine: Final Environment Prompt: {final_prompt}")
     
     # Generate (landscape-ish if possible, though SDXL Turbo likes 512x512 or 1024x1024)
@@ -179,7 +192,8 @@ async def generate_map_tile(biome_type):
 
     print(f"Vision Engine: Generating map tile for {biome_type}...")
     
-    final_prompt = await stylize_map_tile_prompt(biome_type)
+    raw_prompt = await stylize_map_tile_prompt(biome_type)
+    final_prompt = clean_vision_prompt(raw_prompt)
     print(f"Vision Engine: Final Tile Prompt: {final_prompt}")
     
     # Generate
