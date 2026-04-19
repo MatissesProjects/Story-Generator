@@ -41,6 +41,14 @@ def _build_full_prompt(prompt, context_facts=None, director_instructions=None, p
         instr = pacing_instructions.get(pacing_directive, "")
         context_blocks.append(f"PACING: {pacing_directive}. {instr}")
 
+    # CORE STORYTELLING DIRECTIVES
+    core_directives = """
+CORE DIRECTIVE: NEVER present the player with a numbered list of choices (e.g., "1. Go left, 2. Go right"). 
+Instead, be PROACTIVE. Narrate the world's reaction to the player and end on a dramatic or evocative note that naturally invites a response. 
+If the story stalls, use the environment, a character's action, or a sudden discovery to move the plot forward.
+"""
+    context_blocks.append(core_directives)
+
     if context_blocks:
         full_context = "\n\n".join(context_blocks)
         full_prompt = f"[SYSTEM: {full_context}]\n\n{prompt}"

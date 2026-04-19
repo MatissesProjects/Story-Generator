@@ -26,10 +26,17 @@ def evaluate_state(user_input, recent_history=None):
         context_notes.append(f"ACTIVE LEADS: {quests_text}")
 
     if not context_notes:
-        return None
+        notes_str = "No specific plot threads active."
+    else:
+        notes_str = "\n".join(context_notes)
         
-    notes_str = "\n".join(context_notes)
-    instruction = f"DIRECTOR'S NOTE: Keep the following narrative goals in mind as 'gentle suggestions'. Do not force them if the story naturally wanders, but look for subtle ways to integrate them: \n{notes_str}"
+    instruction = f"""
+DIRECTOR'S NOTE: Keep the following narrative goals in mind as 'gentle suggestions'. Do not force them if the story naturally wanders, but look for subtle ways to integrate them: 
+{notes_str}
+
+CORE NARRATIVE DIRECTIVE: Do NOT provide numbered lists of options. Instead, be PROACTIVE. 
+Describe environmental shifts, sudden character actions, or mysterious discoveries that force the player to react to the world's changing state.
+"""
     
     return instruction
 
