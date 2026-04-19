@@ -56,20 +56,23 @@ async def evaluate_quest_progress(history_text):
     } for q in active_quests])
     
     prompt = f"""
-[SYSTEM: You are the Quest Arbiter. Analyze the following story segment and decide if any active quest objectives have been COMPLETED or FAILED.
+    [SYSTEM: You are the Quest Arbiter. Analyze the following story segment and decide if any active quest objectives have been COMPLETED or FAILED.
 
-STORY SEGMENT:
-"{history_text}"
+    STORY SEGMENT:
+    "{history_text}"
 
-ACTIVE QUESTS:
-{quests_json}
+    ACTIVE QUESTS:
+    {quests_json}
 
-If an objective is completed, reply with JSON: {{"updates": [{{"objective_id": 123, "status": "completed"}}]}}
-If no progress was made, reply with JSON: {{"updates": []}}
+    If an objective is completed, reply with JSON: 
+    EXAMPLE STRUCTURE (Do not use these specific values):
+    {{ "updates": [{{ "objective_id": 123, "status": "completed" }}] }}
+    
+    If no progress was made, reply with JSON: {{ "updates": [] }}
 
-BE CONSERVATIVE. Only mark as completed if it clearly happened in the text.
-REPLY ONLY IN JSON.]
-"""
+    BE CONSERVATIVE. Only mark as completed if it clearly happened in the text.
+    REPLY ONLY IN JSON.]
+    """
     response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         
     try:
@@ -109,8 +112,11 @@ COMPLETION CRITERIA: {milestone['completion_criteria']}
 RECENT HISTORY:
 "{history_text}"
 
-If the criteria have been met, reply with JSON: {{"completed": true}}
-Else, reply with JSON: {{"completed": false}}
+Reply ONLY with a JSON object.
+EXAMPLE STRUCTURE (Do not use these specific values):
+{{
+    "completed": true
+}}
 
 REPLY ONLY IN JSON.]
 """
@@ -182,8 +188,12 @@ STORY HISTORY:
 ACTIVE PLOT THREADS:
 {threads_text}
 
-If the story is moving well, reply with: {{"needs_research": false, "suggested_theme": ""}}
-If the story needs a "crazy new idea" or fresh lore to stay interesting, reply with: {{"needs_research": true, "suggested_theme": "A broad theme for research, e.g., 'underground ecosystems', 'forgotten alchemy', 'weird parasites'"}}
+Reply ONLY with a JSON object.
+EXAMPLE STRUCTURE (Do not use these specific values):
+{{
+    "needs_research": true, 
+    "suggested_theme": "underground ecosystems"
+}}
 
 REPLY ONLY IN JSON.]
 """
@@ -219,13 +229,15 @@ RECENT HISTORY:
 NEW INPUT:
 "{user_input}"
 
-If the location has changed or is explicitly named for the first time, reply with JSON: {{
-    "location": "Name of Location (or suggest a creative name if it's unnamed but described)", 
+Reply ONLY with a JSON object.
+EXAMPLE STRUCTURE (Do not use these specific values):
+{{
+    "location": "Name of Location", 
     "description": "Brief atmospheric description",
-    "relative_to": "Name of a previous location if known, else null",
-    "direction": "north/south/east/west/etc if implied, else null"
+    "relative_to": "Previous location",
+    "direction": "north"
 }}
-If the location is the same as before or unclear, reply with JSON: {{"location": null, "description": null, "relative_to": null, "direction": null}}
+If the location is the same as before or unclear, return null values.
 
 REPLY ONLY IN JSON.]
 """
@@ -370,10 +382,11 @@ Your task:
 1. Identify if any active plot threads have been RESOLVED or are no longer relevant.
 2. Identify if any NEW major plot threads or mysteries have emerged in the recent history.
 
-Reply ONLY with a JSON object:
+Reply ONLY with a JSON object.
+EXAMPLE STRUCTURE (Do not use these specific values):
 {{
-    "resolved_ids": [list of IDs of resolved threads],
-    "new_threads": [list of descriptions for NEWly discovered threads]
+    "resolved_ids": [1, 2],
+    "new_threads": ["Find the lost city"]
 }}
 
 BE CONSERVATIVE. Only add a new thread if it represents a significant goal or mystery.

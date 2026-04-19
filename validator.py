@@ -28,9 +28,12 @@ PLAYER INVENTORY:
 PLAYER STATS:
 {stats_text}
 
-Instructions:
-1. If the action is possible, reply with JSON: {{"is_valid": true, "reason": ""}}
-2. If the action is impossible (e.g. using an item they don't have, teleporting without magic), reply with JSON: {{"is_valid": false, "reason": "Short explanation of why"}}
+Reply ONLY with a JSON object.
+EXAMPLE STRUCTURE (Do not use these specific values):
+{{
+    "is_valid": true, 
+    "reason": "" 
+}}
 
 REPLY ONLY IN JSON.]
 """

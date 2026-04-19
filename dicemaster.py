@@ -20,11 +20,12 @@ PLAYER ACTION:
 RELEVANT CONTEXT:
 {facts_text}
 
-Reply ONLY with a JSON object:
+Reply ONLY with a JSON object.
+EXAMPLE STRUCTURE (Do not use these specific values):
 {{
-    "requires_check": true/false,
-    "dc": 1-20 (Difficulty Class),
-    "sides": 20 (Standard),
+    "requires_check": true,
+    "dc": 10,
+    "sides": 20,
     "reason": "Short explanation of the check"
 }}
 ]
