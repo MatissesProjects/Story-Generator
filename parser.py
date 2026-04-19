@@ -76,65 +76,87 @@ class StreamParser:
 
     def feed(self, chunk):
         self.buffer += chunk
-        lines = self.buffer.split('\n')
         
-        # We only process full lines (except the last one which might be incomplete)
+        # We process by lines, but we look for tags WITHIN lines now.
+        lines = self.buffer.split('\n')
         completed_blocks = []
         
-        # If we have multiple lines, the ones before the last are definitely "done"
         if len(lines) > 1:
             for i in range(len(lines) - 1):
                 line = lines[i].strip()
                 if not line or line == "***": continue
                 
-                # Check for tag
-                match = self.tag_pattern.match(line)
-                if match:
-                    speaker, content = match.groups()
-                    speaker = speaker.strip()
-                    if speaker.lower() in [t.lower() for t in IGNORED_TAGS]:
-                        continue
-                    completed_blocks.append((speaker, content.strip()))
-                else:
-                    # Check for system blocks without colon
+                # Use finditer to find ALL tags in the line, and the text between them
+                # This handles cases like: "Narrator text. [Character]: Dialogue"
+                matches = list(self.tag_pattern.finditer(line))
+                
+                if not matches:
+                    # No tags at all, check if it's an ignored system tag
                     clean_line = line.lower()
                     if any(clean_line.startswith(f"[{tag.lower()}") for tag in IGNORED_TAGS):
                         continue
-                        
-                    # Assume narrator if no tag
                     completed_blocks.append(("Narrator", line))
-            
-            # Keep only the last (potentially incomplete) line in the buffer
+                else:
+                    # Process the text BEFORE the first tag as Narrator
+                    first_match_start = matches[0].start()
+                    pre_text = line[:first_match_start].strip()
+                    if pre_text:
+                        completed_blocks.append(("Narrator", pre_text))
+                    
+                    # Process each matched block
+                    for match in matches:
+                        speaker, content = match.groups()
+                        speaker = speaker.strip()
+                        if speaker.lower() in [t.lower() for t in IGNORED_TAGS]:
+                            continue
+                        
+                        # Normalize "Narrator"
+                        if speaker.lower() == "narrator":
+                            speaker = "Narrator"
+                            
+                        if content.strip():
+                            completed_blocks.append((speaker, content.strip()))
+
             self.buffer = lines[-1]
             
         return completed_blocks
 
     def flush(self):
         """Processes whatever is left in the buffer."""
-        final_blocks = []
         line = self.buffer.strip()
+        self.buffer = ""
+        
         if not line or line == "***":
-             self.buffer = ""
              return []
 
-        match = self.tag_pattern.match(line)
-        if match:
-            speaker, content = match.groups()
-            speaker = speaker.strip()
-            if speaker.lower() in [t.lower() for t in IGNORED_TAGS]:
-                self.buffer = ""
-                return []
-            final_blocks.append((speaker, content.strip()))
-        else:
-            # Check for system blocks without colon
+        completed_blocks = []
+        matches = list(self.tag_pattern.finditer(line))
+        
+        if not matches:
             clean_line = line.lower()
             if any(clean_line.startswith(f"[{tag.lower()}") for tag in IGNORED_TAGS):
-                self.buffer = ""
                 return []
-            final_blocks.append(("Narrator", line))
+            completed_blocks.append(("Narrator", line))
+        else:
+            first_match_start = matches[0].start()
+            pre_text = line[:first_match_start].strip()
+            if pre_text:
+                completed_blocks.append(("Narrator", pre_text))
             
-        self.buffer = ""
-        return final_blocks
+            for match in matches:
+                speaker, content = match.groups()
+                speaker = speaker.strip()
+                if speaker.lower() in [t.lower() for t in IGNORED_TAGS]:
+                    continue
+                
+                # Normalize "Narrator"
+                if speaker.lower() == "narrator":
+                    speaker = "Narrator"
+
+                if content.strip():
+                    completed_blocks.append((speaker, content.strip()))
+            
+        return completed_blocks
 
 if __name__ == "__main__":
     test_text = "[Elara]: Look out! The beast is coming!\nMalakar: I see it. It's hideous."

@@ -43,9 +43,14 @@ def _build_full_prompt(prompt, context_facts=None, director_instructions=None, p
 
     # CORE STORYTELLING DIRECTIVES
     core_directives = """
-CORE DIRECTIVE: NEVER present the player with a numbered list of choices (e.g., "1. Go left, 2. Go right"). 
-Instead, be PROACTIVE. Narrate the world's reaction to the player and end on a dramatic or evocative note that naturally invites a response. 
-If the story stalls, use the environment, a character's action, or a sudden discovery to move the plot forward.
+CORE DIRECTIVE: NEVER present the player with a numbered list of choices. Be PROACTIVE and narrate the world's reaction.
+
+FORMATTING RULE: You MUST use character tags for ALL output.
+- For character speech, use: [Character Name]: "Dialogue text"
+- For actions, atmosphere, or descriptions, use: [Narrator]: Narrative text
+- Example: 
+  [Narrator]: The wind howls through the trees. 
+  [Elara]: "We must hurry, the storm is coming."
 """
     context_blocks.append(core_directives)
 
