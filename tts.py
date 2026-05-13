@@ -52,8 +52,41 @@ def get_voice(voice_model=None):
             print(f"ERROR: Voice model '{model_path}' not found.")
             return None
 
-        print(f"TTS: Loading voice model {voice_model}...")
-        VOICE_CACHE[model_path] = PiperVoice.load(model_path, config_path=config_path)
+        import torch
+        use_cuda = torch.cuda.is_available()
+        
+        # RTX 4090 / CUDA 12 path patching for onnxruntime-gpu
+        if use_cuda:
+            import site
+            import glob
+            # Find all nvidia library directories in site-packages
+            package_paths = site.getsitepackages() + [site.getusersitepackages()]
+            if hasattr(site, 'getusersitepackages'):
+                package_paths.append(site.getusersitepackages())
+            
+            # Specifically check venv if applicable
+            venv_path = os.path.join(os.getcwd(), ".venv", "lib", "python*", "site-packages")
+            
+            nvidia_lib_paths = []
+            search_patterns = [
+                os.path.join(p, "nvidia", "*", "lib") for p in package_paths
+            ] + [os.path.join(venv_path, "nvidia", "*", "lib")]
+            
+            for pattern in search_patterns:
+                nvidia_lib_paths.extend(glob.glob(pattern))
+            
+            if nvidia_lib_paths:
+                current_ld = os.environ.get("LD_LIBRARY_PATH", "")
+                new_paths = ":".join(nvidia_lib_paths)
+                os.environ["LD_LIBRARY_PATH"] = f"{new_paths}:{current_ld}"
+                print(f"TTS: Patched LD_LIBRARY_PATH with {len(nvidia_lib_paths)} NVIDIA lib directories.")
+
+        print(f"TTS: Loading voice model {voice_model} (CUDA: {use_cuda})...")
+        try:
+            VOICE_CACHE[model_path] = PiperVoice.load(model_path, config_path=config_path, use_cuda=use_cuda)
+        except Exception as e:
+            print(f"TTS: Failed to load with CUDA, falling back to CPU. Error: {e}")
+            VOICE_CACHE[model_path] = PiperVoice.load(model_path, config_path=config_path, use_cuda=False)
 
     return VOICE_CACHE[model_path]
 

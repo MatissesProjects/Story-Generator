@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     DEFAULT_VOICE: str = "en_US-lessac-medium.onnx"
     NARRATOR_VOICE: str = "en_US-ryan-high.onnx"
     VOICE_PROFILES: dict = {
-        "Deep Male": "en_US-ryan-high.onnx",
+        "Deep Male": "en_GB-alan-medium.onnx", # Changed from ryan-high to avoid narrator overlap
         "Melodic Female": "en_US-lessac-high.onnx",
         "Natural Female": "en_US-lessac-medium.onnx",
         "Upbeat Male": "en_US-joe-medium.onnx",

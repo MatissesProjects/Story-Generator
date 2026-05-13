@@ -7,6 +7,21 @@
     --input-bg: #2d2d2d;
 }
 
+/* Join Overlay - Moved to top and forced fixed to prevent layout collapse */
+#join-overlay {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: radial-gradient(circle, #2c3e50 0%, #000000 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    transition: opacity 1s ease-out, visibility 1s;
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -27,6 +42,18 @@ body {
     flex-direction: column;
     height: 100%;
     position: relative;
+    z-index: 10;
+}
+
+#atmosphere-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* Let clicks pass through */
+    z-index: 5; /* Above visual-stack (1) but below dialogue-box (which has no z-index but is later in DOM) */
+    transition: background-color 2s ease-in-out;
 }
 
 #visual-stack {
@@ -483,6 +510,7 @@ h3 {
 #history-container {
     flex: 1;
     overflow-y: auto;
+    min-height: 0; /* Important for flex-grow with overflow */
     padding-bottom: 2rem;
     mask-image: linear-gradient(to top, black 80%, transparent 100%);
     opacity: 0.6; /* Dim history to focus on current dialogue */
@@ -620,6 +648,9 @@ h3 {
     display: flex;
     gap: 1rem;
     padding: 1rem 0;
+    min-height: 60px;
+    align-items: center;
+    flex-shrink: 0; /* Never collapse */
 }
 
 #user-input {
@@ -629,6 +660,18 @@ h3 {
     color: var(--text-color);
     padding: 0.8rem;
     border-radius: 4px;
+    width: 0; /* Let flex-grow handle it */
+    min-width: 200px;
+}
+
+#input-form button {
+    padding: 0.8rem 1.5rem;
+    font-size: 1rem;
+    white-space: nowrap;
+}
+
+#continue-btn:hover {
+    box-shadow: 0 0 15px rgba(74, 222, 128, 0.5);
 }
 
 #debug-output {
@@ -893,4 +936,51 @@ form input, form textarea, select {
 
 .flash-red {
     animation: flash-red 0.8s ease-out;
+}
+
+.join-content {
+    text-align: center;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 3rem;
+    border-radius: 15px;
+    border: 1px solid var(--accent-color);
+    box-shadow: 0 0 50px rgba(74, 144, 226, 0.3);
+    max-width: 500px;
+}
+
+.join-content h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: var(--accent-color);
+    text-shadow: 0 0 10px var(--accent-color);
+}
+
+.join-content p {
+    margin-bottom: 2rem;
+    font-size: 1.2rem;
+    color: #ccc;
+}
+
+#join-btn {
+    padding: 1rem 3rem;
+    font-size: 1.5rem;
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s;
+}
+
+#join-btn:hover {
+    transform: scale(1.05);
+    background-color: #357abd;
+    box-shadow: 0 0 20px var(--accent-color);
+}
+
+.audio-note {
+    margin-top: 1.5rem;
+    font-size: 0.9rem !important;
+    opacity: 0.7;
+    font-style: italic;
 }

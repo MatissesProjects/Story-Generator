@@ -222,9 +222,28 @@ async def websocket_endpoint(websocket: WebSocket):
                     matrix = spark.PromptMatrix()
                     prompt = matrix.build_prompt(genre=genre)
 
+                    full_spark = ""
+                    stream_parser = parser.StreamParser()
                     async for chunk in llm.async_generate_story_segment(prompt, model=config.FAST_MODEL):
                         await websocket.send_text(json.dumps({"type": "story_chunk", "content": chunk}))
-                    
+                        full_spark += chunk
+                        
+                        completed_blocks = stream_parser.feed(chunk)
+                        for speaker, text in completed_blocks:
+                            voice_config = db.get_character_voice(speaker)
+                            audio_path = await asyncio.to_thread(tts.generate_audio, text, speaker, voice_config=voice_config)
+                            if audio_path:
+                                audio_url = f"/audio/{os.path.basename(audio_path)}"
+                                await websocket.send_text(json.dumps({"type": "audio_event", "url": audio_url, "speaker": speaker}))
+
+                    remaining_blocks = stream_parser.flush()
+                    for speaker, text in remaining_blocks:
+                        voice_config = db.get_character_voice(speaker)
+                        audio_path = await asyncio.to_thread(tts.generate_audio, text, speaker, voice_config=voice_config)
+                        if audio_path:
+                            audio_url = f"/audio/{os.path.basename(audio_path)}"
+                            await websocket.send_text(json.dumps({"type": "audio_event", "url": audio_url, "speaker": speaker}))
+
                     await log_progress(websocket, "Spark conjured.", "success")
                 else:
                     # Modify prompt for continuation
@@ -389,19 +408,21 @@ async def websocket_endpoint(websocket: WebSocket):
                         full_response += chunk
                         chunk_count += 1
                         
-                        # Proactive discovery: scan for characters every 10 chunks to start image generation early
-                        if chunk_count % 10 == 0:
-                            await social_engine.discover_new_characters(full_response)
+                        # Aggressive discovery: if the chunk contains a potential tag end ':', scan immediately
+                        if ':' in chunk or chunk_count % 5 == 0:
+                            # Kick off discovery in background to avoid blocking text flow
+                            asyncio.create_task(social_engine.discover_new_characters(full_response))
                         
                         # Real-time audio and visual parsing
                         completed_blocks = stream_parser.feed(chunk)
                         if completed_blocks:
-                            # Also check on completed blocks for immediate registration
+                            # Final safety discovery check before TTS processing (keep this awaited to ensure pre-registration)
                             await social_engine.discover_new_characters(full_response)
                             
                             for speaker, text in completed_blocks:
                                 voice_config = db.get_character_voice(speaker)
-                                audio_path = tts.generate_audio(text, speaker, voice_config=voice_config)
+                                # Offload CPU-heavy synchronous TTS generation to a thread
+                                audio_path = await asyncio.to_thread(tts.generate_audio, text, speaker, voice_config=voice_config)
                                 if audio_path:
                                     audio_url = f"/audio/{os.path.basename(audio_path)}"
                                     await websocket.send_text(json.dumps({"type": "audio_event", "url": audio_url, "speaker": speaker}))
@@ -419,7 +440,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         
                     for speaker, text in remaining_blocks:
                         voice_config = db.get_character_voice(speaker)
-                        audio_path = tts.generate_audio(text, speaker, voice_config=voice_config)
+                        audio_path = await asyncio.to_thread(tts.generate_audio, text, speaker, voice_config=voice_config)
                         if audio_path:
                             audio_url = f"/audio/{os.path.basename(audio_path)}"
                             await websocket.send_text(json.dumps({"type": "audio_event", "url": audio_url, "speaker": speaker}))

@@ -126,12 +126,21 @@ def get_all_entities():
     return [c['name'] for c in chars] + [l['topic'] for l in lore_topics]
 
 def get_character_voice(name):
-    # 1. Try exact match
-    result = query_db("SELECT name, voice_id, length_scale, noise_scale, noise_w FROM characters WHERE name = ?", (name,), one=True)
+    name = name.strip()
+    if name.lower() == "narrator":
+        return {
+            "voice_id": config.NARRATOR_VOICE,
+            "length_scale": 1.0,
+            "noise_scale": 0.667,
+            "noise_w": 0.8
+        }
+
+    # 1. Try exact case-insensitive match
+    result = query_db("SELECT name, voice_id, length_scale, noise_scale, noise_w FROM characters WHERE name = ? COLLATE NOCASE", (name,), one=True)
     
     # 2. Try partial match if no exact match
     if not result:
-        result = query_db("SELECT name, voice_id, length_scale, noise_scale, noise_w FROM characters WHERE name LIKE ?", (f"%{name}%",), one=True)
+        result = query_db("SELECT name, voice_id, length_scale, noise_scale, noise_w FROM characters WHERE name LIKE ? COLLATE NOCASE", (f"%{name}%",), one=True)
     
     if result:
         v_id = result['voice_id'] or config.DEFAULT_VOICE
@@ -143,38 +152,49 @@ def get_character_voice(name):
             "noise_w": result['noise_w']
         }
     
-    # Fallback to Narrator for completely unknown speakers
-    print(f"TTS Match (Fallback): Speaker '{name}' using {config.NARRATOR_VOICE}")
+    # Fallback to a random character voice for completely unknown speakers (NEVER the narrator)
+    fallback_voice = random.choice(config.MALE_VOICES + config.FEMALE_VOICES)
+    print(f"TTS Match (Fallback): Speaker '{name}' NOT FOUND IN DB. Using random character voice: {fallback_voice}")
     return {
-        "voice_id": config.NARRATOR_VOICE,
+        "voice_id": fallback_voice,
         "length_scale": 1.0,
         "noise_scale": 0.667,
         "noise_w": 0.8
     }
 
 def add_character(name, description, traits, voice_id=None, length_scale=1.0, noise_scale=0.667, noise_w=0.8, signature_tic=None, narrative_role='NPC', leitmotif_path=None):
-    if voice_id is None or voice_id == config.DEFAULT_VOICE:
+    if voice_id is None:
         # Simple heuristic to infer gender
         text_to_check = f" {name} {description} {traits} ".lower()
-        male_keywords = [" he ", " him ", " his ", " man ", " boy ", " male ", " king ", " prince ", " lord "]
-        female_keywords = [" she ", " her ", " hers ", " woman ", " girl ", " female ", " queen ", " princess ", " lady "]
+        male_keywords = [" he ", " him ", " his ", " man ", " boy ", " male ", " king ", " prince ", " lord ", " sir "]
+        female_keywords = [" she ", " her ", " hers ", " woman ", " girl ", " female ", " queen ", " princess ", " lady ", " madam "]
         
         is_male = any(kw in text_to_check for kw in male_keywords)
         is_female = any(kw in text_to_check for kw in female_keywords)
         
         if is_female and not is_male:
             voice_id = random.choice(config.FEMALE_VOICES)
+            print(f"DB: Auto-assigned FEMALE voice to {name}: {voice_id}")
         elif is_male and not is_female:
             voice_id = random.choice(config.MALE_VOICES)
+            print(f"DB: Auto-assigned MALE voice to {name}: {voice_id}")
         else:
-            # Fallback to completely random if ambiguous
-            voice_id = random.choice(config.MALE_VOICES + config.FEMALE_VOICES)
+            # Fallback to completely random if ambiguous, filtering out narrator
+            char_voices = [v for v in config.MALE_VOICES + config.FEMALE_VOICES if v != config.NARRATOR_VOICE]
+            voice_id = random.choice(char_voices)
+            print(f"DB: Ambiguous gender for {name}, assigned random voice: {voice_id}")
         
     # Ensure voice_id has extension
     if voice_id and not voice_id.endswith(".onnx"):
         voice_id += ".onnx"
 
     with sqlite3.connect(DB_PATH) as conn:
+        # Check if character already exists to avoid duplicates
+        existing = query_db("SELECT id FROM characters WHERE name = ? COLLATE NOCASE", (name,), one=True)
+        if existing:
+            print(f"DB: Character '{name}' already exists. Skipping add.")
+            return existing['id']
+
         cur = conn.execute("""
             INSERT INTO characters 
             (name, description, traits, voice_id, length_scale, noise_scale, noise_w, signature_tic, narrative_role, leitmotif_path) 
@@ -183,6 +203,7 @@ def add_character(name, description, traits, voice_id=None, length_scale=1.0, no
         conn.commit()
         char_id = cur.lastrowid
         memory_engine.add_character_vector(name, description, traits, char_id)
+        return char_id
 
 def update_character_last_seen(char_id, turn_number):
     execute_db("UPDATE characters SET last_seen_turn = ? WHERE id = ?", (turn_number, char_id))

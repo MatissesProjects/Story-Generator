@@ -7,9 +7,16 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div id="atmosphere-overlay">
+    <div id="join-overlay">
         <div id="effects-layer"></div>
+        <div class="join-content">
+            <h1>🎭 Story Generator</h1>
+            <p>Welcome to the Cinematic Experience.</p>
+            <button id="join-btn">Join Adventure</button>
+            <p class="audio-note">Click to enable character voices and immersive audio.</p>
+        </div>
     </div>
+
     <div id="app">
         <div id="map-overlay" class="modal">
             <div class="modal-content">
@@ -100,6 +107,7 @@
             </section>
 
             <section id="story-area">
+                <div id="atmosphere-overlay"></div>
                 <div id="visual-stack">
                     <div id="layer-texture" class="visual-layer"></div>
                     <div id="layer-environment" class="visual-layer"></div>
@@ -119,6 +127,7 @@
                 <form id="input-form">
                     <input type="text" id="user-input" placeholder="Type your action or 'continue'..." autocomplete="off">
                     <button type="submit">Send</button>
+                    <button type="button" id="continue-btn" style="background-color: #4ade80; color: #000;">Continue</button>
                 </form>
             </section>
 

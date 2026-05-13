@@ -27,9 +27,9 @@ const milestoneDisplayEl = document.getElementById('milestone-display');
 const inventoryListEl = document.getElementById('inventory-list');
 const statsListEl = document.getElementById('stats-list');
 const locationNameEl = document.getElementById('current-location-name');
+const backgroundVisualEl = document.getElementById('background-visual');
 const resetBtn = document.getElementById('reset-btn');
 const sparkBtn = document.getElementById('spark-btn');
-const continueBtn = document.getElementById('continue-btn');
 const mapBtn = document.getElementById('map-btn');
 const mapOverlay = document.getElementById('map-overlay');
 const closeMap = document.getElementById('close-map');
@@ -55,68 +55,27 @@ const NORMAL_AMBIANCE_VOL = 0.3;
 const DUCKED_MUSIC_VOL = 0.15;
 const DUCKED_AMBIANCE_VOL = 0.1;
 
-function connect() {
-    socket = new WebSocket(wsUrl);
-
-    socket.onopen = () => {
-        statusIndicator.innerText = "Connected to Story Engine";
-        addLog("System", "WebSocket connection established.");
-        
-        // Send handshake to announce capabilities
-        socket.send(jsonMsg("handshake", {
-            "gpu": "Local Browser",
-            "can_offload_vision": false
-        }));
-        
-        socket.send(jsonMsg("get_state", {}));
-    };
-
-    socket.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        handleMessage(message);
-    };
-
-    socket.onclose = () => {
-        statusIndicator.innerText = "Disconnected. Reconnecting...";
-        setTimeout(connect, 2000);
-    };
-
-    socket.onerror = (err) => {
-        console.error("WebSocket Error:", err);
-    };
-}
 const joinOverlay = document.getElementById('join-overlay');
 const joinBtn = document.getElementById('join-btn');
 
 joinBtn.onclick = () => {
-    console.log("Join button clicked");
-    let cleanedUp = false;
-    
-    // Ensure the overlay disappears even if audio fails
-    const cleanup = () => {
-        if (cleanedUp) return;
-        cleanedUp = true;
-        
-        joinOverlay.style.opacity = '0';
-        setTimeout(() => {
-            joinOverlay.style.display = 'none'; // Use display: none to remove from document flow
-            console.log("Overlay hidden and removed from flow");
-        }, 1000);
-        connect();
-    };
-
     // Unblock audio by playing a silent sound
     const audio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFRm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==');
     audio.play().then(() => {
-        console.log("Audio unblocked");
-        cleanup();
+        joinOverlay.style.opacity = '0';
+        setTimeout(() => {
+            joinOverlay.style.visibility = 'hidden';
+        }, 1000);
+        connect();
     }).catch(err => {
         console.warn("Audio initialization failed:", err);
-        cleanup();
+        // Still allow joining if audio fails
+        joinOverlay.style.opacity = '0';
+        setTimeout(() => {
+            joinOverlay.style.visibility = 'hidden';
+        }, 1000);
+        connect();
     });
-    
-    // Safety timeout to ensure we don't hang on the overlay
-    setTimeout(cleanup, 2000);
 };
 
 // Remove the automatic connect() call at the bottom later or just let this be the only one
@@ -314,8 +273,6 @@ function handleMessage(message) {
             currentStoryText += message.content;
             currentChunkEl.innerText = currentStoryText;
             vnDialogueBox.style.display = "block";
-            // Immediate scroll for current text
-            vnDialogueBox.scrollTop = vnDialogueBox.scrollHeight;
             scrollStory();
             break;
         
@@ -335,7 +292,6 @@ function handleMessage(message) {
             vnNameTag.innerText = message.speaker;
             vnDialogueBox.style.display = "block";
             queueAudio(audioUrl, message.speaker);
-            scrollStory();
             break;
 
         case 'debug':
@@ -363,9 +319,6 @@ function handleMessage(message) {
             break;
 
         case 'spark':
-            currentStoryText = "";
-            vnNameTag.innerText = "Narrator";
-            vnDialogueBox.style.display = "block";
             addLog("Spark", message.content);
             const sparkBlock = document.createElement('div');
             sparkBlock.className = 'story-block spark-block';
@@ -416,10 +369,7 @@ function handleMessage(message) {
                 locationNameEl.innerText = currentLocationName = message.location;
             }
             if (message.location_image) {
-                const envLayer = document.getElementById('layer-environment');
-                if (envLayer) {
-                    envLayer.style.backgroundImage = `url('${message.location_image}')`;
-                }
+                backgroundVisualEl.style.backgroundImage = `url('${message.location_image}')`;
             }
             if (message.pacing) {
                 pacingSelector.value = message.pacing;
@@ -441,11 +391,8 @@ function handleMessage(message) {
             addLog("Scene", `Entered: ${message.location}`);
             locationNameEl.innerText = currentLocationName = message.location;
             if (message.url) {
-                const envLayer = document.getElementById('layer-environment');
-                if (envLayer) {
-                    envLayer.style.backgroundImage = `url('${message.url}')`;
-                    toggleKenBurns(envLayer);
-                }
+                backgroundVisualEl.style.backgroundImage = `url('${message.url}')`;
+                toggleKenBurns(backgroundVisualEl);
             }
             break;
 
@@ -737,11 +684,7 @@ function addLog(type, content) {
 }
 
 function scrollStory() {
-    // Small timeout to allow the browser to reflow after text updates
-    setTimeout(() => {
-        historyContainer.scrollTop = historyContainer.scrollHeight;
-        vnDialogueBox.scrollTop = vnDialogueBox.scrollHeight;
-    }, 10);
+    historyContainer.scrollTop = historyContainer.scrollHeight;
 }
 
 // Audio Management
@@ -770,7 +713,6 @@ async function playNextAudio() {
     }
     
     statusIndicator.innerText = `Speaking: ${speaker}...`;
-    scrollStory();
     const audio = new Audio(url);
     
     audio.onended = () => {
@@ -795,7 +737,7 @@ async function playNextAudio() {
 inputForm.onsubmit = (e) => {
     e.preventDefault();
     const text = userInput.value.trim();
-    // if (!text) return; // Allow empty text for continuation
+    if (!text) return;
 
     // Move current text to history
     if (currentStoryText) {
@@ -809,17 +751,12 @@ inputForm.onsubmit = (e) => {
 
     const userBlock = document.createElement('div');
     userBlock.className = 'story-block user-block';
-    userBlock.innerText = `> ${text || "Continue..."}`;
+    userBlock.innerText = `> ${text}`;
     historyContainer.appendChild(userBlock);
 
     socket.send(jsonMsg("user_input", text));
     userInput.value = "";
     scrollStory();
-};
-
-continueBtn.onclick = () => {
-    // Simulate empty form submission
-    inputForm.dispatchEvent(new Event('submit'));
 };
 
 sparkBtn.onclick = () => {
@@ -849,66 +786,17 @@ addPlotThreadForm.onsubmit = (e) => {
     addPlotThreadForm.reset();
 };
 
-function triggerVisualEffect(type) {
-    const effectsLayer = document.getElementById('effects-layer');
-    if (!effectsLayer) return;
-
-    if (type === 'fog') {
-        if (!document.querySelector('.effect-fog')) {
-            const fog = document.createElement('div');
-            fog.className = 'effect-fog';
-            effectsLayer.appendChild(fog);
-        }
-    } else if (type === 'streak') {
-        const streak = document.createElement('div');
-        streak.className = 'effect-streak';
-        streak.style.left = Math.random() * 80 + 10 + '%';
-        streak.style.top = Math.random() * 20 + '%';
-        effectsLayer.appendChild(streak);
-        setTimeout(() => streak.remove(), 1000);
-    } else if (type === 'pulse') {
-        const pulse = document.createElement('div');
-        pulse.className = 'effect-pulse';
-        effectsLayer.appendChild(pulse);
-        setTimeout(() => pulse.remove(), 2000);
-    } else if (type === 'embers') {
-        if (!document.querySelector('.effect-ember')) {
-            for (let i = 0; i < 20; i++) {
-                createEmber(effectsLayer);
-            }
-        }
-    } else if (type === 'clear') {
-        effectsLayer.innerHTML = "";
-    }
-}
-
-function createEmber(parent) {
-    const ember = document.createElement('div');
-    ember.className = 'effect-ember';
-    ember.style.left = Math.random() * 100 + '%';
-    ember.style.top = Math.random() * 100 + '%';
-    ember.style.setProperty('--dx', (Math.random() * 200 - 100) + 'px');
-    ember.style.setProperty('--dy', (Math.random() * -200 - 50) + 'px');
-    ember.style.animationDelay = Math.random() * 5 + 's';
-    parent.appendChild(ember);
-}
-
 function applyAtmosphere(atmos) {
     const overlay = document.getElementById('atmosphere-overlay');
-    const effectsLayer = document.getElementById('effects-layer');
-    if (!overlay || !effectsLayer) return;
+    if (!overlay) return;
 
     // Apply Tint with safety check
     let tint = atmos.tint || 'rgba(0,0,0,0)';
     if (!tint.includes('rgba')) {
+        // If LLM sent rgb(), convert to rgba with safe alpha
         tint = tint.replace('rgb', 'rgba').replace(')', ', 0.15)');
     }
     overlay.style.backgroundColor = tint;
-
-    // Apply Visual Effects
-    if (atmos.visual_effect) {
-        triggerVisualEffect(atmos.visual_effect);
-    }
 
     // Mood-based UI styling
     const mood = (atmos.lighting || "").toLowerCase();
@@ -962,7 +850,6 @@ function preloadVisuals(stack) {
 
 function updateVisualStack(stack) {
     console.log("Visual: Updating stack:", stack);
-    addLog("Visual", `Updating stack: ${JSON.stringify(stack)}`);
     const layers = {
         'texture': document.getElementById('layer-texture'),
         'environment': document.getElementById('layer-environment'),

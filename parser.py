@@ -5,7 +5,8 @@ IGNORED_TAGS = [
     "Script", "System", "Director", "Logic", "Objective", "Status", 
     "Sequence Update", "MECHANICAL RESULT", "MECHANICS", "FORESHADOWING",
     "STORY SO FAR", "CHARACTER PERSONAS", "LORE/FACTS", "DIRECTIVE", "PACING",
-    "DiceMaster", "SUDDEN EVENT"
+    "DiceMaster", "SUDDEN EVENT", "VISUAL", "IMAGE", "ENVIRONMENT", "ATMOSPHERE",
+    "LIGHTING", "HAPTIC", "TINT", "SCENE"
 ]
 
 def detect_intent(text):
@@ -36,6 +37,31 @@ def detect_intent(text):
         
     return 'ACTION'
 
+def is_valid_name(name):
+    """
+    Validates if a string is likely a character name.
+    Ignores strings that are too long, have too many words, or look like narrative.
+    """
+    name = name.strip()
+    if not name:
+        return False
+    
+    # Names should be reasonable length (e.g., max 30 chars)
+    if len(name) > 30:
+        return False
+        
+    # Names shouldn't have too many words (e.g., max 4)
+    words = name.split()
+    if len(words) > 4:
+        return False
+        
+    # Ignore names that look like descriptive text or have multiple punctuation marks
+    # but allow spaces, dashes, and underscores
+    if any(p in name for p in [".", ",", "!", "?", ";"]):
+        return False
+        
+    return True
+
 def parse_dialogue(text):
     """
     Parses text for dialogue tags like [Character]: Dialogue or Character: "Dialogue".
@@ -59,6 +85,11 @@ def parse_dialogue(text):
         speaker = speaker.strip()
         if speaker.lower() in [t.lower() for t in IGNORED_TAGS]:
             continue
+            
+        if not is_valid_name(speaker):
+            results.append(("Narrator", f"{speaker}: {content}".strip()))
+            continue
+
         results.append((speaker, content.strip()))
     
     return results
@@ -110,6 +141,11 @@ class StreamParser:
                         if speaker.lower() in [t.lower() for t in IGNORED_TAGS]:
                             continue
                         
+                        if not is_valid_name(speaker):
+                            text_to_add = f"{speaker}: {content}".strip() if content.strip() else speaker
+                            completed_blocks.append(("Narrator", text_to_add))
+                            continue
+
                         # Normalize "Narrator"
                         if speaker.lower() == "narrator":
                             speaker = "Narrator"
@@ -149,6 +185,11 @@ class StreamParser:
                 if speaker.lower() in [t.lower() for t in IGNORED_TAGS]:
                     continue
                 
+                if not is_valid_name(speaker):
+                    text_to_add = f"{speaker}: {content}".strip() if content.strip() else speaker
+                    completed_blocks.append(("Narrator", text_to_add))
+                    continue
+
                 # Normalize "Narrator"
                 if speaker.lower() == "narrator":
                     speaker = "Narrator"
