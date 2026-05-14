@@ -67,9 +67,9 @@ def parse_dialogue(text):
     Parses text for dialogue tags like [Character]: Dialogue or Character: "Dialogue".
     Returns a list of (speaker, content) tuples.
     """
-    # Pattern to match [Name]: "text" or Name: "text" or [Name]: text
-    # Support for characters like - and _ in names
-    pattern = r'(?:\[?([A-Za-z0-9 _-]+)\]?:\s*(.+))'
+    # Pattern to match [Name]: "text" or [Name]: text
+    # Brackets are now mandatory to reduce false positives
+    pattern = r'(?:\[([A-Za-z0-9 _-]+)\]:\s*(.+))'
     
     matches = re.findall(pattern, text)
     if not matches:
@@ -87,7 +87,7 @@ def parse_dialogue(text):
             continue
             
         if not is_valid_name(speaker):
-            results.append(("Narrator", f"{speaker}: {content}".strip()))
+            results.append(("Narrator", f"[{speaker}]: {content}".strip()))
             continue
 
         results.append((speaker, content.strip()))
@@ -103,7 +103,8 @@ class StreamParser:
         self.buffer = ""
         self.processed_index = 0
         # Matches [Speaker]: Text until a newline or next speaker tag
-        self.tag_pattern = re.compile(r'\[?([A-Za-z0-9 _-]+)\]?:\s*(.*?)(?=\n|\[?[A-Za-z0-9 _-]+\]?:|$)', re.DOTALL)
+        # Brackets are now mandatory
+        self.tag_pattern = re.compile(r'\[([A-Za-z0-9 _-]+)\]:\s*(.*?)(?=\n|\[[A-Za-z0-9 _-]+\]:|$)', re.DOTALL)
 
     def feed(self, chunk):
         self.buffer += chunk

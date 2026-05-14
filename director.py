@@ -213,7 +213,7 @@ REPLY ONLY IN JSON.]
         print(f"Director Error (parsing JSON): {e}. Raw: {response}")
         return False, ""
 
-async def identify_location(user_input, recent_history):
+async def identify_location(user_input, recent_history, current_location=None):
     """
     Uses the LLM to identify if the story has moved to a new location.
     Returns (location_name, description, relative_to, direction) or (None, None, None, None).
@@ -221,7 +221,8 @@ async def identify_location(user_input, recent_history):
     history_text = "\n".join([f"P: {h['user_input']}\nS: {h['assistant_response']}" for h in recent_history[-3:]])
     
     prompt = f"""
-[SYSTEM: You are the Scene Parser. Analyze the recent story history and determine the current physical location of the player.
+[SYSTEM: You are the Scene Parser. Analyze the recent story history and determine if the physical location of the player has CHANGED.
+CURRENT LOCATION: {current_location or 'Unknown'}
 
 RECENT HISTORY:
 {history_text}
@@ -230,14 +231,14 @@ NEW INPUT:
 "{user_input}"
 
 Reply ONLY with a JSON object.
-EXAMPLE STRUCTURE (Do not use these specific values):
+If the player has moved to a definitively NEW and distinct location (not just moving within the same general area), provide the details:
 {{
-    "location": "Name of Location", 
+    "location": "Name of New Location", 
     "description": "Brief atmospheric description",
     "relative_to": "Previous location",
     "direction": "north"
 }}
-If the location is the same as before or unclear, return null values.
+If the location is the SAME as the CURRENT LOCATION or if the movement is just within the same general area, return null values.
 
 REPLY ONLY IN JSON.]
 """
@@ -276,7 +277,7 @@ Reply ONLY with the name (1-3 words).]
     name = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
     return name.strip().strip('"').strip("'")
 
-async def generate_action_plan(user_input, recent_history, active_threads, active_quests):
+async def generate_action_plan(user_input, recent_history, active_threads, active_quests, current_location=None):
     """
     Analyzes the state and generates a structured list of required module actions.
     This coordinates parallel modules.
@@ -294,7 +295,7 @@ async def generate_action_plan(user_input, recent_history, active_threads, activ
         check_narrative_gaps(recent_history, active_threads),
         evaluate_quest_progress(user_input), 
         evaluate_milestone_progress(user_input),
-        identify_location(user_input, recent_history),
+        identify_location(user_input, recent_history, current_location=current_location),
         return_exceptions=True
     )
     

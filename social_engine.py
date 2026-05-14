@@ -6,6 +6,8 @@ import config
 import utils
 import vision
 import director
+import parser
+
 
 async def analyze_interaction(user_input, response_text, character_name):
     """
@@ -150,10 +152,10 @@ async def discover_new_characters(response_text):
     """
     known_chars = [c['name'].lower() for c in db.get_all_characters()]
     
-    # More permissive name extraction: matches [Name]: or Name:
+    # Stricter name extraction: requires [Name]:
     # Supports names with spaces, numbers, and common punctuation
     import re
-    potential_names = re.findall(r'\[?([A-Za-z0-9 _-]+)\]?:', response_text)
+    potential_names = re.findall(r'\[([A-Za-z0-9 _-]+)\]:', response_text)
     
     if potential_names:
         print(f"Social: Scanned text, found potential speakers: {potential_names}")

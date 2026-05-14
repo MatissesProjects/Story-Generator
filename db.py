@@ -64,13 +64,17 @@ def init_db():
         # Simple migration for 'relationships' table
         cursor = conn.execute("PRAGMA table_info(relationships)")
         columns = [column[1] for column in cursor.fetchall()]
-        if 'base_trust' not in columns:
+        if 'base_affection' not in columns:
             print("Migrating database: Adding base anchor columns to 'relationships'")
             conn.execute("ALTER TABLE relationships ADD COLUMN base_trust INTEGER DEFAULT 0")
             conn.execute("ALTER TABLE relationships ADD COLUMN base_fear INTEGER DEFAULT 0")
             conn.execute("ALTER TABLE relationships ADD COLUMN base_affection INTEGER DEFAULT 0")
 
         conn.commit()
+
+    # Initialize default state if missing
+    if get_story_state("narrative_seed") is None:
+        set_story_state("narrative_seed", "The story has just begun.")
 
 def query_db(query, args=(), one=False):
     with sqlite3.connect(DB_PATH) as conn:

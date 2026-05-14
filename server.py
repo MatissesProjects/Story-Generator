@@ -234,7 +234,12 @@ async def websocket_endpoint(websocket: WebSocket):
                             audio_path = await asyncio.to_thread(tts.generate_audio, text, speaker, voice_config=voice_config)
                             if audio_path:
                                 audio_url = f"/audio/{os.path.basename(audio_path)}"
-                                await websocket.send_text(json.dumps({"type": "audio_event", "url": audio_url, "speaker": speaker}))
+                                await websocket.send_text(json.dumps({
+                                    "type": "audio_event", 
+                                    "url": audio_url, 
+                                    "speaker": speaker,
+                                    "content": text
+                                }))
 
                     remaining_blocks = stream_parser.flush()
                     for speaker, text in remaining_blocks:
@@ -242,7 +247,12 @@ async def websocket_endpoint(websocket: WebSocket):
                         audio_path = await asyncio.to_thread(tts.generate_audio, text, speaker, voice_config=voice_config)
                         if audio_path:
                             audio_url = f"/audio/{os.path.basename(audio_path)}"
-                            await websocket.send_text(json.dumps({"type": "audio_event", "url": audio_url, "speaker": speaker}))
+                            await websocket.send_text(json.dumps({
+                                "type": "audio_event", 
+                                "url": audio_url, 
+                                "speaker": speaker,
+                                "content": text
+                            }))
 
                     await log_progress(websocket, "Spark conjured.", "success")
                 else:
@@ -265,8 +275,11 @@ async def websocket_endpoint(websocket: WebSocket):
                     # 1. Context retrieval (Sync but in thread)
                     context_task = asyncio.to_thread(curator.get_relevant_context, user_input)
                     
+                    # Fetch current location to pass to the director
+                    curr_loc_name = db.get_story_state("current_location") or "Unknown"
+                    
                     # 2. Director Action Plan (Async)
-                    plan_task = director.generate_action_plan(user_input, recent_history, active_threads, active_quests)
+                    plan_task = director.generate_action_plan(user_input, recent_history, active_threads, active_quests, current_location=curr_loc_name)
                     
                     # Start context task and plan task
                     facts_future = context_task
@@ -364,8 +377,20 @@ async def websocket_endpoint(websocket: WebSocket):
                         db.set_story_state("current_location", loc['name'])
                         world.move_entity("player", 0, loc['name'])
                         
-                        env_url = await vision_orchestrator.request_generation(websocket, client_id, "environment", {"name": loc['name'], "description": loc['desc']})
-                        await websocket.send_text(json.dumps({"type": "scene_update", "location": loc['name'], "url": env_url}))
+                        # Immediately inform frontend of location change so text can flow
+                        await websocket.send_text(json.dumps({"type": "scene_update", "location": loc['name']}))
+                        
+                        # Generate environment image in background so it doesn't block LLM
+                        async def background_env_gen(loc_name, loc_desc):
+                            try:
+                                env_url = await vision_orchestrator.request_generation(websocket, client_id, "environment", {"name": loc_name, "description": loc_desc})
+                                if env_url:
+                                    await websocket.send_text(json.dumps({"type": "scene_update", "location": loc_name, "url": env_url}))
+                            except Exception as e:
+                                print(f"Background Env Gen Error: {e}")
+                                
+                        asyncio.create_task(background_env_gen(loc['name'], loc['desc']))
+                        curr_loc_name = loc['name']
 
                     # --- PHASE 3: Generation ---
                     turn_count = db.get_history_count()
@@ -373,7 +398,6 @@ async def websocket_endpoint(websocket: WebSocket):
                     persona_blocks = director.get_persona_blocks(user_input, current_turn=turn_count)
                     narrative_seed = db.get_story_state("narrative_seed")
                     current_pacing = db.get_story_state("current_pacing") or "Exploration"
-                    curr_loc_name = db.get_story_state("current_location") or "Unknown"
 
                     # Foreshadowing check
                     foreshadow_note = ""
@@ -425,7 +449,12 @@ async def websocket_endpoint(websocket: WebSocket):
                                 audio_path = await asyncio.to_thread(tts.generate_audio, text, speaker, voice_config=voice_config)
                                 if audio_path:
                                     audio_url = f"/audio/{os.path.basename(audio_path)}"
-                                    await websocket.send_text(json.dumps({"type": "audio_event", "url": audio_url, "speaker": speaker}))
+                                    await websocket.send_text(json.dumps({
+                                        "type": "audio_event", 
+                                        "url": audio_url, 
+                                        "speaker": speaker,
+                                        "content": text
+                                    }))
                                     
                                     # Send visual sync for the speaker
                                     current_entities = [name for name in db.get_all_entities() if name.lower() in full_response.lower()]
@@ -443,7 +472,12 @@ async def websocket_endpoint(websocket: WebSocket):
                         audio_path = await asyncio.to_thread(tts.generate_audio, text, speaker, voice_config=voice_config)
                         if audio_path:
                             audio_url = f"/audio/{os.path.basename(audio_path)}"
-                            await websocket.send_text(json.dumps({"type": "audio_event", "url": audio_url, "speaker": speaker}))
+                            await websocket.send_text(json.dumps({
+                                "type": "audio_event", 
+                                "url": audio_url, 
+                                "speaker": speaker,
+                                "content": text
+                            }))
                             
                             # Final visual sync
                             current_entities = [name for name in db.get_all_entities() if name.lower() in full_response.lower()]
@@ -554,7 +588,20 @@ async def websocket_endpoint(websocket: WebSocket):
                     if intent in ['CONTINUE', 'EMPTY'] and not plan['new_location'] and not plan['quest_updates']:
                         initiative = await director.generate_initiative(recent_history, active_threads)
                         await websocket.send_text(json.dumps({"type": "info", "content": "Director Initiative Triggered."}))
-                        await websocket.send_text(json.dumps({"type": "story_chunk", "content": f"\n\n[SUDDEN EVENT]: {initiative}"}))
+                        
+                        sudden_text = f"[SUDDEN EVENT] {initiative}"
+                        voice_config = db.get_character_voice("Narrator")
+                        audio_path = await asyncio.to_thread(tts.generate_audio, sudden_text, "Narrator", voice_config=voice_config)
+                        if audio_path:
+                            audio_url = f"/audio/{os.path.basename(audio_path)}"
+                            await websocket.send_text(json.dumps({
+                                "type": "audio_event", 
+                                "url": audio_url, 
+                                "speaker": "Narrator",
+                                "content": sudden_text
+                            }))
+                            
+                        full_response += f"\n\n[Narrator]: {sudden_text}"
                         db.log_history("DIRECTOR_INITIATIVE", initiative)
 
                     # Commit Snapshot
@@ -565,15 +612,19 @@ async def websocket_endpoint(websocket: WebSocket):
                     db.commit_snapshot("default_session", user_input, full_response, narrative_seed, loc_id)
 
                     # Periodic Maintenance: Summary and Plot Thread Analysis
-                    if db.get_history_count() % 3 == 0:
-                        await log_progress(websocket, "Analyzing plot threads and updating summary...")
+                    h_count = db.get_history_count()
+                    needs_state_update = False
+
+                    # 1. Update Narrative Seed (Summary) & Analyze Plot Threads every 3 turns
+                    if h_count > 0 and h_count % 3 == 0:
+                        await log_progress(websocket, "Updating story summary and analyzing plot threads...")
                         
-                        # 1. Update Narrative Seed (Summary)
-                        if db.get_history_count() % 10 == 0:
-                            await summarizer.update_narrative_seed()
-                            await websocket.send_text(json.dumps({"type": "info", "content": "Narrative summary updated."}))
+                        # Update Summary
+                        await summarizer.update_narrative_seed()
+                        await websocket.send_text(json.dumps({"type": "info", "content": "Narrative summary updated."}))
+                        needs_state_update = True
                         
-                        # 2. Analyze Plot Threads
+                        # Analyze Plot Threads
                         thread_updates = await director.analyze_plot_threads(recent_history, active_threads)
                         
                         for tid in thread_updates.get("resolved_ids", []):
@@ -583,9 +634,9 @@ async def websocket_endpoint(websocket: WebSocket):
                         for desc in thread_updates.get("new_threads", []):
                             db.add_plot_thread(desc)
                             await websocket.send_text(json.dumps({"type": "info", "content": f"New Plot Thread Discovered: {desc}"}))
-                        
-                        if thread_updates.get("resolved_ids") or thread_updates.get("new_threads"):
-                             await websocket.send_text(json.dumps({"type": "state_update_request"}))
+
+                    if needs_state_update:
+                        await websocket.send_text(json.dumps({"type": "state_update_request"}))
 
                     # Global Simulation Tick (Every 5 turns)
                     if db.get_history_count() % 5 == 0:
