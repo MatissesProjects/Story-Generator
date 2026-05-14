@@ -66,6 +66,39 @@ Provide ONLY the prompt string.]
 """
     return await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
 
+async def run_inference(final_prompt, num_steps=4):
+    """
+    Runs the image generation with automatic CPU fallback if GPU OOM occurs.
+    """
+    global device, pipe
+    
+    try:
+        if device == "cuda":
+            torch.cuda.empty_cache()
+            with torch.cuda.amp.autocast():
+                return pipe(prompt=final_prompt, num_inference_steps=num_steps, guidance_scale=0.0).images[0]
+        else:
+            return pipe(prompt=final_prompt, num_inference_steps=num_steps, guidance_scale=0.0).images[0]
+            
+    except torch.cuda.OutOfMemoryError:
+        print("Vision Engine: GPU Out of Memory! Falling back to CPU for this generation...")
+        
+        # We must re-initialize the pipeline for CPU because it's currently hooked for sequential offload
+        # which puts weights on meta device and breaks .to("cpu")
+        print(f"Vision Engine: Re-initializing model {config.VISION_MODEL} on CPU...")
+        pipe = AutoPipelineForText2Image.from_pretrained(
+            config.VISION_MODEL, 
+            torch_dtype=torch.float32
+        )
+        pipe.to("cpu")
+        
+        device = "cpu" 
+        # Regenerate on CPU
+        return pipe(prompt=final_prompt, num_inference_steps=num_steps, guidance_scale=0.0).images[0]
+    finally:
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
 async def generate_portrait(name, description, traits):
     """
     Generates a portrait for a character and saves it to the static directory.
@@ -91,14 +124,7 @@ async def generate_portrait(name, description, traits):
     print(f"Vision Engine: Final Prompt: {final_prompt}")
     
     # Generate
-    # SDXL Turbo is best at 1-4 steps
-    if device == "cuda":
-        torch.cuda.empty_cache()
-        
-    image = pipe(prompt=final_prompt, num_inference_steps=4, guidance_scale=0.0).images[0]
-    
-    if device == "cuda":
-        torch.cuda.empty_cache()
+    image = await run_inference(final_prompt, num_steps=4)
     
     # Save
     image.save(output_path)
@@ -145,15 +171,8 @@ async def generate_environment(location_name, description):
     final_prompt = clean_vision_prompt(raw_prompt)
     print(f"Vision Engine: Final Environment Prompt: {final_prompt}")
     
-    # Generate (landscape-ish if possible, though SDXL Turbo likes 512x512 or 1024x1024)
-    # We'll stick to default for now to ensure speed and quality
-    if device == "cuda":
-        torch.cuda.empty_cache()
-
-    image = pipe(prompt=final_prompt, num_inference_steps=4, guidance_scale=0.0).images[0]
-    
-    if device == "cuda":
-        torch.cuda.empty_cache()
+    # Generate
+    image = await run_inference(final_prompt, num_steps=4)
     
     image.save(output_path)
     print(f"Vision Engine: Saved environment to {output_path}")
@@ -197,13 +216,7 @@ async def generate_map_tile(biome_type):
     print(f"Vision Engine: Final Tile Prompt: {final_prompt}")
     
     # Generate
-    if device == "cuda":
-        torch.cuda.empty_cache()
-
-    image = pipe(prompt=final_prompt, num_inference_steps=4, guidance_scale=0.0).images[0]
-    
-    if device == "cuda":
-        torch.cuda.empty_cache()
+    image = await run_inference(final_prompt, num_steps=4)
     
     image.save(output_path)
     print(f"Vision Engine: Saved map tile to {output_path}")
