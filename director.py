@@ -264,8 +264,13 @@ async def generate_creative_name(category, context, theme=None):
     """
     theme_str = f"THEME: {theme}" if theme else ""
     prompt = f"""
-[SYSTEM: You are the Creative Namer. Your goal is to generate a UNIQUE and EVOCATIVE name for a {category}.
-Avoid generic tropes. The name should feel like it belongs in a deep, rich world.
+[SYSTEM: You are the Creative Namer. Your goal is to generate a UNIQUE, EVOCATIVE, and LINGUISTICALLY DIVERSE name for a {category}.
+
+RULES:
+1. ABSOLUTELY DO NOT use common fantasy tropes or overused names like 'Kaelen', 'Kael', 'Elias', or 'Aria'.
+2. Use diverse naming conventions inspired by real-world linguistics or unique constructed phonetic structures.
+3. The name should feel like it belongs in a deep, rich, and mysterious world.
+4. Avoid generic, single-syllable, or lazy names.
 
 CONTEXT:
 {context}
