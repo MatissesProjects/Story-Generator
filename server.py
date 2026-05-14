@@ -93,7 +93,8 @@ async def get_asset(asset_type: str, asset_name: str):
         # Fallback to DB to find character for on-demand generation
         char = db.query_db("SELECT description, traits FROM characters WHERE name LIKE ?", (f"%{asset_name}%",), one=True)
         if char:
-            url = await vision.generate_portrait(asset_name, char['description'], char['traits'])
+            # Namespaced: portrait/environment generation
+            url = await vision.generate_portrait(asset_name, char['description'], char['traits'], session_id="default_session")
             curator_visual.entity_cache[asset_name] = url
             return FileResponse(url.lstrip('/'))
         else:
@@ -102,10 +103,10 @@ async def get_asset(asset_type: str, asset_name: str):
     elif asset_type == 'environment':
         loc = db.query_db("SELECT description FROM locations WHERE name LIKE ?", (f"%{asset_name}%",), one=True)
         if loc:
-            url = await vision.generate_environment(asset_name, loc['description'])
+            url = await vision.generate_environment(asset_name, loc['description'], session_id="default_session")
         else:
             # If we don't have it, we generate a generic one based on the name
-            url = await vision.generate_environment(asset_name, f"A cinematic scene of {asset_name}")
+            url = await vision.generate_environment(asset_name, f"A cinematic scene of {asset_name}", session_id="default_session")
         curator_visual.entity_cache[asset_name] = url
         return FileResponse(url.lstrip('/'))
 
@@ -125,7 +126,7 @@ client_capabilities = {}
 pending_vision_requests = {}
 
 class VisionOrchestrator:
-    async def request_generation(self, websocket: WebSocket, client_id: str, request_type: str, content: dict):
+    async def request_generation(self, websocket: WebSocket, client_id: str, request_type: str, content: dict, session_id="default"):
         """
         Orchestrates image generation: local or offloaded to client.
         """
@@ -160,12 +161,12 @@ class VisionOrchestrator:
         
         # Fallback to local generation on the 4090
         if request_type == "portrait":
-            url = await vision.generate_portrait(content['name'], content['description'], content['traits'])
+            url = await vision.generate_portrait(content['name'], content['description'], content['traits'], session_id=session_id)
         elif request_type == "environment":
-            url = await vision.generate_environment(content['name'], content['description'])
+            url = await vision.generate_environment(content['name'], content['description'], session_id=session_id)
         elif request_type == "map_tile":
-            url = await vision.generate_map_tile(content['biome'])
-
+            url = await vision.generate_map_tile(content['biome'], session_id=session_id)
+        return url
         # Store in cache for consistent retrieval
         if url:
             name_key = content.get('name') or content.get('location_name') or content.get('biome')
@@ -263,6 +264,8 @@ async def websocket_endpoint(websocket: WebSocket):
                         prompt = user_input
 
                     # --- PHASE 1: Parallel Context & Planning ---
+                    import time
+                    start_phase = time.time()
                     await log_progress(websocket, "Parallel processing: context, planning, and validation...")
                     
                     # Get shared state
@@ -281,11 +284,10 @@ async def websocket_endpoint(websocket: WebSocket):
                     # 2. Director Action Plan (Async)
                     plan_task = director.generate_action_plan(user_input, recent_history, active_threads, active_quests, current_location=curr_loc_name)
                     
-                    # Start context task and plan task
-                    facts_future = context_task
-                    
-                    # We need facts for validation and dicemaster, so we wait for context first
-                    facts = await facts_future
+                    # Wait for context first
+                    start_context = time.time()
+                    facts = await context_task
+                    print(f"DEBUG: Context retrieval took {time.time() - start_context:.2f}s")
                     
                     # 3. Validation & DiceMaster (using facts)
                     val_task = None
@@ -301,7 +303,10 @@ async def websocket_endpoint(websocket: WebSocket):
                     if val_task: tasks_to_gather.append(val_task)
                     if dice_task: tasks_to_gather.append(dice_task)
                     
+                    start_gather = time.time()
                     gathered_results = await asyncio.gather(*tasks_to_gather, return_exceptions=True)
+                    print(f"DEBUG: Gathered remaining tasks in {time.time() - start_gather:.2f}s")
+                    print(f"DEBUG: Total parallel phase took {time.time() - start_phase:.2f}s")
                     
                     # 1. Action Plan
                     plan = gathered_results[0]
@@ -678,7 +683,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     signature_tic=tic,
                     narrative_role=char_data.get("narrative_role", "NPC")
                 )
-                portrait_url = await vision_orchestrator.request_generation(websocket, client_id, "portrait", {"name": char_data['name'], "description": char_data['description'], "traits": char_data['traits']})
+                portrait_url = await vision_orchestrator.request_generation(websocket, client_id, "portrait", {"name": char_data['name'], "description": char_data['description'], "traits": char_data['traits']}, session_id="default_session")
                 curator_visual.entity_cache[char_data['name']] = portrait_url
                 await websocket.send_text(json.dumps({"type": "info", "content": f"Character {char_data['name']} added with portrait and tic: {tic}"}))
                 await websocket.send_text(json.dumps({"type": "portrait_update", "name": char_data["name"], "url": portrait_url}))

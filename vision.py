@@ -99,7 +99,7 @@ async def run_inference(final_prompt, num_steps=4):
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-async def generate_portrait(name, description, traits):
+async def generate_portrait(name, description, traits, session_id="default"):
     """
     Generates a portrait for a character and saves it to the static directory.
     Returns the URL path of the generated image.
@@ -108,7 +108,7 @@ async def generate_portrait(name, description, traits):
     # Create a hash of the description and traits to ensure unique portraits 
     # for different characters with the same name.
     desc_hash = hashlib.md5(f"{description}{traits}".encode()).hexdigest()[:8]
-    filename = f"{safe_name}_{desc_hash}.png"
+    filename = f"{session_id}_{safe_name}_{desc_hash}.png"
     output_path = os.path.join(config.PORTRAITS_DIR, filename)
     
     # Check if we already have it (if caching is enabled)
@@ -119,9 +119,7 @@ async def generate_portrait(name, description, traits):
     
     # Get a good prompt
     raw_prompt = await stylize_prompt(name, description, traits)
-    print(f"Vision Engine: Raw Prompt: {raw_prompt}")
     final_prompt = clean_vision_prompt(raw_prompt)
-    print(f"Vision Engine: Final Prompt: {final_prompt}")
     
     # Generate
     image = await run_inference(final_prompt, num_steps=4)
@@ -151,14 +149,14 @@ Provide ONLY the prompt string.]
 """
     return await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
 
-async def generate_environment(location_name, description):
+async def generate_environment(location_name, description, session_id="default"):
     """
     Generates an environment image and saves it to the static directory.
     Returns the URL path.
     """
     safe_name = "".join([c for c in location_name if c.isalnum()]).lower()
     desc_hash = hashlib.md5(f"{description}".encode()).hexdigest()[:8]
-    filename = f"{safe_name}_{desc_hash}.png"
+    filename = f"{session_id}_{safe_name}_{desc_hash}.png"
     output_path = os.path.join(config.ENVIRONMENTS_DIR, filename)
     
     # Check if we already have it (if caching is enabled)
@@ -169,7 +167,6 @@ async def generate_environment(location_name, description):
     
     raw_prompt = await stylize_environment_prompt(location_name, description)
     final_prompt = clean_vision_prompt(raw_prompt)
-    print(f"Vision Engine: Final Environment Prompt: {final_prompt}")
     
     # Generate
     image = await run_inference(final_prompt, num_steps=4)
@@ -197,17 +194,18 @@ Provide ONLY the prompt string.]
 """
     return await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
 
-async def generate_map_tile(biome_type):
+async def generate_map_tile(biome_type, session_id="default"):
     """
     Generates a map tile image and saves it to the static directory.
     Returns the URL path.
     """
     safe_name = "".join([c for c in biome_type if c.isalnum()]).lower()
-    output_path = os.path.join(config.MAP_TILES_DIR, f"{safe_name}_tile.png")
+    filename = f"{session_id}_{safe_name}_tile.png"
+    output_path = os.path.join(config.MAP_TILES_DIR, filename)
 
     # Check if we already have it (if caching is enabled)
     if config.IMAGE_CACHE_ENABLED and os.path.exists(output_path):
-        return f"/static/map_tiles/{safe_name}_tile.png"
+        return f"/static/map_tiles/{filename}"
 
     print(f"Vision Engine: Generating map tile for {biome_type}...")
     
@@ -221,7 +219,7 @@ async def generate_map_tile(biome_type):
     image.save(output_path)
     print(f"Vision Engine: Saved map tile to {output_path}")
     
-    return f"/static/map_tiles/{safe_name}_tile.png"
+    return f"/static/map_tiles/{filename}"
 
 # Distributed Vision Support
 # This section is for when vision is run on the Runner PC (3070)
