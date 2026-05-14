@@ -330,20 +330,13 @@ function handleMessage(message) {
         case 'audio_event':
             const audioUrl = `${window.location.protocol}//${window.location.host}${message.url}`;
             
-            // Move current text to history before starting new speaker block
-            if (currentStoryText) {
-                const block = document.createElement('div');
-                block.className = 'story-block';
-                block.innerText = currentStoryText;
-                historyContainer.appendChild(block);
-                currentStoryText = "";
-                currentChunkEl.innerText = "";
-            }
+            // Every time a new audio event comes in, it means a speaker block is starting.
+            // We clear the current text because the audio event carries the 'definitive' text for this block.
+            currentStoryText = "";
+            currentChunkEl.innerText = "";
+            vnDialogueBox.style.display = "none";
             
-            vnNameTag.innerText = message.speaker;
-            vnDialogueBox.style.display = "block";
             queueAudio(audioUrl, message.speaker, message.content);
-            scrollStory();
             break;
 
         case 'debug':
@@ -749,16 +742,21 @@ function addLog(type, content) {
     debugOutput.prepend(entry);
 }
 
-function scrollStory(force = false) {
-    // Small timeout to allow the browser to reflow after text updates
+function scrollStory(element = null) {
+    if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return;
+    }
+
+    // Fallback for general scrolling
     setTimeout(() => {
         const historyAtBottom = historyContainer.scrollHeight - historyContainer.scrollTop <= historyContainer.clientHeight + 100;
         const vnAtBottom = vnDialogueBox.scrollHeight - vnDialogueBox.scrollTop <= vnDialogueBox.clientHeight + 100;
 
-        if (force || historyAtBottom) {
+        if (historyAtBottom) {
             historyContainer.scrollTop = historyContainer.scrollHeight;
         }
-        if (force || vnAtBottom) {
+        if (vnAtBottom) {
             vnDialogueBox.scrollTop = vnDialogueBox.scrollHeight;
         }
     }, 10);
@@ -766,7 +764,13 @@ function scrollStory(force = false) {
 
 // Audio Management
 function queueAudio(url, speaker, content) {
-    audioQueue.push({ url, speaker, content });
+    // Create a block in the history for this upcoming audio
+    const block = document.createElement('div');
+    block.className = 'story-block speaker-block';
+    block.innerHTML = `<span class="speaker-label">${speaker}:</span> <span class="content-text">${content || "..."}</span>`;
+    historyContainer.appendChild(block);
+    
+    audioQueue.push({ url, speaker, content, element: block });
     if (!isPlaying) {
         playNextAudio();
     }
@@ -776,27 +780,35 @@ async function playNextAudio() {
     if (audioQueue.length === 0) {
         isPlaying = false;
         unduckAudio();
+        // Remove active highlighting from all blocks
+        document.querySelectorAll('.story-block.active').forEach(el => el.classList.remove('active'));
         return;
     }
 
     isPlaying = true;
     duckAudio();
-    const { url, speaker, content } = audioQueue.shift();
+    const { url, speaker, content, element } = audioQueue.shift();
     
+    // Highlight the active block in history
+    document.querySelectorAll('.story-block.active').forEach(el => el.classList.remove('active'));
+    if (element) {
+        element.classList.add('active');
+        // Populate the content if it was "..."
+        const contentEl = element.querySelector('.content-text');
+        if (contentEl && content) {
+            contentEl.innerText = content;
+        }
+        scrollStory(element);
+    }
+
     // Apply visual sync if available
     if (visualQueue.length > 0) {
         const nextVisuals = visualQueue.shift();
         updateVisualStack(nextVisuals);
     }
     
-    vnNameTag.innerText = speaker;
-    if (content) {
-        currentChunkEl.innerText = content;
-        currentStoryText = content;
-    }
-
     statusIndicator.innerText = `Speaking: ${speaker}...`;
-    scrollStory(true);
+    scrollStory();
     
     currentAudio = new Audio(url);
     currentAudio.volume = globalVolume;
@@ -819,7 +831,6 @@ async function playNextAudio() {
         }
     } catch (err) {
         console.warn("Autoplay blocked or playback error:", err);
-        // Play next anyway
         playNextAudio();
     }
 }
@@ -861,26 +872,20 @@ volumeSlider.oninput = (e) => {
 inputForm.onsubmit = (e) => {
     e.preventDefault();
     const text = userInput.value.trim();
-    // if (!text) return; // Allow empty text for continuation
-
-    // Move current text to history
-    if (currentStoryText) {
-        const block = document.createElement('div');
-        block.className = 'story-block';
-        block.innerText = currentStoryText;
-        historyContainer.appendChild(block);
-        currentStoryText = "";
-        currentChunkEl.innerText = "";
-    }
+    
+    // Clear the current generation box when submitting
+    currentStoryText = "";
+    currentChunkEl.innerText = "";
+    vnDialogueBox.style.display = "none";
 
     const userBlock = document.createElement('div');
     userBlock.className = 'story-block user-block';
     userBlock.innerText = `> ${text || "Continue..."}`;
     historyContainer.appendChild(userBlock);
+    scrollStory(userBlock);
 
     socket.send(jsonMsg("user_input", text));
     userInput.value = "";
-    scrollStory(true);
 };
 
 continueBtn.onclick = () => {

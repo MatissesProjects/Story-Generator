@@ -174,10 +174,48 @@ button {
     background-color: var(--accent-color);
     color: white;
     border: none;
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 0.8rem;
     border-radius: 4px;
     cursor: pointer;
+    font-size: 0.85rem;
     font-weight: bold;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+button:active {
+    transform: scale(0.98);
+}
+
+.story-block {
+    margin-bottom: 1rem;
+    line-height: 1.6;
+    padding: 0.8rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    border-left: 3px solid transparent;
+    transition: background 0.3s, border-color 0.3s;
+}
+
+.story-block.active {
+    background: rgba(74, 144, 226, 0.15);
+    border-left-color: var(--accent-color);
+}
+
+.speaker-label {
+    font-weight: bold;
+    color: var(--accent-color);
+    margin-right: 0.5rem;
+    display: block;
+    margin-bottom: 0.2rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.user-block {
+    color: #4ade80;
+    font-style: italic;
+    background: rgba(74, 222, 128, 0.05);
 }
 
 button:hover {
