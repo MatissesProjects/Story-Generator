@@ -4,10 +4,13 @@ let currentStoryText = "";
 const audioQueue = [];
 const visualQueue = [];
 let isPlaying = false;
+let isPaused = false;
+let currentAudio = null;
 let currentMusic = null;
 let currentAmbiance = null;
 let nextMusic = null;
 let lastNonLeitmotifUrl = null;
+let globalVolume = 1.0;
 
 // DOM Elements
 const historyContainer = document.getElementById('history-container');
@@ -30,6 +33,8 @@ const locationNameEl = document.getElementById('current-location-name');
 const resetBtn = document.getElementById('reset-btn');
 const sparkBtn = document.getElementById('spark-btn');
 const continueBtn = document.getElementById('continue-btn');
+const pauseBtn = document.getElementById('pause-btn');
+const volumeSlider = document.getElementById('volume-slider');
 const mapBtn = document.getElementById('map-btn');
 const mapOverlay = document.getElementById('map-overlay');
 const closeMap = document.getElementById('close-map');
@@ -314,9 +319,12 @@ function handleMessage(message) {
             currentStoryText += message.content;
             currentChunkEl.innerText = currentStoryText;
             vnDialogueBox.style.display = "block";
-            // Immediate scroll for current text
-            vnDialogueBox.scrollTop = vnDialogueBox.scrollHeight;
-            scrollStory();
+            
+            // Smart scroll for dialogue box: only scroll if user is already at the bottom
+            const isAtBottom = vnDialogueBox.scrollHeight - vnDialogueBox.scrollTop <= vnDialogueBox.clientHeight + 60;
+            if (isAtBottom) {
+                vnDialogueBox.scrollTop = vnDialogueBox.scrollHeight;
+            }
             break;
         
         case 'audio_event':
@@ -334,7 +342,7 @@ function handleMessage(message) {
             
             vnNameTag.innerText = message.speaker;
             vnDialogueBox.style.display = "block";
-            queueAudio(audioUrl, message.speaker);
+            queueAudio(audioUrl, message.speaker, message.content);
             scrollStory();
             break;
 
@@ -371,7 +379,7 @@ function handleMessage(message) {
             sparkBlock.className = 'story-block spark-block';
             sparkBlock.innerHTML = `<strong>Spark Idea:</strong> ${message.content}`;
             historyContainer.appendChild(sparkBlock);
-            scrollStory();
+            scrollStory(true);
             break;
 
         case 'validation_failure':
@@ -381,7 +389,7 @@ function handleMessage(message) {
             failBlock.style.color = '#ff6b6b';
             failBlock.innerText = `[Logic Error]: ${message.content}`;
             historyContainer.appendChild(failBlock);
-            scrollStory();
+            scrollStory(true);
             break;
 
         case 'state_update':
@@ -511,7 +519,10 @@ function updateMusic(url, isLeitmotif = false) {
 
     currentMusic = newAudio;
     currentMusic.play().then(() => {
-        const targetVol = isDucked ? DUCKED_MUSIC_VOL : NORMAL_MUSIC_VOL;
+        if (isPaused) {
+            currentMusic.pause();
+        }
+        const targetVol = (isDucked ? DUCKED_MUSIC_VOL : NORMAL_MUSIC_VOL) * globalVolume;
         fadeIn(currentMusic, targetVol);
     }).catch(e => console.warn("Music autoplay blocked:", e));
 }
@@ -519,15 +530,15 @@ function updateMusic(url, isLeitmotif = false) {
 function duckAudio() {
     if (isDucked) return;
     isDucked = true;
-    if (currentMusic) currentMusic.volume = DUCKED_MUSIC_VOL;
-    if (currentAmbiance) currentAmbiance.volume = DUCKED_AMBIANCE_VOL;
+    if (currentMusic) currentMusic.volume = DUCKED_MUSIC_VOL * globalVolume;
+    if (currentAmbiance) currentAmbiance.volume = DUCKED_AMBIANCE_VOL * globalVolume;
 }
 
 function unduckAudio() {
     if (!isDucked) return;
     isDucked = false;
-    if (currentMusic) currentMusic.volume = NORMAL_MUSIC_VOL;
-    if (currentAmbiance) currentAmbiance.volume = NORMAL_AMBIANCE_VOL;
+    if (currentMusic) currentMusic.volume = NORMAL_MUSIC_VOL * globalVolume;
+    if (currentAmbiance) currentAmbiance.volume = NORMAL_AMBIANCE_VOL * globalVolume;
 }
 
 function toggleKenBurns(el) {
@@ -543,6 +554,8 @@ function fadeIn(audio, targetVol = 0.5) {
     audio.volume = 0;
     const interval = setInterval(() => {
         vol += 0.02;
+        // Adjust targetVol dynamically if globalVolume changed during fade? 
+        // For simplicity, we use the targetVol passed at start
         if (vol >= targetVol) {
             audio.volume = targetVol;
             clearInterval(interval);
@@ -736,17 +749,24 @@ function addLog(type, content) {
     debugOutput.prepend(entry);
 }
 
-function scrollStory() {
+function scrollStory(force = false) {
     // Small timeout to allow the browser to reflow after text updates
     setTimeout(() => {
-        historyContainer.scrollTop = historyContainer.scrollHeight;
-        vnDialogueBox.scrollTop = vnDialogueBox.scrollHeight;
+        const historyAtBottom = historyContainer.scrollHeight - historyContainer.scrollTop <= historyContainer.clientHeight + 100;
+        const vnAtBottom = vnDialogueBox.scrollHeight - vnDialogueBox.scrollTop <= vnDialogueBox.clientHeight + 100;
+
+        if (force || historyAtBottom) {
+            historyContainer.scrollTop = historyContainer.scrollHeight;
+        }
+        if (force || vnAtBottom) {
+            vnDialogueBox.scrollTop = vnDialogueBox.scrollHeight;
+        }
     }, 10);
 }
 
 // Audio Management
-function queueAudio(url, speaker) {
-    audioQueue.push({ url, speaker });
+function queueAudio(url, speaker, content) {
+    audioQueue.push({ url, speaker, content });
     if (!isPlaying) {
         playNextAudio();
     }
@@ -761,7 +781,7 @@ async function playNextAudio() {
 
     isPlaying = true;
     duckAudio();
-    const { url, speaker } = audioQueue.shift();
+    const { url, speaker, content } = audioQueue.shift();
     
     // Apply visual sync if available
     if (visualQueue.length > 0) {
@@ -769,21 +789,34 @@ async function playNextAudio() {
         updateVisualStack(nextVisuals);
     }
     
+    vnNameTag.innerText = speaker;
+    if (content) {
+        currentChunkEl.innerText = content;
+        currentStoryText = content;
+    }
+
     statusIndicator.innerText = `Speaking: ${speaker}...`;
-    scrollStory();
-    const audio = new Audio(url);
+    scrollStory(true);
     
-    audio.onended = () => {
+    currentAudio = new Audio(url);
+    currentAudio.volume = globalVolume;
+    
+    currentAudio.onended = () => {
+        currentAudio = null;
         playNextAudio();
     };
 
-    audio.onerror = (e) => {
+    currentAudio.onerror = (e) => {
         console.error("Audio Playback Error:", e);
+        currentAudio = null;
         playNextAudio();
     };
 
     try {
-        await audio.play();
+        await currentAudio.play();
+        if (isPaused) {
+            currentAudio.pause();
+        }
     } catch (err) {
         console.warn("Autoplay blocked or playback error:", err);
         // Play next anyway
@@ -792,6 +825,39 @@ async function playNextAudio() {
 }
 
 // Input Handlers
+pauseBtn.onclick = () => {
+    isPaused = !isPaused;
+    pauseBtn.innerText = isPaused ? "Resume Audio" : "Pause Audio";
+    pauseBtn.style.backgroundColor = isPaused ? "#facc15" : "";
+
+    if (isPaused) {
+        if (currentAudio) currentAudio.pause();
+        if (currentMusic) currentMusic.pause();
+        if (currentAmbiance) currentAmbiance.pause();
+    } else {
+        if (currentAudio) currentAudio.play().catch(e => console.warn("Audio resume blocked:", e));
+        if (currentMusic) currentMusic.play().catch(e => console.warn("Music resume blocked:", e));
+        if (currentAmbiance) currentAmbiance.play().catch(e => console.warn("Ambiance resume blocked:", e));
+    }
+};
+
+volumeSlider.oninput = (e) => {
+    globalVolume = parseFloat(e.target.value);
+    
+    // Update currently playing speech
+    if (currentAudio) currentAudio.volume = globalVolume;
+    
+    // Update background audio (respecting ducking)
+    if (currentMusic) {
+        const targetMusicVol = isDucked ? DUCKED_MUSIC_VOL : NORMAL_MUSIC_VOL;
+        currentMusic.volume = targetMusicVol * globalVolume;
+    }
+    if (currentAmbiance) {
+        const targetAmbVol = isDucked ? DUCKED_AMBIANCE_VOL : NORMAL_AMBIANCE_VOL;
+        currentAmbiance.volume = targetAmbVol * globalVolume;
+    }
+};
+
 inputForm.onsubmit = (e) => {
     e.preventDefault();
     const text = userInput.value.trim();
@@ -814,7 +880,7 @@ inputForm.onsubmit = (e) => {
 
     socket.send(jsonMsg("user_input", text));
     userInput.value = "";
-    scrollStory();
+    scrollStory(true);
 };
 
 continueBtn.onclick = () => {
@@ -1039,34 +1105,11 @@ function updateAmbiance(url) {
 
     currentAmbiance = newAudio;
     currentAmbiance.play().then(() => {
-        fadeIn(currentAmbiance, 0.3); // Ambiance slightly quieter than music
+        if (isPaused) {
+            currentAmbiance.pause();
+        }
+        fadeIn(currentAmbiance, 0.3 * globalVolume); // Ambiance slightly quieter than music
     }).catch(e => console.warn("Ambiance autoplay blocked:", e));
-}
-
-function fadeIn(audio, targetVol = 0.5) {
-    let vol = 0;
-    const interval = setInterval(() => {
-        vol += 0.02;
-        if (vol >= targetVol) {
-            audio.volume = targetVol;
-            clearInterval(interval);
-        } else {
-            audio.volume = vol;
-        }
-    }, 100);
-}
-
-function fadeOut(audio) {
-    let vol = audio.volume;
-    const interval = setInterval(() => {
-        vol -= 0.02;
-        if (vol <= 0) {
-            audio.pause();
-            clearInterval(interval);
-        } else {
-            audio.volume = vol;
-        }
-    }, 100);
 }
 
 function jsonMsg(type, content) {
