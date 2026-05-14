@@ -31,6 +31,7 @@ def clean_text_for_tts(text: str) -> str:
     text = "".join([c for c in text if unicodedata.category(c) != 'Mn'])
     # Replace common problematic characters
     text = text.replace('\u0329', '')
+    text = text.replace('*', '')
     return text.strip()
 
 def get_voice(voice_model=None):
