@@ -27,3 +27,7 @@
 | `adventure-arcs` | Support pre-defined story structures and milestones. | ✅ Completed | [Link](./tracks/adventure-arcs/index.md) |
 | `cinematic-experience` | Blend literary character techniques (anchors) with YouTube-style cinematic delivery (Ken Burns, layered audio). | ✅ Completed | [Link](./tracks/cinematic-experience/index.md) |
 | `robust-testing` | Implement adversarial and edge-case test suites to ensure narrative and logical consistency. | ✅ Completed | [Link](./tracks/robust-testing/index.md) |
+| `htn-planning` | Implement a hierarchical planner for adaptive story arcs and proactive coherence. | ⏳ Planned | [Link](./tracks/htn-planning/index.md) |
+| `emotional-modeling` | Implement the OCC framework for character interiority and affective feedback. | ⏳ Planned | [Link](./tracks/emotional-modeling/index.md) |
+| `drama-management` | Build the Tension Curve monitor and real-time pacing controller. | ⏳ Planned | [Link](./tracks/drama-management/index.md) |
+| `multimodal-coupling` | Synchronize visual/audio cues with real-time narrative tension. | ⏳ Planned | [Link](./tracks/multimodal-coupling/index.md) |
