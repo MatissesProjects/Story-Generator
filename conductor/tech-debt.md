@@ -9,7 +9,7 @@ This document tracks identified architectural issues, performance bottlenecks, a
     *   *Solution*: Migrate the database layer to an async driver (like `aiosqlite`) or wrap operations in worker threads.
 
 ## Priority 2: Architectural Monoliths (Medium)
-*   [ ] **The "God Object" (`server.py`)**: At nearly 900 lines, the server file handles everything from WebSocket routing to story logic, validation, and phase orchestration.
+*   [x] **The "God Object" (`server.py`)**: At nearly 900 lines, the server file handles everything from WebSocket routing to story logic, validation, and phase orchestration.
     *   *Solution*: Break the "Turn Loop" logic into a separate `turn_orchestrator.py` module.
 *   [ ] **The Frontend Giant (`static/app.js`)**: At over 1100 lines, this file handles DOM manipulation, WebSocket events, complex audio/visual queuing, and state management all in one place.
     *   *Solution*: Modularize into smaller files (e.g., `audio.js`, `ui.js`, `network.js`), maintaining vanilla JS if desired.
