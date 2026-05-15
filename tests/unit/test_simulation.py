@@ -4,33 +4,13 @@ import db
 import simulation_manager
 from unittest.mock import AsyncMock, patch
 
-@pytest.fixture(autouse=True)
-def setup_test_db():
-    import uuid
-    import os
-    old_path = db.DB_PATH
-    test_db = f"test_sim_{uuid.uuid4()}.db"
-    
-    db.close_db()
-    db.DB_PATH = test_db
-    db.init_db()
-    
-    # Initialize world time
-    db.set_story_state("world_time", "0")
-    
-    yield
-    
-    db.close_db()
-    if os.path.exists(test_db):
-        try:
-            os.remove(test_db)
-        except:
-            pass
-    db.DB_PATH = old_path
-    db.close_db()
-
 @pytest.mark.asyncio
 async def test_simulation_tick_progression():
+    # Initialize world time
+    db.set_story_state("world_time", "0")
+    # Clear characters to prevent NPC actions from cluttering events
+    db.execute_db("DELETE FROM characters")
+    
     # Trigger first tick
     with patch('llm.async_generate_full_response', new_callable=AsyncMock) as mock_llm:
         mock_llm.return_value = '{"type": "Environmental", "description": "A storm happens.", "location_name": null, "impact_level": 2}'

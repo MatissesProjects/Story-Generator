@@ -9,22 +9,6 @@ import summarizer
 import llm
 from unittest.mock import AsyncMock, patch, MagicMock
 
-@pytest.fixture(autouse=True)
-def setup_test_db():
-    import uuid
-    import os
-    old_path = db.DB_PATH
-    test_db = f"test_engines_{uuid.uuid4()}.db"
-    db.DB_PATH = test_db
-    db.init_db()
-    yield
-    if os.path.exists(test_db):
-        try:
-            os.remove(test_db)
-        except:
-            pass
-    db.DB_PATH = old_path
-
 @pytest.mark.asyncio
 async def test_social_engine_analysis():
     # Mock LLM for social analysis
@@ -57,10 +41,11 @@ async def test_social_engine_update():
         
         # This will identify Elara from the names and update her
         await social_engine.update_social_state("I give Elara medicine", "Elara is happy.")
-        
-        rel = db.get_relationship(0, 1) # Player (0) and first char (1)
-        assert rel['trust'] == 5
 
+        chars = db.get_all_characters()
+        elara_id = [c['id'] for c in chars if c['name'] == "Elara"][0]
+        rel = db.get_relationship(0, elara_id) # Player (0) and Elara
+        assert rel['trust'] == 5
 @pytest.mark.asyncio
 async def test_music_mood_detection():
     with patch('llm.async_generate_full_response', new_callable=AsyncMock) as mock_llm:

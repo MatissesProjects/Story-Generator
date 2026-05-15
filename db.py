@@ -13,12 +13,23 @@ def get_db():
     if not hasattr(_local, "conn") or _local.conn is None:
         _local.conn = sqlite3.connect(DB_PATH, timeout=10.0)
         _local.conn.row_factory = sqlite3.Row
+        _local.current_path = DB_PATH
+        
+    # Safety check: if DB_PATH changed but we have an old connection, close it
+    if _local.current_path != DB_PATH:
+        _local.conn.close()
+        _local.conn = sqlite3.connect(DB_PATH, timeout=10.0)
+        _local.conn.row_factory = sqlite3.Row
+        _local.current_path = DB_PATH
+        
     return _local.conn
 
 def close_db():
     if hasattr(_local, "conn") and _local.conn is not None:
         _local.conn.close()
         _local.conn = None
+    if hasattr(_local, "current_path"):
+        _local.current_path = None
 
 def init_db():
     with open("schema.sql", "r") as f:

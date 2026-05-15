@@ -8,27 +8,6 @@ import llm
 import json
 from unittest.mock import AsyncMock, patch
 
-# Configuration for test DB
-TEST_DB_PATH = "test_story_memory.db"
-
-@pytest.fixture(autouse=True)
-def setup_test_db():
-    # Override DB_PATH in db module
-    old_path = db.DB_PATH
-    # Use a unique DB for each test to avoid file locking/cleanup issues on Windows
-    import uuid
-    test_db = f"test_{uuid.uuid4()}.db"
-    db.DB_PATH = test_db
-    db.init_db()
-    yield
-    # Cleanup
-    if os.path.exists(test_db):
-        try:
-            os.remove(test_db)
-        except:
-            pass 
-    db.DB_PATH = old_path
-
 def test_db_basic_ops():
     # Test character adding/retrieval
     with patch('memory_engine.add_character_vector'):

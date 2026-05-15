@@ -23,7 +23,7 @@ async def test_atmosphere_detection():
         atmos = await engine.detect_atmosphere("The cave was dark and cold.", "Ancient Ruins")
         assert atmos['lighting'] == "flickering_torchlight"
         assert atmos['weather'] == "misty"
-        assert atmos['tint'] == "rgba(255, 100, 0, 0.1)"
+        assert atmos['tint'] == "rgba(255, 100, 0, 0.15)"
 
 def test_atmosphere_css_helper():
     engine = atmosphere_engine.AtmosphereEngine()

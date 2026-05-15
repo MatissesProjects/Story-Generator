@@ -30,4 +30,4 @@ def test_visual_stack_fallback():
     
     assert stack['texture'] == curator.textures["Default"]
     assert stack['overlay'] is None
-    assert stack['entity'] is None
+    assert stack['slots']['center'] is None

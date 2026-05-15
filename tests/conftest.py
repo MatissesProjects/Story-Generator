@@ -2,19 +2,29 @@ import pytest
 import sqlite3
 import os
 import db
+import memory_engine
+import config
 import asyncio
 from unittest.mock import AsyncMock, patch
 
 @pytest.fixture(autouse=True, scope="function")
 def test_db(tmp_path):
     """
-    Creates a temporary database for each test and points db.DB_PATH to it.
+    Creates a temporary database and vector DB for each test and points paths to them.
     """
     test_db_path = tmp_path / "test_story_memory.db"
+    test_vector_path = tmp_path / "test_vector_db"
     
-    # Store original path
+    # Store original paths
     original_db_path = db.DB_PATH
+    original_vector_path = config.VECTOR_DB_PATH
+    
+    # Ensure any existing connection is closed
+    db.close_db()
+    memory_engine.reset_memory_engine()
+    
     db.DB_PATH = str(test_db_path)
+    config.VECTOR_DB_PATH = str(test_vector_path)
     
     # Initialize the test database with schema
     db.init_db()
@@ -22,12 +32,18 @@ def test_db(tmp_path):
     yield db.DB_PATH
     
     # Clean up and restore
+    db.close_db()
+    memory_engine.reset_memory_engine()
+    
     db.DB_PATH = original_db_path
+    config.VECTOR_DB_PATH = original_vector_path
+    
     if test_db_path.exists():
         try:
             os.remove(test_db_path)
         except PermissionError:
             pass
+    db.close_db()
 
 @pytest.fixture
 def mock_llm():

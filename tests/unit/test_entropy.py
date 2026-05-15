@@ -6,38 +6,17 @@ import entropy_engine
 import canon_checker
 from unittest.mock import AsyncMock, patch
 
-@pytest.fixture(autouse=True)
-def setup_test_db():
-    import uuid
-    import os
-    old_path = db.DB_PATH
-    test_db = f"test_entropy_{uuid.uuid4()}.db"
-    db.DB_PATH = test_db
-    db.init_db()
-    
-    # Add test characters and relationships
+@pytest.mark.asyncio
+async def test_relationship_decay_anchored():
+    # Setup
     db.add_character("CharA", "A", "A")
     db.add_character("CharB", "B", "B")
     chars = db.get_all_characters()
     id_a = chars[0]['id']
     id_b = chars[1]['id']
-    
-    # Set relationship to positive values
     db.update_relationship(id_a, id_b, 10, -10, 20, "Initial meeting")
-    
-    # Add lore
     db.add_lore("The Sun", "It is yellow and bright.")
-    
-    yield
-    if os.path.exists(test_db):
-        try:
-            os.remove(test_db)
-        except:
-            pass
-    db.DB_PATH = old_path
 
-@pytest.mark.asyncio
-async def test_relationship_decay_anchored():
     engine = entropy_engine.EntropyEngine()
     
     chars = db.get_all_characters()
@@ -52,7 +31,7 @@ async def test_relationship_decay_anchored():
         await engine.run_tick(1)
         
     rels = db.get_all_relationships()
-    rel = rels[0]
+    rel = [r for r in rels if r['char_a_id'] == id_a and r['char_b_id'] == id_b][0]
     
     # Trust 20, Anchor 10, Diff 10. Decay 10% of 10 = 1. New = 19
     assert rel['trust'] == 19
@@ -94,6 +73,9 @@ async def test_canon_lore_duel_retcon():
 
 @pytest.mark.asyncio
 async def test_lore_volatility():
+    # Setup
+    db.execute_db("DELETE FROM lore")
+    db.add_lore("The Sun", "It is yellow and bright.")
     engine = entropy_engine.EntropyEngine()
     
     # Mock LLM for rumor generation
