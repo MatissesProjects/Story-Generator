@@ -71,14 +71,23 @@ async def run_inference(final_prompt, num_steps=4):
     Runs the image generation with automatic CPU fallback if GPU OOM occurs.
     """
     global device, pipe
+    import asyncio
     
-    try:
-        if device == "cuda":
+    def _do_inference(prompt, steps, current_device):
+        if current_device == "cuda":
             torch.cuda.empty_cache()
             with torch.cuda.amp.autocast():
-                return pipe(prompt=final_prompt, num_inference_steps=num_steps, guidance_scale=0.0).images[0]
+                return pipe(prompt=prompt, num_inference_steps=steps, guidance_scale=0.0).images[0]
         else:
-            return pipe(prompt=final_prompt, num_inference_steps=num_steps, guidance_scale=0.0).images[0]
+            with torch.inference_mode():
+                image = pipe(prompt=prompt, num_inference_steps=steps, guidance_scale=0.0).images[0]
+                if image.getextrema() == ((0, 0), (0, 0), (0, 0)):
+                     print("Vision Engine: CPU generation returned a black image, retrying once...")
+                     image = pipe(prompt=prompt, num_inference_steps=steps, guidance_scale=0.0).images[0]
+                return image
+
+    try:
+        return await asyncio.to_thread(_do_inference, final_prompt, num_steps, device)
             
     except torch.cuda.OutOfMemoryError:
         print("Vision Engine: GPU Out of Memory! Falling back to CPU for this generation...")
@@ -91,10 +100,13 @@ async def run_inference(final_prompt, num_steps=4):
             torch_dtype=torch.float32
         )
         pipe.to("cpu")
+        # Ensure VAE is in float32 for CPU inference
+        pipe.vae.to(dtype=torch.float32)
         
         device = "cpu" 
+        
         # Regenerate on CPU
-        return pipe(prompt=final_prompt, num_inference_steps=num_steps, guidance_scale=0.0).images[0]
+        return await asyncio.to_thread(_do_inference, final_prompt, num_steps, device)
     finally:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()

@@ -268,18 +268,26 @@ async def websocket_endpoint(websocket: WebSocket):
                     start_phase = time.time()
                     await log_progress(websocket, "Parallel processing: context, planning, and validation...")
                     
-                    # Get shared state
-                    player_inv = db.get_inventory("player", 0)
-                    player_stats = db.get_entity_stats("player", 0)
-                    active_threads = db.get_active_plot_threads()
-                    active_quests = db.get_active_quests()
-                    recent_history = db.get_recent_history(limit=10)
+                    # Get shared state in a background thread to prevent event loop blocking
+                    def get_turn_state():
+                        return (
+                            db.get_inventory("player", 0),
+                            db.get_entity_stats("player", 0),
+                            db.get_active_plot_threads(),
+                            db.get_active_quests(),
+                            db.get_recent_history(limit=10),
+                            db.get_story_state("current_location") or "Unknown"
+                        )
+                    
+                    state_task = asyncio.to_thread(get_turn_state)
                     
                     # 1. Context retrieval (Sync but in thread)
                     context_task = asyncio.to_thread(curator.get_relevant_context, user_input)
                     
-                    # Fetch current location to pass to the director
-                    curr_loc_name = db.get_story_state("current_location") or "Unknown"
+                    # Fetch state
+                    start_state = time.time()
+                    player_inv, player_stats, active_threads, active_quests, recent_history, curr_loc_name = await state_task
+                    print(f"DEBUG: State retrieval took {time.time() - start_state:.2f}s")
                     
                     # 2. Director Action Plan (Async)
                     plan_task = director.generate_action_plan(user_input, recent_history, active_threads, active_quests, current_location=curr_loc_name)
@@ -683,10 +691,19 @@ async def websocket_endpoint(websocket: WebSocket):
                     signature_tic=tic,
                     narrative_role=char_data.get("narrative_role", "NPC")
                 )
-                portrait_url = await vision_orchestrator.request_generation(websocket, client_id, "portrait", {"name": char_data['name'], "description": char_data['description'], "traits": char_data['traits']}, session_id="default_session")
-                curator_visual.entity_cache[char_data['name']] = portrait_url
-                await websocket.send_text(json.dumps({"type": "info", "content": f"Character {char_data['name']} added with portrait and tic: {tic}"}))
-                await websocket.send_text(json.dumps({"type": "portrait_update", "name": char_data["name"], "url": portrait_url}))
+                # Generate portrait in background
+                async def background_portrait_gen(name, desc, traits):
+                    try:
+                        portrait_url = await vision_orchestrator.request_generation(websocket, client_id, "portrait", {"name": name, "description": desc, "traits": traits}, session_id="default_session")
+                        curator_visual.entity_cache[name] = portrait_url
+                        await websocket.send_text(json.dumps({"type": "portrait_update", "name": name, "url": portrait_url}))
+                        await websocket.send_text(json.dumps({"type": "info", "content": f"Portrait for {name} generated."}))
+                    except Exception as e:
+                        print(f"Background Portrait Gen Error: {e}")
+                
+                asyncio.create_task(background_portrait_gen(char_data['name'], char_data['description'], char_data['traits']))
+                
+                await websocket.send_text(json.dumps({"type": "info", "content": f"Character {char_data['name']} added with tic: {tic}"}))
                 await websocket.send_text(json.dumps({"type": "state_update_request"}))
 
             elif message["type"] == "get_creative_name":
@@ -748,10 +765,44 @@ async def websocket_endpoint(websocket: WebSocket):
                     await websocket.send_text(json.dumps({"type": "error", "content": "No pacing value provided"}))
 
             elif message["type"] == "get_state":
-                seed = db.get_story_state("narrative_seed")
-                threads = db.get_active_plot_threads()
-                curr_loc_name = db.get_story_state("current_location")
-                curr_pacing = db.get_story_state("current_pacing") or "Exploration"
+                def get_full_state():
+                    seed = db.get_story_state("narrative_seed")
+                    threads = db.get_active_plot_threads()
+                    curr_loc_name = db.get_story_state("current_location")
+                    curr_pacing = db.get_story_state("current_pacing") or "Exploration"
+
+                    chars = db.query_db("SELECT id, name, description, traits, social, ambition, safety, resources, current_goal, current_task, signature_tic, narrative_role FROM characters")
+                    char_list = []
+                    for c in chars:
+                        rel = db.get_relationship(0, c['id'])
+                        char_list.append({
+                            "name": c['name'],
+                            "description": c['description'],
+                            "traits": c['traits'],
+                            "social": c['social'],
+                            "ambition": c['ambition'],
+                            "safety": c['safety'],
+                            "resources": c['resources'],
+                            "current_goal": c['current_goal'],
+                            "current_task": c['current_task'],
+                            "signature_tic": c['signature_tic'],
+                            "narrative_role": c['narrative_role'],
+                            "relationship": {
+                                "trust": rel['trust'],
+                                "fear": rel['fear'],
+                                "affection": rel['affection']
+                            }
+                        })
+
+                    quests = db.get_active_quests()
+                    active_arc = db.get_active_arc()
+                    milestone_idx = db.get_current_milestone_index()
+                    inventory = db.get_inventory("player", 0)
+                    stats = db.get_entity_stats("player", 0)
+                    
+                    return seed, threads, curr_loc_name, curr_pacing, char_list, quests, active_arc, milestone_idx, inventory, stats
+
+                seed, threads, curr_loc_name, curr_pacing, char_list, quests, active_arc, milestone_idx, inventory, stats = await asyncio.to_thread(get_full_state)
 
                 loc_url = None
                 if curr_loc_name:
@@ -762,43 +813,16 @@ async def websocket_endpoint(websocket: WebSocket):
                         loc_path = os.path.join(config.ENVIRONMENTS_DIR, f"{safe_name}.png")
                         loc_url = f"/static/environments/{safe_name}.png" if os.path.exists(loc_path) else None
 
-                chars = db.query_db("SELECT id, name, description, traits, social, ambition, safety, resources, current_goal, current_task, signature_tic, narrative_role FROM characters")
-                char_list = []
-                for c in chars:
+                # Post-process character list to add cached portrait URLs (done on main thread since it touches global cache)
+                for char in char_list:
                     url = None
-                    if c['name'] in curator_visual.entity_cache:
-                        url = curator_visual.entity_cache[c['name']]
+                    if char['name'] in curator_visual.entity_cache:
+                        url = curator_visual.entity_cache[char['name']]
                     else:
-                        safe_name = "".join([char for char in c['name'] if char.isalnum()]).lower()
+                        safe_name = "".join([c for c in char['name'] if c.isalnum()]).lower()
                         portrait_path = os.path.join(config.PORTRAITS_DIR, f"{safe_name}.png")
                         url = f"/static/portraits/{safe_name}.png" if os.path.exists(portrait_path) else None
-                    
-                    rel = db.get_relationship(0, c['id'])
-                    char_list.append({
-                        "name": c['name'],
-                        "description": c['description'],
-                        "traits": c['traits'],
-                        "portrait": url,
-                        "social": c['social'],
-                        "ambition": c['ambition'],
-                        "safety": c['safety'],
-                        "resources": c['resources'],
-                        "current_goal": c['current_goal'],
-                        "current_task": c['current_task'],
-                        "signature_tic": c['signature_tic'],
-                        "narrative_role": c['narrative_role'],
-                        "relationship": {
-                            "trust": rel['trust'],
-                            "fear": rel['fear'],
-                            "affection": rel['affection']
-                        }
-                    })
-
-                quests = db.get_active_quests()
-                active_arc = db.get_active_arc()
-                milestone_idx = db.get_current_milestone_index()
-                inventory = db.get_inventory("player", 0)
-                stats = db.get_entity_stats("player", 0)
+                    char['portrait'] = url
 
                 await websocket.send_text(json.dumps({
                     "type": "state_update", 
