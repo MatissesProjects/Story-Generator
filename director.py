@@ -79,13 +79,12 @@ async def evaluate_quest_progress(history_text):
     BE CONSERVATIVE. Only mark as completed if it clearly happened in the text.
     REPLY ONLY IN JSON.]
     """
-    response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
-        
     try:
+        response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         result = utils.safe_parse_json(response, default={})
         return result.get("updates", [])
     except Exception as e:
-        print(f"Director Error (evaluate_quest_progress): {e}. Raw: {response}")
+        print(f"Director Error (evaluate_quest_progress): {e}")
         return []
 
 async def evaluate_milestone_progress(history_text):
@@ -120,13 +119,12 @@ EXAMPLE STRUCTURE (Do not use these specific values):
 
 REPLY ONLY IN JSON.]
 """
-    response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
-        
     try:
+        response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         result = utils.safe_parse_json(response, default={})
         return result.get("completed", False)
     except Exception as e:
-        print(f"Director Error (evaluate_milestone_progress): {e}. Raw: {response}")
+        print(f"Director Error (evaluate_milestone_progress): {e}")
         return False
 
 def get_persona_blocks(user_input, current_turn=0):
@@ -191,13 +189,12 @@ EXAMPLE STRUCTURE (Do not use these specific values):
 
 REPLY ONLY IN JSON.]
 """
-    response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
-        
     try:
+        response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         result = utils.safe_parse_json(response, default={})
         return result.get("needs_research", False), result.get("suggested_theme", "")
     except Exception as e:
-        print(f"Director Error (parsing JSON): {e}. Raw: {response}")
+        print(f"Director Error (check_narrative_gaps): {e}")
         return False, ""
 
 async def identify_location(user_input, recent_history, current_location=None):
@@ -229,13 +226,12 @@ If the location is the SAME as the CURRENT LOCATION or if the movement is just w
 
 REPLY ONLY IN JSON.]
 """
-    response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
-        
     try:
+        response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         result = utils.safe_parse_json(response, default={})
         return result.get("location"), result.get("description"), result.get("relative_to"), result.get("direction")
     except Exception as e:
-        print(f"Director Error (identify_location): {e}. Raw: {response}")
+        print(f"Director Error (identify_location): {e}")
         return None, None, None, None
 
 async def generate_creative_name(category, context, theme=None):
@@ -260,8 +256,12 @@ CONTEXT:
 
 Reply ONLY with the name (1-3 words).]
 """
-    name = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
-    return name.strip().strip('"').strip("'")
+    try:
+        name = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
+        return name.strip().strip('"').strip("'")
+    except Exception as e:
+        print(f"Director Error (generate_creative_name): {e}")
+        return f"Unknown {category.capitalize()}"
 
 async def generate_action_plan(user_input, recent_history, active_threads, active_quests, current_location=None):
     """
@@ -323,7 +323,11 @@ Instructions:
 
 REPLY ONLY WITH THE EVENT DESCRIPTION.]
 """
-    return await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
+    try:
+        return await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
+    except Exception as e:
+        print(f"Director Error (generate_initiative): {e}")
+        return ""
 
 async def generate_character_tic(name, description, traits):
     """
@@ -346,7 +350,11 @@ EXAMPLES:
 
 REPLY ONLY WITH THE TIC DESCRIPTION (one sentence).]
 """
-    return await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
+    try:
+        return await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
+    except Exception as e:
+        print(f"Director Error (generate_character_tic): {e}")
+        return "Always seems to be watching closely."
 
 async def analyze_plot_threads(recent_history, active_threads):
     """
@@ -381,12 +389,11 @@ Only resolve a thread if it has reached a clear conclusion.
 
 REPLY ONLY IN JSON.]
 """
-    response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
-    
     try:
+        response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         return utils.safe_parse_json(response, default={"resolved_ids": [], "new_threads": []})
     except Exception as e:
-        print(f"Director Error (analyze_plot_threads): {e}. Raw: {response}")
+        print(f"Director Error (analyze_plot_threads): {e}")
         return {"resolved_ids": [], "new_threads": []}
 
 if __name__ == "__main__":

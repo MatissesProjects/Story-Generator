@@ -3,6 +3,7 @@ from diffusers import AutoPipelineForText2Image
 import config
 import os
 import hashlib
+import json
 from PIL import Image
 import llm
 import re

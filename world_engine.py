@@ -14,65 +14,75 @@ class WorldEngine:
         Determines where a new location should be placed on the 2D map and detects its physical properties.
         Prevents spatial collisions by jittering if a spot is taken.
         """
-        existing = db.get_location_by_name(name)
-        if existing:
-            # Update last visited
-            db.set_entity_position("player", 0, existing['id'])
-            return existing['id']
+        try:
+            existing = db.get_location_by_name(name)
+            if existing:
+                # Update last visited
+                db.set_entity_position("player", 0, existing['id'])
+                return existing['id']
 
-        x, y = 0, 0
-        base_elevation = 0
-        if relative_to_name:
-            base_loc = db.get_location_by_name(relative_to_name)
-            if base_loc:
-                bx, by = base_loc['x'], base_loc['y']
-                base_elevation = base_loc['elevation'] if 'elevation' in base_loc.keys() else 0
-                
-                # Directional offsets
-                offset = self.grid_size
-                directions = {
-                    "north": (0, offset),
-                    "south": (0, -offset),
-                    "east": (offset, 0),
-                    "west": (-offset, 0),
-                    "northeast": (offset, offset),
-                    "northwest": (-offset, offset),
-                    "southeast": (offset, -offset),
-                    "southwest": (-offset, -offset)
-                }
-                
-                dx, dy = directions.get(direction.lower() if direction else "", (random.randint(-offset, offset), random.randint(-offset, offset)))
-                x, y = bx + dx, by + dy
-        else:
-            # If it's not the first location, put it relative to something existing
-            all_locs = db.get_all_locations()
-            if all_locs:
-                base = all_locs[0]
-                x = base['x'] + random.randint(-self.grid_size, self.grid_size)
-                y = base['y'] + random.randint(-self.grid_size, self.grid_size)
-                base_elevation = base['elevation'] if 'elevation' in base.keys() else 0
+            x, y = 0, 0
+            base_elevation = 0
+            if relative_to_name:
+                base_loc = db.get_location_by_name(relative_to_name)
+                if base_loc:
+                    bx, by = base_loc['x'], base_loc['y']
+                    # sqlite3.Row doesn't have .get()
+                    base_elevation = base_loc['elevation'] if 'elevation' in base_loc.keys() else 0
+                    
+                    # Directional offsets
+                    offset = self.grid_size
+                    directions = {
+                        "north": (0, offset),
+                        "south": (0, -offset),
+                        "east": (offset, 0),
+                        "west": (-offset, 0),
+                        "northeast": (offset, offset),
+                        "northwest": (-offset, offset),
+                        "southeast": (offset, -offset),
+                        "southwest": (-offset, -offset)
+                    }
+                    
+                    dx, dy = directions.get(direction.lower() if direction else "", (random.randint(-offset, offset), random.randint(-offset, offset)))
+                    x, y = bx + dx, by + dy
+            else:
+                # If it's not the first location, put it relative to something existing
+                all_locs = db.get_all_locations()
+                if all_locs:
+                    base = all_locs[0]
+                    x = base['x'] + random.randint(-self.grid_size, self.grid_size)
+                    y = base['y'] + random.randint(-self.grid_size, self.grid_size)
+                    base_elevation = base['elevation'] if 'elevation' in base.keys() else 0
 
-        # Detect physical properties via LLM
-        props = await self.detect_physical_properties(name, description, base_elevation)
+            # Detect physical properties via LLM
+            props = await self.detect_physical_properties(name, description, base_elevation)
 
-        # SPATIAL COLLISION CHECK: Retry until a free spot is found
-        max_attempts = 10
-        loc_id = None
-        for attempt in range(max_attempts):
-            loc_id = db.add_location(
-                name, description, x, y, 
-                biome_type=props.get('biome', 'Plain'),
-                elevation=props.get('elevation', 0),
-                climate=props.get('climate', 'Temperate')
-            )
-            if loc_id:
-                break
+            # SPATIAL COLLISION CHECK: Retry until a free spot is found
+            max_attempts = 10
+            loc_id = None
+            for attempt in range(max_attempts):
+                loc_id = db.add_location(
+                    name, description, x, y, 
+                    biome_type=props.get('biome', 'Plain'),
+                    elevation=props.get('elevation', 0),
+                    climate=props.get('climate', 'Temperate')
+                )
+                if loc_id:
+                    break
+                    
+                # Jitter and try again
+                x += random.randint(-10, 10)
+                y += random.randint(-10, 10)
                 
-            # Jitter and try again
-            x += random.randint(-10, 10)
-            y += random.randint(-10, 10)
+            return loc_id
             
-        return loc_id
+        except Exception as e:
+            print(f"World Engine Error (resolve_new_location): {e}")
+            # Final fallback: try to add at random loc
+            try:
+                return db.add_location(name, description, random.randint(-500, 500), random.randint(-500, 500), "Plain")
+            except:
+                return None
 
     async def detect_physical_properties(self, name, description, base_elevation):
         """
@@ -95,22 +105,30 @@ EXAMPLE STRUCTURE (Do not use these specific values):
 }}
 ]
 """
-        response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
-        result = utils.safe_parse_json(response)
-        if result:
-            return result
+        try:
+            response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
+            result = utils.safe_parse_json(response)
+            if result:
+                return result
+        except Exception as e:
+            print(f"World Engine Error (detect_physical_properties): {e}")
+            
         return {"biome": "Plain", "elevation": 0, "climate": "Temperate", "connectivity_score": 0.5}
 
     def move_entity(self, entity_type, entity_id, location_name):
         """
         Moves a character or player to a named location.
         """
-        loc = db.get_location_by_name(location_name)
-        if not loc:
+        try:
+            loc = db.get_location_by_name(location_name)
+            if not loc:
+                return False
+                
+            db.set_entity_position(entity_type, entity_id, loc['id'])
+            return True
+        except Exception as e:
+            print(f"World Engine Error (move_entity): {e}")
             return False
-            
-        db.set_entity_position(entity_type, entity_id, loc['id'])
-        return True
 
 if __name__ == "__main__":
     import asyncio

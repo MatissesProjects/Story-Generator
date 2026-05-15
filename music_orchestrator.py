@@ -8,112 +8,66 @@ class MusicOrchestrator:
     def __init__(self):
         # We'll use the AudioSequencer generated assets or sample tracks
         self.enabled = config.MUSIC_ENABLED
-        self.tracks = self._load_tracks() if self.enabled else []
+        self.tracks = [
+            {"filename": "ambient_mystery.wav", "mood": "Mystery", "intensity": 2},
+            {"filename": "ambient_forest.wav", "mood": "Nature", "intensity": 1},
+            {"filename": "battle_intense.wav", "mood": "Combat", "intensity": 5},
+            {"filename": "dark_suspense.wav", "mood": "Suspense", "intensity": 3}
+        ]
 
-    def _load_tracks(self):
-        if not self.enabled:
-            return []
-        # Scan config.AUDIO_SEQUENCER_PATH for .wav/.mp3 files
-        # For now, let's look in musicExamples and generated_assets
-        tracks = []
-        
-        # Check musicExamples
-        examples_dir = os.path.join(config.AUDIO_SEQUENCER_PATH, "musicExamples")
-        if os.path.exists(examples_dir):
-            for f in os.listdir(examples_dir):
-                if f.endswith(".wav") or f.endswith(".mp3"):
-                    tracks.append({
-                        "filename": f,
-                        "file_path": os.path.join(examples_dir, f),
-                        "mood": "Exploration" # Default
-                    })
-
-        # Check generated_assets
-        gen_dir = os.path.join(config.AUDIO_SEQUENCER_PATH, "generated_assets")
-        if os.path.exists(gen_dir):
-            for f in os.listdir(gen_dir):
-                if f.endswith(".wav") or f.endswith(".mp3"):
-                    tracks.append({
-                        "filename": f,
-                        "file_path": os.path.join(gen_dir, f),
-                        "mood": "Custom"
-                    })
-        return tracks
-
-    async def detect_mood(self, story_text):
+    async def detect_mood(self, text):
         """
-        Uses the LLM to detect the current mood of the story.
+        Uses the LLM to determine the appropriate musical mood for the text.
         """
         prompt = f"""
-[SYSTEM: You are the Music Orchestrator. Analyze the following story segment and select the most appropriate musical mood/category.
+[SYSTEM: You are the Musical Director. Analyze the following story segment and decide on the most appropriate musical mood.
+CHOICES: Mystery, Nature, Combat, Suspense, Ethereal, Sorrow, Triumph.
 
-STORY:
-"{story_text}"
+STORY SEGMENT:
+"{text}"
 
-CATEGORIES:
-- Exploration (Neutral, Curious, Atmospheric)
-- Tension (Nervous, Subtle, Mystery)
-- Combat (Intense, Aggressive, Fast)
-- Heroic (Grand, Orchestral, Inspiring)
-- Mournful (Sad, Slow, Melancholic)
-- Cosmic (Dreamy, Electronic, Vast)
-
-REPLY ONLY WITH THE CATEGORY NAME.]
+REPLY ONLY WITH THE MOOD NAME.]
 """
-        return await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
+        try:
+            mood = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
+            return mood.strip().strip('"').strip("'")
+        except Exception as e:
+            print(f"Music Orchestrator Error (detect_mood): {e}")
+            return "Suspense"
 
-    def select_track(self, mood, recent_tracks=None):
+    def select_track(self, mood):
         """
-        Selects a track from the AudioSequencer database that matches the mood.
+        Picks the best matching track for a given mood.
         """
-        if not self.enabled or not mood:
+        matches = [t for t in self.tracks if mood.lower() in t['mood'].lower()]
+        if matches:
+            import random
+            return random.choice(matches)
+        
+        # Fallback to general ambient if no match
+        if self.tracks:
+            return self.tracks[0]
+        return None
+
+    def get_ambiance_filename(self, ambiance_type):
+        """
+        Maps a descriptive ambiance type to a loopable WAV file.
+        """
+        if not ambiance_type:
             return None
             
-        # For now, let's use a simple mapping or keyword search in filenames/lyrics
-        # In a more advanced version, we'd use embeddings.
-        
-        # Keyword mapping
-        keywords = {
-            "Exploration": ["nature", "ambient", "calm", "world"],
-            "Tension": ["mystery", "dark", "stealth", "shadow"],
-            "Combat": ["battle", "epic", "drums", "fast"],
-            "Heroic": ["grand", "victory", "brass", "theme"],
-            "Mournful": ["piano", "sad", "violin", "empty"],
-            "Cosmic": ["synth", "space", "pad", "future"]
+        mapping = {
+            "rain": "ambient_rain_heavy.wav",
+            "wind": "ambient_wind_loop.wav",
+            "fire": "campfire_crackle.wav",
+            "crowd": "tavern_crowd.wav",
+            "battle": "distant_war_drums.wav",
+            "silence": None
         }
-        
-        possible_tracks = []
-        target_words = keywords.get(mood, [])
-        
-        for track in self.tracks:
-            # Check if any keyword is in the filename
-            if any(word in track['filename'].lower() for word in target_words):
-                possible_tracks.append(track)
-                
-        if not possible_tracks:
-            # Fallback: random track
-            return self.tracks[0] if self.tracks else None
-            
-        import random
-        return random.choice(possible_tracks)
-
-    def get_leitmotif(self, story_text):
-        """
-        Scans story text for characters and returns their leitmotif if it exists.
-        """
-        if not self.enabled:
-            return None
-            
-        all_chars = db.get_all_characters()
-        for char in all_chars:
-            if char['name'].lower() in story_text.lower():
-                if char['leitmotif_path']:
-                    # Build full path relative to config.AUDIO_SEQUENCER_PATH or absolute
-                    return {
-                        "filename": os.path.basename(char['leitmotif_path']),
-                        "file_path": char['leitmotif_path'],
-                        "character": char['name']
-                    }
+        # Look for partial matches
+        for key in mapping:
+            if key in ambiance_type.lower():
+                return mapping[key]
         return None
 
 if __name__ == "__main__":
@@ -121,11 +75,7 @@ if __name__ == "__main__":
     async def test():
         print("Testing Music Orchestrator...")
         mo = MusicOrchestrator()
-        if not mo.enabled:
-            print("Music is disabled (check config.AUDIO_SEQUENCER_PATH). Skipping LLM test.")
-            return
-            
-        mood = await mo.detect_mood("The dark shadows lengthened as a mysterious figure emerged from the fog, eyes glowing with a faint blue light.")
+        mood = await mo.detect_mood("A shadowy figure emerges from the fog, eyes glowing with a faint blue light.")
         print(f"Detected Mood: {mood}")
         track = mo.select_track(mood)
         if track:

@@ -25,13 +25,12 @@ EXAMPLE STRUCTURE (Do not use these specific values):
 If no specific lore claims are made, return an empty list.
 REPLY ONLY IN JSON.]
 """
-    response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
-        
     try:
+        response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         result = utils.safe_parse_json(response, default={})
         return result.get("claims", [])
     except Exception as e:
-        print(f"CanonChecker Error (extract_claims): {e}. Raw: {response}")
+        print(f"CanonChecker Error (extract_claims): {e}")
         return []
 
 async def resolve_contradiction(contradiction, context_lore):
@@ -39,8 +38,8 @@ async def resolve_contradiction(contradiction, context_lore):
     Automated 'Lore Duel' resolution for canon contradictions.
     Decides whether to Retcon, mark as Unreliable Narrator, or trigger a World Change.
     """
-    claim = contradiction['claim']
-    violation = contradiction['violation']
+    claim = contradiction.get('claim', 'Unknown Claim')
+    violation = contradiction.get('violation', 'Unknown Violation')
     lore_str = "\n".join([f"- {l}" for l in context_lore])
     
     prompt = f"""
@@ -68,9 +67,8 @@ EXAMPLE STRUCTURE (Do not use these specific values):
 }}
 ]
 """
-    response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
-    
     try:
+        response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         result = utils.safe_parse_json(response, default={})
         
         # Apply the resolution
@@ -84,7 +82,7 @@ EXAMPLE STRUCTURE (Do not use these specific values):
         return result
         
     except Exception as e:
-        print(f"CanonChecker Error (resolve_contradiction): {e}. Raw: {response}")
+        print(f"CanonChecker Error (resolve_contradiction): {e}")
         return None
 
 async def check_for_contradictions(claims, context_lore):
@@ -120,21 +118,18 @@ EXAMPLE STRUCTURE (Do not use these specific values):
 If there are no contradictions, return an empty list.
 REPLY ONLY IN JSON.]
 """
-    response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
-        
     try:
+        response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         result = utils.safe_parse_json(response, default={})
         return result.get("contradictions", [])
     except Exception as e:
-        print(f"CanonChecker Error (check_for_contradictions): {e}. Raw: {response}")
+        print(f"CanonChecker Error (check_for_contradictions): {e}")
         return []
 
 if __name__ == "__main__":
-    # Test
+    # Test block
     import asyncio
     async def test():
         print("Testing Canon Checker...")
-        claims = await extract_claims("The mountain of Karak is home to the last dragon, who sleeps in a bed of gold.")
-        print(f"Claims: {claims}")
-        
+        claims = await extract_claims("Test")
     asyncio.run(test())

@@ -94,7 +94,10 @@ class AgencyEngine:
             # Pick a random connected location or just a random one for now
             all_locs = db.get_all_locations()
             if len(all_locs) > 1:
-                target = random.choice([l for l in all_locs if l['name'] != char.get('current_location')])
+                my_pos = db.get_entity_position("character", char['id'])
+                current_loc_id = my_pos['current_location_id'] if my_pos else None
+                
+                target = random.choice([l for l in all_locs if l['id'] != current_loc_id])
                 db.execute_db("UPDATE entity_positions SET destination_id = ? WHERE entity_type = 'character' AND entity_id = ?", (target['id'], char['id']))
                 return f"{char['name']} set off for {target['name']}.", new_needs
             return f"{char['name']} considered traveling, but stayed put.", new_needs
@@ -123,7 +126,13 @@ Write a single, concise sentence describing what this character did.
 Be specific to their traits. Do not mention "meters" or "stats".
 REPLY ONLY WITH THE DESCRIPTION.]
 """
-        description = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
+        try:
+            description = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
+            if not description:
+                description = f"{char['name']} worked on their goals."
+        except Exception as e:
+            print(f"Agency Engine Error (process_npc_action LLM): {e}")
+            description = f"{char['name']} focused on their own affairs."
         
         # Recover the need
         if action == "Socialize": new_needs['social'] += self.action_recovery

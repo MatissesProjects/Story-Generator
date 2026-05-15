@@ -64,24 +64,28 @@ def is_valid_name(name):
 
 def parse_dialogue(text):
     """
-    Parses text for dialogue tags like [Character]: Dialogue or Character: "Dialogue".
+    Parses text for dialogue tags like [Character]: Dialogue.
     Returns a list of (speaker, content) tuples.
     """
-    # Pattern to match [Name]: "text" or [Name]: text
-    # Brackets are now mandatory to reduce false positives
-    pattern = r'(?:\[([A-Za-z0-9 _-]+)\]:\s*(.+))'
+    # Matches [Speaker]: Text until the next speaker tag or end of string
+    tag_pattern = re.compile(r'\[([A-Za-z0-9 _-]+)\]:\s*(.*?)(?=\[[A-Za-z0-9 _-]+\]:|$)', re.DOTALL)
     
-    matches = re.findall(pattern, text)
+    matches = list(tag_pattern.finditer(text))
     if not matches:
-        # Check if the text itself should be ignored (e.g. metadata)
-        # More flexible check: see if it starts with [TAG
+        # Check if it's an ignored system line (starts with [TAG])
         clean_text = text.strip().lower()
         if any(clean_text.startswith(f"[{tag.lower()}") for tag in IGNORED_TAGS) or clean_text == "***":
             return []
         return [("Narrator", text.strip())]
     
     results = []
-    for speaker, content in matches:
+    # Process text BEFORE first tag
+    pre_text = text[:matches[0].start()].strip()
+    if pre_text:
+        results.append(("Narrator", pre_text))
+        
+    for match in matches:
+        speaker, content = match.groups()
         speaker = speaker.strip()
         if speaker.lower() in [t.lower() for t in IGNORED_TAGS]:
             continue
@@ -90,7 +94,8 @@ def parse_dialogue(text):
             results.append(("Narrator", f"[{speaker}]: {content}".strip()))
             continue
 
-        results.append((speaker, content.strip()))
+        if content.strip():
+            results.append((speaker, content.strip()))
     
     return results
 
@@ -101,58 +106,18 @@ class StreamParser:
     """
     def __init__(self):
         self.buffer = ""
-        self.processed_index = 0
         # Matches [Speaker]: Text until a newline or next speaker tag
-        # Brackets are now mandatory
         self.tag_pattern = re.compile(r'\[([A-Za-z0-9 _-]+)\]:\s*(.*?)(?=\n|\[[A-Za-z0-9 _-]+\]:|$)', re.DOTALL)
 
     def feed(self, chunk):
         self.buffer += chunk
-        
-        # We process by lines, but we look for tags WITHIN lines now.
         lines = self.buffer.split('\n')
         completed_blocks = []
         
         if len(lines) > 1:
             for i in range(len(lines) - 1):
-                line = lines[i].strip()
-                if not line or line == "***": continue
-                
-                # Use finditer to find ALL tags in the line, and the text between them
-                # This handles cases like: "Narrator text. [Character]: Dialogue"
-                matches = list(self.tag_pattern.finditer(line))
-                
-                if not matches:
-                    # No tags at all, check if it's an ignored system tag
-                    clean_line = line.lower()
-                    if any(clean_line.startswith(f"[{tag.lower()}") for tag in IGNORED_TAGS):
-                        continue
-                    completed_blocks.append(("Narrator", line))
-                else:
-                    # Process the text BEFORE the first tag as Narrator
-                    first_match_start = matches[0].start()
-                    pre_text = line[:first_match_start].strip()
-                    if pre_text:
-                        completed_blocks.append(("Narrator", pre_text))
-                    
-                    # Process each matched block
-                    for match in matches:
-                        speaker, content = match.groups()
-                        speaker = speaker.strip()
-                        if speaker.lower() in [t.lower() for t in IGNORED_TAGS]:
-                            continue
-                        
-                        if not is_valid_name(speaker):
-                            text_to_add = f"{speaker}: {content}".strip() if content.strip() else speaker
-                            completed_blocks.append(("Narrator", text_to_add))
-                            continue
-
-                        # Normalize "Narrator"
-                        if speaker.lower() == "narrator":
-                            speaker = "Narrator"
-                            
-                        if content.strip():
-                            completed_blocks.append((speaker, content.strip()))
+                line = lines[i]
+                completed_blocks.extend(parse_dialogue(line))
 
             self.buffer = lines[-1]
             
@@ -160,48 +125,12 @@ class StreamParser:
 
     def flush(self):
         """Processes whatever is left in the buffer."""
-        line = self.buffer.strip()
+        blocks = parse_dialogue(self.buffer)
         self.buffer = ""
-        
-        if not line or line == "***":
-             return []
-
-        completed_blocks = []
-        matches = list(self.tag_pattern.finditer(line))
-        
-        if not matches:
-            clean_line = line.lower()
-            if any(clean_line.startswith(f"[{tag.lower()}") for tag in IGNORED_TAGS):
-                return []
-            completed_blocks.append(("Narrator", line))
-        else:
-            first_match_start = matches[0].start()
-            pre_text = line[:first_match_start].strip()
-            if pre_text:
-                completed_blocks.append(("Narrator", pre_text))
-            
-            for match in matches:
-                speaker, content = match.groups()
-                speaker = speaker.strip()
-                if speaker.lower() in [t.lower() for t in IGNORED_TAGS]:
-                    continue
-                
-                if not is_valid_name(speaker):
-                    text_to_add = f"{speaker}: {content}".strip() if content.strip() else speaker
-                    completed_blocks.append(("Narrator", text_to_add))
-                    continue
-
-                # Normalize "Narrator"
-                if speaker.lower() == "narrator":
-                    speaker = "Narrator"
-
-                if content.strip():
-                    completed_blocks.append((speaker, content.strip()))
-            
-        return completed_blocks
+        return blocks
 
 if __name__ == "__main__":
-    test_text = "[Elara]: Look out! The beast is coming!\nMalakar: I see it. It's hideous."
+    test_text = "[Elara]: Look out! [Narrator]: The beast is coming!\nMalakar: I see it."
     print("Testing parser...")
     for speaker, content in parse_dialogue(test_text):
         print(f"Speaker: {speaker}, Dialogue: {content}")

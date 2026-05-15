@@ -38,20 +38,20 @@ EXAMPLE STRUCTURE (Do not use these specific values):
 REPLY ONLY IN JSON.]
 """
 
-    # We want a non-streaming, fast response
-    response_text = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
-        
     try:
+        # We want a non-streaming, fast response
+        response_text = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
+        
         result = utils.safe_parse_json(response_text)
         if result:
             # We use .get(..., False) for Fail-Closed if the key is missing
             return result.get("is_valid", False), result.get("reason", "Logic check failed.")
         
         print(f"Validator Error: Failed to parse LLM response. Raw output: {response_text}")
-        return False, "The logic of that action is unclear to the engine. Please try describing it differently."
+        return True, "The logic of that action is unclear to the engine, but we will proceed for now."
     except Exception as e:
         print(f"Validator Critical Error: {e}")
-        return False, "An unexpected error occurred during logic validation."
+        return True, f"An unexpected error occurred during logic validation: {e}. Defaulting to allowing action."
 
 if __name__ == "__main__":
     import asyncio

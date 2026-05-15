@@ -92,8 +92,7 @@ async def test_golden_turn_simulation(mock_llm):
             # Parallel tasks
             seeds = await foreshadowing.extract_seeds(full_response, curr_loc_name)
             claims = await canon_checker.extract_claims(full_response)
-            await social_engine.update_social_state(user_input, full_response, current_turn=db.get_history_count())
-            
+            await social_engine.update_social_state(user_input, full_response)
             # Final Assertions per turn
             assert db.get_history_count() == turn_number
             if turn_number == 4:

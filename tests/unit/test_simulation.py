@@ -27,14 +27,38 @@ async def test_simulation_tick_progression():
         assert history[0]['description'] == "A storm happens."
 
 @pytest.mark.asyncio
-async def test_simulation_event_injection():
-    # Add a simulation event manually
-    db.execute_db(
-        "INSERT INTO simulation_history (tick_number, event_type, description) VALUES (?, ?, ?)",
-        (10, "Political", "A new king was crowned.")
-    )
+async def test_trigger_tick_with_npcs():
+    db.add_character("Actor", "D", "T")
+    # Mock agency to return an action
+    with patch("simulation_manager.agency.run_tick", new_callable=AsyncMock) as mock_run:
+        mock_run.return_value = [{"char_name": "Actor", "description": "did something", "location_id": 1}]
+        # Mock background event
+        with patch("simulation_manager.generate_background_event", new_callable=AsyncMock) as mock_env:
+            mock_env.return_value = {"type": "E", "description": "D"}
+            
+            events = await simulation_manager.trigger_tick()
+            assert len(events) == 2
+            assert any("Actor" in e['description'] for e in events)
+
+@pytest.mark.asyncio
+async def test_generate_background_event_with_location():
+    db.add_location("Silver City", "Rich", 0, 0, "Plain")
     
-    import curator
-    with patch('memory_engine.search_semantic_with_scores', return_value=[]):
-        facts = curator.get_relevant_context("Who is the king?")
-        assert any("WORLD EVENT (Tick 10): A new king was crowned." in f for f in facts)
+    with patch("llm.async_generate_full_response", new_callable=AsyncMock) as mock_llm:
+        mock_llm.return_value = '{"type": "Pol", "description": "Tax", "location_name": "Silver City"}'
+        
+        res = await simulation_manager.generate_background_event(1)
+        assert res['location_id'] == 1
+
+@pytest.mark.asyncio
+async def test_trigger_tick_critical_error():
+    # Mock db.get_story_state to crash
+    with patch("db.get_story_state", side_effect=Exception("DB Dead")):
+        events = await simulation_manager.trigger_tick()
+        assert events == []
+
+@pytest.mark.asyncio
+async def test_generate_background_event_error():
+    with patch("llm.async_generate_full_response", side_effect=Exception("Err")):
+        res = await simulation_manager.generate_background_event(1)
+        assert res is None

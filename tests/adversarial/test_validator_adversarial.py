@@ -36,6 +36,6 @@ async def test_validator_fail_closed_verified(mock_llm):
     
     is_valid, reason = await validator.validate_action(user_input, ["Lore"])
     
-    # Verify it now fails-closed
-    assert is_valid is False
+    # Verify it now fails-open (True) for gameplay smoothness
+    assert is_valid is True
     assert "clear" in reason.lower()

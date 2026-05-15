@@ -16,17 +16,17 @@ async def test_social_engine_analysis():
         "trust": 3,
         "fear": -1,
         "affection": 2,
-        "description": "The player helped Elara."
+        "event_description": "The player helped Elara."
     })
-    
+
     with patch('llm.async_generate_full_response', new_callable=AsyncMock) as mock_llm:
         mock_llm.return_value = mock_social_resp
-        
-        dt, df, da, desc = await social_engine.analyze_interaction("I give her a herb", "Elara smiles.", "Elara")
-        assert dt == 3
-        assert da == 2
-        assert desc == "The player helped Elara."
 
+        res = await social_engine.analyze_interaction("I give her a herb", "Elara smiles.", "Elara")
+        assert res['trust'] == 3
+        assert res['fear'] == -1
+        assert res['affection'] == 2
+        assert "helped" in res['event_description']
 @pytest.mark.asyncio
 async def test_social_engine_update():
     # Setup character
