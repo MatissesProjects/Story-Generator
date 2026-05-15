@@ -65,7 +65,8 @@ class AgencyEngine:
                 "char_id": char['id'],
                 "char_name": char['name'],
                 "action": priority_action,
-                "description": action_desc
+                "description": action_desc,
+                "location_id": pos['current_location_id'] if pos else None
             })
 
         return actions_taken

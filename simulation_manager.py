@@ -34,7 +34,7 @@ async def trigger_tick():
         events.append({
             "type": "NPC_Action",
             "description": f"{action['char_name']}: {action['description']}",
-            "location_id": None # Future: get current location of NPC
+            "location_id": action.get('location_id')
         })
 
     # Every tick, there's a chance of a minor world event

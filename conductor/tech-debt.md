@@ -3,25 +3,18 @@
 This document tracks identified architectural issues, performance bottlenecks, and technical debt across the Story-Generator project.
 
 ## Priority 1: Concurrency & Performance Bottlenecks (High)
-*   [x] **Blocking Vision Engine**: The `vision.run_inference` method uses PyTorch for image generation. Although marked `async`, the inference call itself is synchronous and blocks the main Python `asyncio` event loop. This causes the server to hang, preventing new text chunks or WebSocket messages from being processed during generation.
-    *   *Solution*: Wrap the PyTorch inference in `asyncio.to_thread`.
-*   [x] **Synchronous Database Calls**: The main WebSocket loop makes many database calls (e.g., checking inventory, stats, quests) sequentially using the synchronous `sqlite3` module. This blocks the server briefly on every turn.
-    *   *Solution*: Migrate the database layer to an async driver (like `aiosqlite`) or wrap operations in worker threads.
+*   [x] **Blocking Vision Engine**: Wrapped PyTorch inference in `asyncio.to_thread` and implemented concurrency locks for shared state.
+*   [x] **Synchronous Database Calls**: Wrapped DB reads in `asyncio.to_thread` and implemented thread-local persistent connections.
 
 ## Priority 2: Architectural Monoliths (Medium)
-*   [x] **The "God Object" (`server.py`)**: At nearly 900 lines, the server file handles everything from WebSocket routing to story logic, validation, and phase orchestration.
-    *   *Solution*: Break the "Turn Loop" logic into a separate `turn_orchestrator.py` module.
-*   [x] **The Frontend Giant (`static/app.js`)**: At over 1100 lines, this file handles DOM manipulation, WebSocket events, complex audio/visual queuing, and state management all in one place.
-    *   *Solution*: Modularize into smaller files (e.g., `audio.js`, `ui.js`, `network.js`), maintaining vanilla JS if desired.
+*   [x] **The "God Object" (`server.py`)**: Extracted the core "Turn Loop" into `turn_orchestrator.py`.
+*   [x] **The Frontend Giant (`static/app.js`)**: Modularized the massive script into 8 domain-specific files.
 
 ## Priority 3: Database Inefficiencies (Medium)
-*   [x] **Connection Thrashing**: `db.py` opens and closes a new SQLite connection for every single query via `query_db` / `execute_db`.
-    *   *Solution*: Implement a connection pool or a persistent connection manager.
-*   [x] **N+1 Queries**: Functions like `get_active_quests` fetch the quests, then perform a separate query in a loop to fetch the objectives for each quest.
-    *   *Solution*: Use `JOIN` queries or batch fetching to reduce the number of queries.
+*   [x] **Connection Thrashing**: Implemented a persistent connection manager using `threading.local`.
+*   [x] **N+1 Queries**: Optimized `get_active_quests` using batch queries.
 
 ## Priority 4: Logic Duplication & Bugs (Low)
-*   [x] **Redundant JSON Cleaning**: `director.py`, `utils.py`, and `simulation_manager.py` all had custom, slightly varying logic for extracting and parsing JSON from LLM markdown outputs (e.g., stripping ` ```json `).
-    *   *Solution*: Consolidated into `utils.safe_parse_json`.
-*   [x] **Incomplete Features**: `agency_engine.py` was partially implemented but lacked deep integration with the main narrative loop.
-    *   *Solution*: NPC background events are now surfaced to the user and passed into the Director's hidden instructions to influence the main story generation.
+*   [x] **Redundant JSON Cleaning**: Consolidated all LLM JSON parsing into `utils.safe_parse_json`.
+*   [x] **Incomplete Features**: Integrated NPC Agency and Simulation events into the main narrative and Director instructions.
+*   [x] **Hardened Robustness**: Added comprehensive `try...except` blocks around all external API and I/O interaction points to prevent system-wide crashes.

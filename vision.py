@@ -91,22 +91,19 @@ async def run_inference(final_prompt, num_steps=4):
             
     except torch.cuda.OutOfMemoryError:
         print("Vision Engine: GPU Out of Memory! Falling back to CPU for this generation...")
-        
-        # We must re-initialize the pipeline for CPU because it's currently hooked for sequential offload
-        # which puts weights on meta device and breaks .to("cpu")
-        print(f"Vision Engine: Re-initializing model {config.VISION_MODEL} on CPU...")
-        pipe = AutoPipelineForText2Image.from_pretrained(
-            config.VISION_MODEL, 
-            torch_dtype=torch.float32
-        )
-        pipe.to("cpu")
-        # Ensure VAE is in float32 for CPU inference
-        pipe.vae.to(dtype=torch.float32)
-        
-        device = "cpu" 
-        
-        # Regenerate on CPU
-        return await asyncio.to_thread(_do_inference, final_prompt, num_steps, device)
+        try:
+            print(f"Vision Engine: Re-initializing model {config.VISION_MODEL} on CPU...")
+            pipe = AutoPipelineForText2Image.from_pretrained(
+                config.VISION_MODEL, 
+                torch_dtype=torch.float32
+            )
+            pipe.to("cpu")
+            pipe.vae.to(dtype=torch.float32)
+            device = "cpu" 
+            return await asyncio.to_thread(_do_inference, final_prompt, num_steps, device)
+        except Exception as e:
+            print(f"Vision Engine: Failed to fall back to CPU. Error: {e}")
+            return None
     finally:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -117,30 +114,26 @@ async def generate_portrait(name, description, traits, session_id="default"):
     Returns the URL path of the generated image.
     """
     safe_name = "".join([c for c in name if c.isalnum()]).lower()
-    # Create a hash of the description and traits to ensure unique portraits 
-    # for different characters with the same name.
     desc_hash = hashlib.md5(f"{description}{traits}".encode()).hexdigest()[:8]
     filename = f"{session_id}_{safe_name}_{desc_hash}.png"
     output_path = os.path.join(config.PORTRAITS_DIR, filename)
     
-    # Check if we already have it (if caching is enabled)
     if config.IMAGE_CACHE_ENABLED and os.path.exists(output_path):
         return f"/static/portraits/{filename}"
 
     print(f"Vision Engine: Generating portrait for {name}...")
     
-    # Get a good prompt
-    raw_prompt = await stylize_prompt(name, description, traits)
-    final_prompt = clean_vision_prompt(raw_prompt)
-    
-    # Generate
-    image = await run_inference(final_prompt, num_steps=4)
-    
-    # Save
-    image.save(output_path)
-    print(f"Vision Engine: Saved portrait to {output_path}")
-    
-    return f"/static/portraits/{filename}"
+    try:
+        raw_prompt = await stylize_prompt(name, description, traits)
+        final_prompt = clean_vision_prompt(raw_prompt)
+        image = await run_inference(final_prompt, num_steps=4)
+        if image:
+            image.save(output_path)
+            print(f"Vision Engine: Saved portrait to {output_path}")
+            return f"/static/portraits/{filename}"
+    except Exception as e:
+        print(f"Vision Engine: Error generating portrait for {name}: {e}")
+    return None
 
 async def stylize_environment_prompt(location_name, description):
     """
@@ -171,22 +164,22 @@ async def generate_environment(location_name, description, session_id="default")
     filename = f"{session_id}_{safe_name}_{desc_hash}.png"
     output_path = os.path.join(config.ENVIRONMENTS_DIR, filename)
     
-    # Check if we already have it (if caching is enabled)
     if config.IMAGE_CACHE_ENABLED and os.path.exists(output_path):
         return f"/static/environments/{filename}"
 
     print(f"Vision Engine: Generating environment for {location_name}...")
     
-    raw_prompt = await stylize_environment_prompt(location_name, description)
-    final_prompt = clean_vision_prompt(raw_prompt)
-    
-    # Generate
-    image = await run_inference(final_prompt, num_steps=4)
-    
-    image.save(output_path)
-    print(f"Vision Engine: Saved environment to {output_path}")
-    
-    return f"/static/environments/{filename}"
+    try:
+        raw_prompt = await stylize_environment_prompt(location_name, description)
+        final_prompt = clean_vision_prompt(raw_prompt)
+        image = await run_inference(final_prompt, num_steps=4)
+        if image:
+            image.save(output_path)
+            print(f"Vision Engine: Saved environment to {output_path}")
+            return f"/static/environments/{filename}"
+    except Exception as e:
+        print(f"Vision Engine: Error generating environment for {location_name}: {e}")
+    return None
 
 async def stylize_map_tile_prompt(biome_type):
     """
@@ -215,23 +208,22 @@ async def generate_map_tile(biome_type, session_id="default"):
     filename = f"{session_id}_{safe_name}_tile.png"
     output_path = os.path.join(config.MAP_TILES_DIR, filename)
 
-    # Check if we already have it (if caching is enabled)
     if config.IMAGE_CACHE_ENABLED and os.path.exists(output_path):
         return f"/static/map_tiles/{filename}"
 
     print(f"Vision Engine: Generating map tile for {biome_type}...")
     
-    raw_prompt = await stylize_map_tile_prompt(biome_type)
-    final_prompt = clean_vision_prompt(raw_prompt)
-    print(f"Vision Engine: Final Tile Prompt: {final_prompt}")
-    
-    # Generate
-    image = await run_inference(final_prompt, num_steps=4)
-    
-    image.save(output_path)
-    print(f"Vision Engine: Saved map tile to {output_path}")
-    
-    return f"/static/map_tiles/{filename}"
+    try:
+        raw_prompt = await stylize_map_tile_prompt(biome_type)
+        final_prompt = clean_vision_prompt(raw_prompt)
+        image = await run_inference(final_prompt, num_steps=4)
+        if image:
+            image.save(output_path)
+            print(f"Vision Engine: Saved map tile to {output_path}")
+            return f"/static/map_tiles/{filename}"
+    except Exception as e:
+        print(f"Vision Engine: Error generating map tile for {biome_type}: {e}")
+    return None
 
 # Distributed Vision Support
 # This section is for when vision is run on the Runner PC (3070)

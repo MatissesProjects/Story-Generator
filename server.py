@@ -125,6 +125,7 @@ async def log_progress(websocket: WebSocket, message: str, level: str = "info"):
 # Track connected client capabilities
 client_capabilities = {}
 pending_vision_requests = {}
+vision_lock = asyncio.Lock()
 
 class VisionOrchestrator:
     async def request_generation(self, websocket: WebSocket, client_id: str, request_type: str, content: dict, session_id="default"):
@@ -139,7 +140,8 @@ class VisionOrchestrator:
             event = asyncio.Event()
 
             name_key = content.get('name') or content.get('location_name') or content.get('biome')
-            pending_vision_requests[request_id] = {"event": event, "url": None, "name_key": name_key}
+            async with vision_lock:
+                pending_vision_requests[request_id] = {"event": event, "url": None, "name_key": name_key}
 
             print(f"Vision: Offloading {request_type} to {client_id}")            
             await websocket.send_text(json.dumps({
@@ -152,13 +154,15 @@ class VisionOrchestrator:
             # Wait for completion (with timeout)
             try:
                 await asyncio.wait_for(event.wait(), timeout=60.0)
-                url = pending_vision_requests[request_id]["url"]
-                del pending_vision_requests[request_id]
+                async with vision_lock:
+                    url = pending_vision_requests[request_id]["url"]
+                    del pending_vision_requests[request_id]
                 return url
             except asyncio.TimeoutError:
                 print(f"Vision: Timeout offloading to {client_id}. Falling back to local.")
-                if request_id in pending_vision_requests:
-                    del pending_vision_requests[request_id]
+                async with vision_lock:
+                    if request_id in pending_vision_requests:
+                        del pending_vision_requests[request_id]
         
         # Fallback to local generation on the 4090
         if request_type == "portrait":
@@ -172,7 +176,8 @@ class VisionOrchestrator:
         if url:
             name_key = content.get('name') or content.get('location_name') or content.get('biome')
             if name_key:
-                curator_visual.entity_cache[name_key] = url
+                async with vision_lock:
+                    curator_visual.entity_cache[name_key] = url
 
         return url
 
@@ -198,72 +203,58 @@ async def websocket_endpoint(websocket: WebSocket):
             if message["type"] == "vision_complete":
                 rid = message.get("request_id")
                 url = message.get("url")
-                if rid in pending_vision_requests:
-                    pending_vision_requests[rid]["url"] = url
-                    # Also try to update entity_cache if we can find the name
-                    name_key = pending_vision_requests[rid].get("name_key")
-                    if name_key:
-                        curator_visual.entity_cache[name_key] = url
-                    pending_vision_requests[rid]["event"].set()
+                async with vision_lock:
+                    if rid in pending_vision_requests:
+                        pending_vision_requests[rid]["url"] = url
+                        name_key = pending_vision_requests[rid].get("name_key")
+                        if name_key:
+                            curator_visual.entity_cache[name_key] = url
+                        pending_vision_requests[rid]["event"].set()
                 continue
 
             if message["type"] == "user_input":
-                user_input = message["content"]
-                await log_progress(websocket, f"Received user input: '{user_input[:50]}...'")
-                
-                await log_progress(websocket, "Analyzing intent...")
-                intent = parser.detect_intent(user_input)
+                try:
+                    user_input = message["content"]
+                    await log_progress(websocket, f"Received user input: '{user_input[:50]}...'")
+                    await log_progress(websocket, "Analyzing intent...")
+                    intent = parser.detect_intent(user_input)
 
-                if intent == 'SPARK':
-                    await log_progress(websocket, "Conjuring a new story spark...")
-                    
-                    # Notify client that a spark is starting
-                    await websocket.send_text(json.dumps({"type": "spark", "content": ""}))
-
-                    genre = message.get("genre")
-                    matrix = spark.PromptMatrix()
-                    prompt = matrix.build_prompt(genre=genre)
-
-                    full_spark = ""
-                    stream_parser = parser.StreamParser()
-                    async for chunk in llm.async_generate_story_segment(prompt, model=config.FAST_MODEL):
-                        await websocket.send_text(json.dumps({"type": "story_chunk", "content": chunk}))
-                        full_spark += chunk
-                        
-                        completed_blocks = stream_parser.feed(chunk)
-                        for speaker, text in completed_blocks:
+                    if intent == 'SPARK':
+                        await log_progress(websocket, "Conjuring a new story spark...")
+                        await websocket.send_text(json.dumps({"type": "spark", "content": ""}))
+                        genre = message.get("genre")
+                        matrix = spark.PromptMatrix()
+                        prompt = matrix.build_prompt(genre=genre)
+                        full_spark = ""
+                        stream_parser = parser.StreamParser()
+                        async for chunk in llm.async_generate_story_segment(prompt, model=config.FAST_MODEL):
+                            await websocket.send_text(json.dumps({"type": "story_chunk", "content": chunk}))
+                            full_spark += chunk
+                            completed_blocks = stream_parser.feed(chunk)
+                            for speaker, text in completed_blocks:
+                                voice_config = db.get_character_voice(speaker)
+                                audio_path = await asyncio.to_thread(tts.generate_audio, text, speaker, voice_config=voice_config)
+                                if audio_path:
+                                    audio_url = f"/audio/{os.path.basename(audio_path)}"
+                                    await websocket.send_text(json.dumps({"type": "audio_event", "url": audio_url, "speaker": speaker, "content": text}))
+                        remaining_blocks = stream_parser.flush()
+                        for speaker, text in remaining_blocks:
                             voice_config = db.get_character_voice(speaker)
                             audio_path = await asyncio.to_thread(tts.generate_audio, text, speaker, voice_config=voice_config)
                             if audio_path:
                                 audio_url = f"/audio/{os.path.basename(audio_path)}"
-                                await websocket.send_text(json.dumps({
-                                    "type": "audio_event", 
-                                    "url": audio_url, 
-                                    "speaker": speaker,
-                                    "content": text
-                                }))
-
-                    remaining_blocks = stream_parser.flush()
-                    for speaker, text in remaining_blocks:
-                        voice_config = db.get_character_voice(speaker)
-                        audio_path = await asyncio.to_thread(tts.generate_audio, text, speaker, voice_config=voice_config)
-                        if audio_path:
-                            audio_url = f"/audio/{os.path.basename(audio_path)}"
-                            await websocket.send_text(json.dumps({
-                                "type": "audio_event", 
-                                "url": audio_url, 
-                                "speaker": speaker,
-                                "content": text
-                            }))
-
-                    await log_progress(websocket, "Spark conjured.", "success")
-                else:
-                    await turn_orchestrator.process_turn(
-                        websocket, client_id, user_input, intent,
-                        log_progress, vision_orchestrator, music, world, atmosphere, curator_visual
-                    )
-                await log_progress(websocket, "Turn complete.", "success")
-
+                                await websocket.send_text(json.dumps({"type": "audio_event", "url": audio_url, "speaker": speaker, "content": text}))
+                        await log_progress(websocket, "Spark conjured.", "success")
+                    else:
+                        await turn_orchestrator.process_turn(
+                            websocket, client_id, user_input, intent,
+                            log_progress, vision_orchestrator, music, world, atmosphere, curator_visual
+                        )
+                except Exception as e:
+                    print(f"Server Error (user_input): {e}")
+                    await websocket.send_text(json.dumps({"type": "error", "content": "An internal error occurred."}))
+                    await log_progress(websocket, "Turn failed.", "error")
+                continue
             elif message["type"] == "add_character":
                 char_data = message["content"]
                 
@@ -504,6 +495,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
                     await websocket.send_text(json.dumps({"type": "info", "content": f"Switched to turn {snap['turn_number']}."}))
                     await websocket.send_text(json.dumps({"type": "state_update_request"}))
+
 
     except WebSocketDisconnect:
         print("Client disconnected")

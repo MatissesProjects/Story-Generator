@@ -10,18 +10,26 @@ def setup_test_db():
     import os
     old_path = db.DB_PATH
     test_db = f"test_agency_{uuid.uuid4()}.db"
+    
+    # Ensure any existing connection is closed
+    db.close_db()
     db.DB_PATH = test_db
     db.init_db()
+    
     # Add a character with low social need
     db.add_character("TestNPC", "A loner", "Quiet")
     db.execute_db("UPDATE characters SET social = 10 WHERE name = 'TestNPC'")
+    
     yield
+    
+    db.close_db()
     if os.path.exists(test_db):
         try:
             os.remove(test_db)
         except:
             pass
     db.DB_PATH = old_path
+    db.close_db()
 
 @pytest.mark.asyncio
 async def test_agency_tick_social_priority():

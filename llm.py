@@ -75,16 +75,26 @@ async def async_generate_story_segment(prompt, model=config.CREATIVE_MODEL, cont
         }
     }
 
-    async with httpx.AsyncClient(timeout=config.OLLAMA_TIMEOUT) as client:
-        async with client.stream("POST", OLLAMA_URL, json=payload) as response:
-            response.raise_for_status()
-            async for line in response.aiter_lines():
-                if line:
-                    chunk = json.loads(line)
-                    if "response" in chunk:
-                        yield chunk["response"]
-                    if chunk.get("done"):
-                        break
+    try:
+        async with httpx.AsyncClient(timeout=config.OLLAMA_TIMEOUT) as client:
+            async with client.stream("POST", OLLAMA_URL, json=payload) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    if line:
+                        try:
+                            chunk = json.loads(line)
+                            if "response" in chunk:
+                                yield chunk["response"]
+                            if chunk.get("done"):
+                                break
+                        except json.JSONDecodeError:
+                            print(f"Warning: Could not decode JSON line: {line}")
+    except httpx.HTTPStatusError as e:
+        print(f"LLM API Error: HTTP Status Error: {e}")
+    except httpx.RequestError as e:
+        print(f"LLM API Error: Network/Request Error: {e}")
+    except Exception as e:
+        print(f"LLM API Error: Unexpected error: {e}")
 
 async def async_generate_full_response(prompt, model=config.CREATIVE_MODEL, **kwargs):
     """

@@ -10,10 +10,15 @@ DB_PATH = "story_memory.db"
 _local = threading.local()
 
 def get_db():
-    if not hasattr(_local, "conn"):
+    if not hasattr(_local, "conn") or _local.conn is None:
         _local.conn = sqlite3.connect(DB_PATH, timeout=10.0)
         _local.conn.row_factory = sqlite3.Row
     return _local.conn
+
+def close_db():
+    if hasattr(_local, "conn") and _local.conn is not None:
+        _local.conn.close()
+        _local.conn = None
 
 def init_db():
     with open("schema.sql", "r") as f:
@@ -85,15 +90,22 @@ def init_db():
         set_story_state("narrative_seed", "The story has just begun.")
 
 def query_db(query, args=(), one=False):
-    conn = get_db()
-    cur = conn.execute(query, args)
-    rv = cur.fetchall()
-    return (rv[0] if rv else None) if one else rv
+    try:
+        conn = get_db()
+        cur = conn.execute(query, args)
+        rv = cur.fetchall()
+        return (rv[0] if rv else None) if one else rv
+    except sqlite3.Error as e:
+        print(f"Database Query Error: {e} (Query: {query})")
+        return None if one else []
 
 def execute_db(query, args=()):
-    conn = get_db()
-    conn.execute(query, args)
-    conn.commit()
+    try:
+        conn = get_db()
+        conn.execute(query, args)
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"Database Execution Error: {e} (Query: {query})")
 
 def clear_all_data():
     tables = [

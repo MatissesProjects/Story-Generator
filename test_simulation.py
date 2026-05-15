@@ -10,17 +10,24 @@ def setup_test_db():
     import os
     old_path = db.DB_PATH
     test_db = f"test_sim_{uuid.uuid4()}.db"
+    
+    db.close_db()
     db.DB_PATH = test_db
     db.init_db()
+    
     # Initialize world time
     db.set_story_state("world_time", "0")
+    
     yield
+    
+    db.close_db()
     if os.path.exists(test_db):
         try:
             os.remove(test_db)
         except:
             pass
     db.DB_PATH = old_path
+    db.close_db()
 
 @pytest.mark.asyncio
 async def test_simulation_tick_progression():
