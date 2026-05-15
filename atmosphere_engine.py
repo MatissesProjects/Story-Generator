@@ -2,6 +2,7 @@ import db
 import llm
 import config
 import json
+import utils
 
 class AtmosphereEngine:
     def __init__(self):
@@ -95,16 +96,9 @@ Reply ONLY with a JSON object.
 """
         response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         try:
-            clean_json = response.strip()
-            if "```json" in clean_json:
-                clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-            elif "```" in clean_json:
-                clean_json = clean_json.split("```")[1].split("```")[0].strip()
-            
-            data = json.loads(clean_json)
-            
-            # Sanitize tint to ensure alpha is low
-            tint = data.get("tint", "rgba(0,0,0,0)")
+            data = utils.safe_parse_json(response, default={})
+
+            # Sanitize tint to ensure alpha is low            tint = data.get("tint", "rgba(0,0,0,0)")
             if "rgb" in tint and "," in tint:
                 # Force alpha if LLM returned rgb or high alpha rgba
                 parts = tint.replace("rgba(", "").replace("rgb(", "").replace(")", "").split(",")

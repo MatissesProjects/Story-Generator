@@ -421,8 +421,12 @@ async def process_turn(
         await log_progress(websocket, "Triggering global simulation tick...")
         sim_events = await simulation_manager.trigger_tick()
         if sim_events:
-            # We don't necessarily show these to the user, 
-            # but they are logged and will affect future context.
             print(f"Simulation tick completed with {len(sim_events)} events.")
+            # Notify the user of background developments
+            for event in sim_events:
+                await websocket.send_text(json.dumps({
+                    "type": "info", 
+                    "content": f"Background Development: {event.get('description')}"
+                }))
 
     await log_progress(websocket, "Turn complete.", "success")

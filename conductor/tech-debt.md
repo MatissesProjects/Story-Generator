@@ -21,7 +21,7 @@ This document tracks identified architectural issues, performance bottlenecks, a
     *   *Solution*: Use `JOIN` queries or batch fetching to reduce the number of queries.
 
 ## Priority 4: Logic Duplication & Bugs (Low)
-*   [ ] **Redundant JSON Cleaning**: `director.py`, `utils.py`, and `simulation_manager.py` all have custom, slightly varying logic for extracting and parsing JSON from LLM markdown outputs (e.g., stripping ` ```json `).
-    *   *Solution*: Consolidate this into a single, robust function in `utils.py`.
-*   [ ] **Incomplete Features**: `agency_engine.py` is partially implemented but lacks deep integration with the main narrative loop.
-    *   *Solution*: fully integrate or remove if deprecated.
+*   [x] **Redundant JSON Cleaning**: `director.py`, `utils.py`, and `simulation_manager.py` all had custom, slightly varying logic for extracting and parsing JSON from LLM markdown outputs (e.g., stripping ` ```json `).
+    *   *Solution*: Consolidated into `utils.safe_parse_json`.
+*   [x] **Incomplete Features**: `agency_engine.py` was partially implemented but lacked deep integration with the main narrative loop.
+    *   *Solution*: NPC background events are now surfaced to the user and passed into the Director's hidden instructions to influence the main story generation.

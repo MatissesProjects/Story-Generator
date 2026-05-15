@@ -3,6 +3,7 @@ import llm
 import random
 import config
 import json
+import utils
 
 async def perform_hidden_check(user_input, context_facts):
     """
@@ -33,13 +34,7 @@ EXAMPLE STRUCTURE (Do not use these specific values):
     response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
     
     try:
-        clean_json = response.strip()
-        if "```json" in clean_json:
-            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-        elif "```" in clean_json:
-            clean_json = clean_json.split("```")[1].split("```")[0].strip()
-            
-        result = json.loads(clean_json)
+        result = utils.safe_parse_json(response, default={})
         
         if result.get("requires_check", False):
             sides = result.get("sides", 20)

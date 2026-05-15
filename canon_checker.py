@@ -2,6 +2,7 @@ import db
 import llm
 import json
 import config
+import utils
 
 async def extract_claims(text):
     """
@@ -27,13 +28,7 @@ REPLY ONLY IN JSON.]
     response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         
     try:
-        clean_json = response.strip()
-        if "```json" in clean_json:
-            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-        elif "```" in clean_json:
-            clean_json = clean_json.split("```")[1].split("```")[0].strip()
-            
-        result = json.loads(clean_json)
+        result = utils.safe_parse_json(response, default={})
         return result.get("claims", [])
     except Exception as e:
         print(f"CanonChecker Error (extract_claims): {e}. Raw: {response}")
@@ -76,13 +71,7 @@ EXAMPLE STRUCTURE (Do not use these specific values):
     response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
     
     try:
-        clean_json = response.strip()
-        if "```json" in clean_json:
-            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-        elif "```" in clean_json:
-            clean_json = clean_json.split("```")[1].split("```")[0].strip()
-            
-        result = json.loads(clean_json)
+        result = utils.safe_parse_json(response, default={})
         
         # Apply the resolution
         rtype = result.get("resolution_type")
@@ -134,13 +123,7 @@ REPLY ONLY IN JSON.]
     response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         
     try:
-        clean_json = response.strip()
-        if "```json" in clean_json:
-            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-        elif "```" in clean_json:
-            clean_json = clean_json.split("```")[1].split("```")[0].strip()
-            
-        result = json.loads(clean_json)
+        result = utils.safe_parse_json(response, default={})
         return result.get("contradictions", [])
     except Exception as e:
         print(f"CanonChecker Error (check_for_contradictions): {e}. Raw: {response}")

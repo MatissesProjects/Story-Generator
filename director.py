@@ -6,6 +6,7 @@ import config
 import random
 import json
 import asyncio
+import utils
 
 def evaluate_state(user_input, recent_history=None):
     """
@@ -14,6 +15,7 @@ def evaluate_state(user_input, recent_history=None):
     """
     plot_threads = db.get_active_plot_threads()
     active_quests = db.get_active_quests()
+    sim_events = db.get_recent_sim_events(limit=3)
     
     context_notes = []
     
@@ -24,6 +26,10 @@ def evaluate_state(user_input, recent_history=None):
     if active_quests:
         quests_text = "\n".join([f"- {q['title']}: {q['description']}" for q in active_quests])
         context_notes.append(f"ACTIVE LEADS: {quests_text}")
+
+    if sim_events:
+        sim_text = "\n".join([f"- {e['event_type']}: {e['description']}" for e in sim_events])
+        context_notes.append(f"BACKGROUND DEVELOPMENTS: {sim_text}")
 
     if not context_notes:
         notes_str = "No specific plot threads active."
@@ -76,13 +82,7 @@ async def evaluate_quest_progress(history_text):
     response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         
     try:
-        clean_json = response.strip()
-        if "```json" in clean_json:
-            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-        elif "```" in clean_json:
-            clean_json = clean_json.split("```")[1].split("```")[0].strip()
-            
-        result = json.loads(clean_json)
+        result = utils.safe_parse_json(response, default={})
         return result.get("updates", [])
     except Exception as e:
         print(f"Director Error (evaluate_quest_progress): {e}. Raw: {response}")
@@ -123,13 +123,7 @@ REPLY ONLY IN JSON.]
     response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         
     try:
-        clean_json = response.strip()
-        if "```json" in clean_json:
-            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-        elif "```" in clean_json:
-            clean_json = clean_json.split("```")[1].split("```")[0].strip()
-            
-        result = json.loads(clean_json)
+        result = utils.safe_parse_json(response, default={})
         return result.get("completed", False)
     except Exception as e:
         print(f"Director Error (evaluate_milestone_progress): {e}. Raw: {response}")
@@ -200,14 +194,7 @@ REPLY ONLY IN JSON.]
     response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         
     try:
-        # Basic JSON extraction
-        clean_json = response.strip()
-        if "```json" in clean_json:
-            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-        elif "```" in clean_json:
-            clean_json = clean_json.split("```")[1].split("```")[0].strip()
-            
-        result = json.loads(clean_json)
+        result = utils.safe_parse_json(response, default={})
         return result.get("needs_research", False), result.get("suggested_theme", "")
     except Exception as e:
         print(f"Director Error (parsing JSON): {e}. Raw: {response}")
@@ -245,13 +232,7 @@ REPLY ONLY IN JSON.]
     response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
         
     try:
-        clean_json = response.strip()
-        if "```json" in clean_json:
-            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-        elif "```" in clean_json:
-            clean_json = clean_json.split("```")[1].split("```")[0].strip()
-            
-        result = json.loads(clean_json)
+        result = utils.safe_parse_json(response, default={})
         return result.get("location"), result.get("description"), result.get("relative_to"), result.get("direction")
     except Exception as e:
         print(f"Director Error (identify_location): {e}. Raw: {response}")
@@ -403,13 +384,7 @@ REPLY ONLY IN JSON.]
     response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
     
     try:
-        clean_json = response.strip()
-        if "```json" in clean_json:
-            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-        elif "```" in clean_json:
-            clean_json = clean_json.split("```")[1].split("```")[0].strip()
-            
-        return json.loads(clean_json)
+        return utils.safe_parse_json(response, default={"resolved_ids": [], "new_threads": []})
     except Exception as e:
         print(f"Director Error (analyze_plot_threads): {e}. Raw: {response}")
         return {"resolved_ids": [], "new_threads": []}

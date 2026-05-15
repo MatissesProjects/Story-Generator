@@ -5,6 +5,7 @@ import asyncio
 import json
 import agency_engine
 import entropy_engine
+import utils
 
 agency = agency_engine.AgencyEngine()
 entropy = entropy_engine.EntropyEngine()
@@ -89,13 +90,9 @@ EXAMPLE STRUCTURE (Do not use these specific values):
 """
     response = await llm.async_generate_full_response(prompt, model=config.FAST_MODEL)
     try:
-        clean_json = response.strip()
-        if "```json" in clean_json:
-            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-        elif "```" in clean_json:
-            clean_json = clean_json.split("```")[1].split("```")[0].strip()
-            
-        data = json.loads(clean_json)
+        data = utils.safe_parse_json(response, default={})
+        if not data:
+            return None
         
         # Resolve location name to ID if provided
         if data.get('location_name'):
