@@ -57,6 +57,13 @@ async def process_turn(
     # 2. Director Action Plan (Async)
     plan_task = director.generate_action_plan(user_input, recent_history, active_threads, active_quests, current_location=curr_loc_name)
     
+    # 3. HTN Plan Generation (if needed)
+    active_plan = db.get_active_plan()
+    if not active_plan and intent != 'SPARK':
+        # Auto-generate a new plan for the mystery
+        await director.generate_narrative_plan("solve_mystery")
+        active_plan = db.get_active_plan()
+
     # Wait for context first
     start_context = time.time()
     facts = await context_task
@@ -268,6 +275,26 @@ async def process_turn(
     # --- PHASE 4: Post-Generation Tasks (Parallel) ---
     await log_progress(websocket, "Finalizing turn processing...")
     
+    # 1. HTN Plan Verification
+    active_plan = db.get_active_plan()
+    if active_plan:
+        idx = active_plan['current_task_index']
+        tasks = active_plan['task_sequence']
+        if idx < len(tasks):
+            current_task = tasks[idx]
+            import htn_monitor
+            success, explanation = await htn_monitor.verify_task_completion(current_task, f"Player: {user_input}\nStory: {full_response}")
+            if success:
+                print(f"HTN Monitor: Task '{current_task}' completed! {explanation}")
+                db.update_plan_progress(idx + 1)
+                await websocket.send_text(json.dumps({
+                    "type": "info", 
+                    "content": f"Narrative Goal Advanced: {explanation}"
+                }))
+                if idx + 1 >= len(tasks):
+                    db.complete_active_plan('completed')
+                    await websocket.send_text(json.dumps({"type": "info", "content": f"Narrative Arc '{active_plan['goal_name']}' Completed!"}))
+
     post_tasks = [
         foreshadowing.extract_seeds(full_response, curr_loc_name),
         canon_checker.extract_claims(full_response),

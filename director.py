@@ -16,8 +16,16 @@ def evaluate_state(user_input, recent_history=None):
     plot_threads = db.get_active_plot_threads()
     active_quests = db.get_active_quests()
     sim_events = db.get_recent_sim_events(limit=3)
+    active_plan = db.get_active_plan()
     
     context_notes = []
+    
+    if active_plan:
+        idx = active_plan['current_task_index']
+        tasks = active_plan['task_sequence']
+        if idx < len(tasks):
+            current_task = tasks[idx]
+            context_notes.append(f"CURRENT STRATEGIC GOAL ({active_plan['goal_name']}): {current_task}")
     
     if plot_threads:
         threads_text = "\n".join([f"- {t['description']}" for t in plot_threads])
@@ -395,6 +403,31 @@ REPLY ONLY IN JSON.]
     except Exception as e:
         print(f"Director Error (analyze_plot_threads): {e}")
         return {"resolved_ids": [], "new_threads": []}
+
+async def generate_narrative_plan(goal_name="solve_mystery"):
+    """
+    Uses the HTN engine to generate a new narrative plan based on the current world state.
+    """
+    import htn_domains
+    
+    # 1. Gather World State
+    # Simplified for now: just check if characters exist
+    chars = db.get_all_characters()
+    state = {
+        'suspect_present': len(chars) > 0,
+        'at_scene': True # Default for starting
+    }
+    
+    # 2. Solve
+    domain = htn_domains.get_mystery_domain()
+    task_sequence = domain.solve(state, [goal_name])
+    
+    if task_sequence:
+        db.set_active_plan(goal_name, task_sequence)
+        print(f"Director: New HTN Plan generated for '{goal_name}': {task_sequence}")
+        return task_sequence
+    
+    return None
 
 if __name__ == "__main__":
     # Test

@@ -194,3 +194,11 @@ CREATE TABLE IF NOT EXISTS interaction_log (
         location_id INTEGER,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS active_narrative_plan (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        goal_name TEXT NOT NULL,
+        task_sequence TEXT NOT NULL, -- JSON array of primitive tasks
+        current_task_index INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'active' -- active, completed, failed
+    );

@@ -534,6 +534,33 @@ def set_entity_stat(entity_type, entity_id, stat_name, stat_value):
 def get_entity_stats(entity_type, entity_id):
     return query_db("SELECT * FROM entity_stats WHERE entity_type = ? AND entity_id = ?", (entity_type, entity_id))
 
+# HTN Planning Functions
+def set_active_plan(goal_name, task_sequence):
+    """Stores a new HTN plan. task_sequence should be a list of strings."""
+    import json
+    execute_db("DELETE FROM active_narrative_plan") # Only one active plan at a time
+    execute_db("INSERT INTO active_narrative_plan (goal_name, task_sequence, current_task_index) VALUES (?, ?, 0)",
+               (goal_name, json.dumps(task_sequence)))
+
+def get_active_plan():
+    """Retrieves the current active narrative plan."""
+    import json
+    plan = query_db("SELECT * FROM active_narrative_plan WHERE status = 'active'", one=True)
+    if plan:
+        # Convert sqlite3.Row to dict and parse task_sequence
+        plan_dict = dict(plan)
+        plan_dict['task_sequence'] = json.loads(plan_dict['task_sequence'])
+        return plan_dict
+    return None
+
+def update_plan_progress(index):
+    """Updates the current task index of the active plan."""
+    execute_db("UPDATE active_narrative_plan SET current_task_index = ? WHERE status = 'active'", (index,))
+
+def complete_active_plan(status='completed'):
+    """Marks the active plan as completed or failed."""
+    execute_db("UPDATE active_narrative_plan SET status = ? WHERE status = 'active'", (status,))
+
 if __name__ == "__main__":
     print("Initializing database...")
     init_db()
