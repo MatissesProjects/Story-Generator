@@ -4,8 +4,16 @@ import memory_engine
 import config
 import json
 import random
+import threading
 
 DB_PATH = "story_memory.db"
+_local = threading.local()
+
+def get_db():
+    if not hasattr(_local, "conn"):
+        _local.conn = sqlite3.connect(DB_PATH, timeout=10.0)
+        _local.conn.row_factory = sqlite3.Row
+    return _local.conn
 
 def init_db():
     with open("schema.sql", "r") as f:
@@ -77,16 +85,15 @@ def init_db():
         set_story_state("narrative_seed", "The story has just begun.")
 
 def query_db(query, args=(), one=False):
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.row_factory = sqlite3.Row
-        cur = conn.execute(query, args)
-        rv = cur.fetchall()
-        return (rv[0] if rv else None) if one else rv
+    conn = get_db()
+    cur = conn.execute(query, args)
+    rv = cur.fetchall()
+    return (rv[0] if rv else None) if one else rv
 
 def execute_db(query, args=()):
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(query, args)
-        conn.commit()
+    conn = get_db()
+    conn.execute(query, args)
+    conn.commit()
 
 def clear_all_data():
     tables = [
@@ -97,14 +104,14 @@ def clear_all_data():
         "foreshadowed_elements", "inventory", "entity_stats", 
         "simulation_history"
     ]
-    with sqlite3.connect(DB_PATH) as conn:
-        for table in tables:
-            try:
-                conn.execute(f"DELETE FROM {table}")
-            except sqlite3.OperationalError:
-                # Table might not exist yet
-                pass
-        conn.commit()
+    conn = get_db()
+    for table in tables:
+        try:
+            conn.execute(f"DELETE FROM {table}")
+        except sqlite3.OperationalError:
+            # Table might not exist yet
+            pass
+    conn.commit()
     # Re-initialize just in case some defaults are needed
     init_db()
 
@@ -192,22 +199,22 @@ def add_character(name, description, traits, voice_id=None, length_scale=1.0, no
     if voice_id and not voice_id.endswith(".onnx"):
         voice_id += ".onnx"
 
-    with sqlite3.connect(DB_PATH) as conn:
-        # Check if character already exists to avoid duplicates
-        existing = query_db("SELECT id FROM characters WHERE name = ? COLLATE NOCASE", (name,), one=True)
-        if existing:
-            print(f"DB: Character '{name}' already exists. Skipping add.")
-            return existing['id']
+    conn = get_db()
+    # Check if character already exists to avoid duplicates
+    existing = query_db("SELECT id FROM characters WHERE name = ? COLLATE NOCASE", (name,), one=True)
+    if existing:
+        print(f"DB: Character '{name}' already exists. Skipping add.")
+        return existing['id']
 
-        cur = conn.execute("""
-            INSERT INTO characters 
-            (name, description, traits, voice_id, length_scale, noise_scale, noise_w, signature_tic, narrative_role, leitmotif_path) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (name, description, traits, voice_id, length_scale, noise_scale, noise_w, signature_tic, narrative_role, leitmotif_path))
-        conn.commit()
-        char_id = cur.lastrowid
-        memory_engine.add_character_vector(name, description, traits, char_id)
-        return char_id
+    cur = conn.execute("""
+        INSERT INTO characters 
+        (name, description, traits, voice_id, length_scale, noise_scale, noise_w, signature_tic, narrative_role, leitmotif_path) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (name, description, traits, voice_id, length_scale, noise_scale, noise_w, signature_tic, narrative_role, leitmotif_path))
+    conn.commit()
+    char_id = cur.lastrowid
+    memory_engine.add_character_vector(name, description, traits, char_id)
+    return char_id
 
 def update_character_last_seen(char_id, turn_number):
     execute_db("UPDATE characters SET last_seen_turn = ? WHERE id = ?", (turn_number, char_id))
@@ -265,13 +272,13 @@ def get_story_state(key):
 # World Map Functions
 def add_location(name, description, x, y, biome_type, elevation=0, climate='Temperate', region_id=None):
     try:
-        with sqlite3.connect(DB_PATH) as conn:
-            cur = conn.execute(
-                "INSERT INTO locations (name, description, x, y, biome_type, elevation, climate, region_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (name, description, x, y, biome_type, elevation, climate, region_id)
-            )
-            conn.commit()
-            return cur.lastrowid
+        conn = get_db()
+        cur = conn.execute(
+            "INSERT INTO locations (name, description, x, y, biome_type, elevation, climate, region_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (name, description, x, y, biome_type, elevation, climate, region_id)
+        )
+        conn.commit()
+        return cur.lastrowid
     except sqlite3.IntegrityError:
         return None
 
@@ -309,21 +316,21 @@ def commit_snapshot(session_id, user_input, response, seed, location_id, branch_
     parent_id = head['id'] if head else None
     turn_number = (head['turn_number'] + 1) if head else 1
     
-    with sqlite3.connect(DB_PATH) as conn:
-        cur = conn.execute(
-            """INSERT INTO snapshots 
-               (parent_id, session_id, turn_number, branch_name, narrative_seed, user_input, assistant_response, location_id) 
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (parent_id, session_id, turn_number, branch_name, seed, user_input, response, location_id)
-        )
-        snapshot_id = cur.lastrowid
-        
-        conn.execute(
-            "INSERT OR REPLACE INTO story_heads (session_id, current_snapshot_id, active_branch) VALUES (?, ?, ?)",
-            (session_id, snapshot_id, branch_name)
-        )
-        conn.commit()
-        return snapshot_id
+    conn = get_db()
+    cur = conn.execute(
+        """INSERT INTO snapshots 
+           (parent_id, session_id, turn_number, branch_name, narrative_seed, user_input, assistant_response, location_id) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (parent_id, session_id, turn_number, branch_name, seed, user_input, response, location_id)
+    )
+    snapshot_id = cur.lastrowid
+    
+    conn.execute(
+        "INSERT OR REPLACE INTO story_heads (session_id, current_snapshot_id, active_branch) VALUES (?, ?, ?)",
+        (session_id, snapshot_id, branch_name)
+    )
+    conn.commit()
+    return snapshot_id
 
 def get_story_head(session_id):
     """
@@ -358,13 +365,13 @@ def get_snapshot_history(session_id, head_id=None):
 
 # Quest System Functions
 def add_quest(title, description, priority=1):
-    with sqlite3.connect(DB_PATH) as conn:
-        cur = conn.execute(
-            "INSERT INTO quests (title, description, priority) VALUES (?, ?, ?)",
-            (title, description, priority)
-        )
-        conn.commit()
-        return cur.lastrowid
+    conn = get_db()
+    cur = conn.execute(
+        "INSERT INTO quests (title, description, priority) VALUES (?, ?, ?)",
+        (title, description, priority)
+    )
+    conn.commit()
+    return cur.lastrowid
 
 def add_quest_objective(quest_id, description):
     execute_db(
@@ -374,10 +381,22 @@ def add_quest_objective(quest_id, description):
 
 def get_active_quests():
     quests = query_db("SELECT * FROM quests WHERE status = 'active' ORDER BY priority DESC")
+    if not quests:
+        return []
+        
+    quest_ids = [q['id'] for q in quests]
+    placeholders = ",".join("?" for _ in quest_ids)
+    all_objs = query_db(f"SELECT * FROM quest_objectives WHERE quest_id IN ({placeholders}) AND status = 'active'", tuple(quest_ids))
+    
+    objs_by_quest = {}
+    if all_objs:
+        for obj in all_objs:
+            objs_by_quest.setdefault(obj['quest_id'], []).append(dict(obj))
+            
     full_quests = []
     for q in quests:
         q_dict = dict(q)
-        q_dict['objectives'] = query_db("SELECT * FROM quest_objectives WHERE quest_id = ? AND status = 'active'", (q['id'],))
+        q_dict['objectives'] = objs_by_quest.get(q['id'], [])
         full_quests.append(q_dict)
     return full_quests
 
@@ -402,23 +421,23 @@ def get_all_relationships():
 def update_relationship(char_a_id, char_b_id, delta_trust, delta_fear, delta_affection, event_desc):
     a, b = min(char_a_id, char_b_id), max(char_a_id, char_b_id)
     
-    with sqlite3.connect(DB_PATH) as conn:
-        # 1. Update or Insert Relationship
-        conn.execute("""
-            INSERT INTO relationships (char_a_id, char_b_id, trust, fear, affection)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(char_a_id, char_b_id) DO UPDATE SET
-                trust = trust + excluded.trust,
-                fear = fear + excluded.fear,
-                affection = affection + excluded.affection
-        """, (a, b, delta_trust, delta_fear, delta_affection))
-        
-        # 2. Log Interaction
-        conn.execute("""
-            INSERT INTO interaction_log (char_a_id, char_b_id, event_description, delta_trust, delta_fear, delta_affection)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (char_a_id, char_b_id, event_desc, delta_trust, delta_fear, delta_affection))
-        conn.commit()
+    conn = get_db()
+    # 1. Update or Insert Relationship
+    conn.execute("""
+        INSERT INTO relationships (char_a_id, char_b_id, trust, fear, affection)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(char_a_id, char_b_id) DO UPDATE SET
+            trust = trust + excluded.trust,
+            fear = fear + excluded.fear,
+            affection = affection + excluded.affection
+    """, (a, b, delta_trust, delta_fear, delta_affection))
+    
+    # 2. Log Interaction
+    conn.execute("""
+        INSERT INTO interaction_log (char_a_id, char_b_id, event_description, delta_trust, delta_fear, delta_affection)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (char_a_id, char_b_id, event_desc, delta_trust, delta_fear, delta_affection))
+    conn.commit()
 
 def get_character_relationships(char_id):
     """Returns all relationships for a specific character, including with the player (id 0)."""
@@ -462,16 +481,16 @@ def set_current_milestone_index(index):
 
 # Inventory & Stats Functions
 def add_inventory_item(entity_type, entity_id, item_name, description="", quantity=1):
-    with sqlite3.connect(DB_PATH) as conn:
-        # Check if item exists
-        existing = query_db("SELECT id, quantity FROM inventory WHERE entity_type = ? AND entity_id = ? AND item_name = ?", 
-                           (entity_type, entity_id, item_name), one=True)
-        if existing:
-            conn.execute("UPDATE inventory SET quantity = quantity + ? WHERE id = ?", (quantity, existing['id']))
-        else:
-            conn.execute("INSERT INTO inventory (entity_type, entity_id, item_name, description, quantity) VALUES (?, ?, ?, ?, ?)",
-                        (entity_type, entity_id, item_name, description, quantity))
-        conn.commit()
+    conn = get_db()
+    # Check if item exists
+    existing = query_db("SELECT id, quantity FROM inventory WHERE entity_type = ? AND entity_id = ? AND item_name = ?", 
+                       (entity_type, entity_id, item_name), one=True)
+    if existing:
+        conn.execute("UPDATE inventory SET quantity = quantity + ? WHERE id = ?", (quantity, existing['id']))
+    else:
+        conn.execute("INSERT INTO inventory (entity_type, entity_id, item_name, description, quantity) VALUES (?, ?, ?, ?, ?)",
+                    (entity_type, entity_id, item_name, description, quantity))
+    conn.commit()
 
 def remove_inventory_item(entity_type, entity_id, item_name, quantity=1):
     existing = query_db("SELECT id, quantity FROM inventory WHERE entity_type = ? AND entity_id = ? AND item_name = ?", 

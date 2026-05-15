@@ -15,9 +15,9 @@ This document tracks identified architectural issues, performance bottlenecks, a
     *   *Solution*: Modularize into smaller files (e.g., `audio.js`, `ui.js`, `network.js`), maintaining vanilla JS if desired.
 
 ## Priority 3: Database Inefficiencies (Medium)
-*   [ ] **Connection Thrashing**: `db.py` opens and closes a new SQLite connection for every single query via `query_db` / `execute_db`.
+*   [x] **Connection Thrashing**: `db.py` opens and closes a new SQLite connection for every single query via `query_db` / `execute_db`.
     *   *Solution*: Implement a connection pool or a persistent connection manager.
-*   [ ] **N+1 Queries**: Functions like `get_active_quests` fetch the quests, then perform a separate query in a loop to fetch the objectives for each quest.
+*   [x] **N+1 Queries**: Functions like `get_active_quests` fetch the quests, then perform a separate query in a loop to fetch the objectives for each quest.
     *   *Solution*: Use `JOIN` queries or batch fetching to reduce the number of queries.
 
 ## Priority 4: Logic Duplication & Bugs (Low)
